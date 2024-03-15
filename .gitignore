@@ -2,4 +2,5 @@ tmp
 .env
 /cmd/bin
 .env
+config.json
 
