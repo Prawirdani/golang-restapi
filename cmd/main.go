@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/prawirdani/golang-restapi/internal/app"
 	"github.com/spf13/viper"
 )
@@ -22,11 +23,13 @@ func main() {
 	dbpool := app.NewPGPool(cfg)
 	router := app.InitMainRouter(cfg, jsonHandler)
 
+	validator := validator.New()
 	bootstrap := app.Configuration{
 		MainRouter: router,
 		Config:     cfg,
 		DBPool:     dbpool,
 		JSON:       jsonHandler,
+		Validator:  validator,
 	}
 	app.Bootstrap(&bootstrap)
 
