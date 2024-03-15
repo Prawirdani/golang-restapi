@@ -11,7 +11,6 @@ type Configuration struct {
 	MainRouter *chi.Mux
 	Config     *viper.Viper
 	DBPool     *pgxpool.Pool
-	JSON       *JsonHandler
 	Validator  *validator.Validate
 }
 

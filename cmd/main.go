@@ -8,17 +8,15 @@ import (
 func main() {
 	cfg := app.NewConfig()
 	app.InitLogger(cfg)
-	jsonHandler := app.NewJsonHandler()
 
-	dbpool := app.NewPGPool(cfg)
-	router := app.InitMainRouter(cfg, jsonHandler)
+	dbPool := app.NewPGPool(cfg)
+	router := app.InitMainRouter(cfg)
 
 	validator := validator.New()
 	bootstrap := app.Configuration{
 		MainRouter: router,
 		Config:     cfg,
-		DBPool:     dbpool,
-		JSON:       jsonHandler,
+		DBPool:     dbPool,
 		Validator:  validator,
 	}
 	app.Bootstrap(&bootstrap)

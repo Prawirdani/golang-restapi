@@ -11,11 +11,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/prawirdani/golang-restapi/internal/model"
+	"github.com/prawirdani/golang-restapi/internal/common/api"
+	"github.com/prawirdani/golang-restapi/internal/common/json"
 	"github.com/spf13/viper"
 )
 
-func InitMainRouter(config *viper.Viper, JSON *JsonHandler) *chi.Mux {
+func InitMainRouter(config *viper.Viper) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(RequestLogger)
@@ -42,16 +43,16 @@ func InitMainRouter(config *viper.Viper, JSON *JsonHandler) *chi.Mux {
 
 	// Not Found Handler
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		JSON.Send(w, http.StatusNotFound, model.Response{Error: "The requested resource was not found."})
+		json.Send(w, http.StatusNotFound, api.Response{Error: "The requested resource was not found."})
 	})
 	// Request Method Not Allowed Handler
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		JSON.Send(w, http.StatusMethodNotAllowed, model.Response{Error: "The method is not allowed for the requested URL."})
+		json.Send(w, http.StatusMethodNotAllowed, api.Response{Error: "The method is not allowed for the requested URL."})
 	})
 
 	r.Get("/healthcheck", func(w http.ResponseWriter, r *http.Request) {
-		res := model.Response{Message: "Service up and running"}
-		JSON.Send(w, http.StatusOK, res)
+		res := api.Response{Message: "Service up and running"}
+		json.Send(w, http.StatusOK, res)
 	})
 
 	return r
