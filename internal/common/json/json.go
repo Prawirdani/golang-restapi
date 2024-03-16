@@ -4,24 +4,24 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
-
-	"github.com/prawirdani/golang-restapi/internal/common/api"
 )
 
 // Send JSON HTTP Response
-func Send(w http.ResponseWriter, status_code int, response api.Response) {
+func Send(w http.ResponseWriter, status_code int, v any) error {
 	buf := new(bytes.Buffer)
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(true)
 
-	if err := enc.Encode(response); err != nil {
+	if err := enc.Encode(v); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status_code)
-	_, _ = w.Write(buf.Bytes())
+	_, err := w.Write(buf.Bytes())
+
+	return err
 }
 
 // JSON Request body binder
