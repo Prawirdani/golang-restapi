@@ -1,9 +1,9 @@
-package api
+package httputil
 
 import (
 	"net/http"
 
-	"github.com/prawirdani/golang-restapi/internal/common/json"
+	"github.com/prawirdani/golang-restapi/pkg/json"
 )
 
 type handlerFunc func(w http.ResponseWriter, r *http.Request) error

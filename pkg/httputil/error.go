@@ -1,4 +1,4 @@
-package api
+package httputil
 
 import (
 	"fmt"
@@ -25,9 +25,10 @@ func buildApiError(status int) func(e error) *ApiError {
 	}
 }
 
-// These errors can be used for known error on every abstraction layer.
+// Use these error wrappers for known errors to provide clearer response status codes, can be used on any abstraction layer.
 var (
 	ErrBadRequest     = buildApiError(http.StatusBadRequest)
 	ErrUnauthorized   = buildApiError(http.StatusUnauthorized)
 	ErrInternalServer = buildApiError(http.StatusInternalServerError)
+	ErrConflict       = buildApiError(http.StatusConflict)
 )

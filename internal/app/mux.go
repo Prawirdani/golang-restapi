@@ -11,8 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/prawirdani/golang-restapi/internal/common/api"
-	"github.com/prawirdani/golang-restapi/internal/common/json"
+	"github.com/prawirdani/golang-restapi/pkg/httputil"
 	"github.com/spf13/viper"
 )
 
@@ -43,16 +42,16 @@ func InitMainRouter(config *viper.Viper) *chi.Mux {
 
 	// Not Found Handler
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		json.Send(w, http.StatusNotFound, api.Response{Error: "The requested resource was not found."})
+		httputil.JsonSend(w, http.StatusNotFound, httputil.Response{Error: "The requested resource was not found."})
 	})
 	// Request Method Not Allowed Handler
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		json.Send(w, http.StatusMethodNotAllowed, api.Response{Error: "The method is not allowed for the requested URL."})
+		httputil.JsonSend(w, http.StatusMethodNotAllowed, httputil.Response{Error: "The method is not allowed for the requested URL."})
 	})
 
 	r.Get("/healthcheck", func(w http.ResponseWriter, r *http.Request) {
-		res := api.Response{Message: "Service up and running"}
-		json.Send(w, http.StatusOK, res)
+		res := httputil.Response{Message: "Service up and running"}
+		httputil.JsonSend(w, http.StatusOK, res)
 	})
 
 	return r
