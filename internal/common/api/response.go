@@ -1,4 +1,4 @@
-package model
+package api
 
 type Response struct {
 	Data    any    `json:"data"`
