@@ -25,10 +25,12 @@ func buildApiError(status int) func(e error) *ApiError {
 	}
 }
 
-// Use these error wrappers for known errors to provide clearer response status codes, can be used on any abstraction layer.
+// Use these error wrappers for known errors to have precise response status codes, can be used on any abstraction layer.
 var (
-	ErrBadRequest     = buildApiError(http.StatusBadRequest)
-	ErrUnauthorized   = buildApiError(http.StatusUnauthorized)
-	ErrInternalServer = buildApiError(http.StatusInternalServerError)
-	ErrConflict       = buildApiError(http.StatusConflict)
+	ErrBadRequest       = buildApiError(http.StatusBadRequest)
+	ErrConflict         = buildApiError(http.StatusConflict)
+	ErrNotFound         = buildApiError(http.StatusNotFound)
+	ErrUnauthorized     = buildApiError(http.StatusUnauthorized)
+	ErrInternalServer   = buildApiError(http.StatusInternalServerError)
+	ErrMethodNotAllowed = buildApiError(http.StatusMethodNotAllowed)
 )
