@@ -1,4 +1,4 @@
-package jwt
+package utils
 
 import (
 	"errors"
@@ -18,26 +18,26 @@ var (
 	invalidTokenError         = errors.New("Invalid or expired token")
 )
 
-// JWT Payload Claims
-type Claims struct {
+// JWT Payload jwtClaims
+type jwtClaims struct {
 	UserID string `json:"userID,omitempty"`
 	jwt.RegisteredClaims
 }
 
-type Provider struct {
+type JWTProvider struct {
 	secretKey []byte
 	expiry    time.Duration
 }
 
-func NewJWTProvider(config *viper.Viper) *Provider {
-	return &Provider{
+func NewJWTProvider(config *viper.Viper) *JWTProvider {
+	return &JWTProvider{
 		secretKey: []byte(config.GetString("jwt.secret_key")),
 		expiry:    time.Duration(config.GetInt("jwt.expires") * int(time.Hour)),
 	}
 }
 
 // Retrieve token string from request Auth Headers, parse it and return the claims/payload.
-func (p *Provider) ValidateFromRequest(r *http.Request) (map[string]interface{}, error) {
+func (p *JWTProvider) VerifyRequest(r *http.Request) (map[string]interface{}, error) {
 	// Retrieving from Request Auth Headers
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
@@ -45,7 +45,7 @@ func (p *Provider) ValidateFromRequest(r *http.Request) (map[string]interface{},
 	}
 	tokenString := authHeader[len("Bearer "):]
 
-	claims, err := p.parseToken(tokenString)
+	claims, err := p.ParseToken(tokenString)
 	if err != nil {
 		return nil, err
 	}
@@ -55,9 +55,9 @@ func (p *Provider) ValidateFromRequest(r *http.Request) (map[string]interface{},
 }
 
 // Sign new token and return the token string.
-func (p *Provider) CreateToken(u *entity.User) (*string, error) {
+func (p *JWTProvider) CreateToken(u *entity.User) (*string, error) {
 	timeNow := time.Now()
-	claims := &Claims{
+	claims := &jwtClaims{
 		UserID: u.ID.String(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(timeNow),
@@ -76,7 +76,7 @@ func (p *Provider) CreateToken(u *entity.User) (*string, error) {
 }
 
 // Parse and validate token and returning the token map claims / payload.
-func (p *Provider) parseToken(tokenString string) (map[string]interface{}, error) {
+func (p *JWTProvider) ParseToken(tokenString string) (map[string]interface{}, error) {
 	claims := new(jwt.MapClaims)
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
 		if method, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
