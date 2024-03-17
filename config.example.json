@@ -24,5 +24,10 @@
     "_methods": "Allowed Methods, seperate by comma",
     "methods": "GET,POST,PUT,PATCH,HEAD,DELETE,OPTIONS",
     "credentials": true
+  },
+  "jwt": {
+    "secret_key": "secret",
+    "__expires": "Token expiry time in Hour",
+    "expires": 15
   }
 }
