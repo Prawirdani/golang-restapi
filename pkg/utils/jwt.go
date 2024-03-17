@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"net/http"
 	"time"
 
@@ -12,10 +11,7 @@ import (
 )
 
 var (
-	jwtSigningMethod          = jwt.SigningMethodHS256
-	missingAuthHeaderError    = errors.New("Missing auth bearer token")
-	invalidSigningMethodError = errors.New("Invalid signing method")
-	invalidTokenError         = errors.New("Invalid or expired token")
+	jwtSigningMethod = jwt.SigningMethodHS256
 )
 
 // JWT Payload jwtClaims
@@ -41,7 +37,7 @@ func (p *JWTProvider) VerifyRequest(r *http.Request) (map[string]interface{}, er
 	// Retrieving from Request Auth Headers
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
-		return nil, httputil.ErrUnauthorized(missingAuthHeaderError)
+		return nil, httputil.ErrUnauthorized("Missing auth bearer token")
 	}
 	tokenString := authHeader[len("Bearer "):]
 
@@ -79,16 +75,14 @@ func (p *JWTProvider) CreateToken(u *entity.User) (*string, error) {
 func (p *JWTProvider) ParseToken(tokenString string) (map[string]interface{}, error) {
 	claims := new(jwt.MapClaims)
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
-		if method, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, invalidSigningMethodError
-		} else if method != jwtSigningMethod {
-			return nil, invalidSigningMethodError
+		if method, ok := t.Method.(*jwt.SigningMethodHMAC); !ok || method != jwtSigningMethod {
+			return nil, httputil.ErrUnauthorized("Invalid or mismatch token signing method")
 		}
 		return p.secretKey, nil
 	})
 
 	if err != nil || !token.Valid {
-		return nil, invalidTokenError
+		return nil, httputil.ErrUnauthorized("Invalid or expired token")
 	}
 
 	return *claims, err

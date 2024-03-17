@@ -7,9 +7,9 @@ import (
 )
 
 type Response struct {
-	Data    any    `json:"data"`
-	Message string `json:"msg,omitempty"`
-	Error   string `json:"error,omitempty"`
+	Data    interface{} `json:"data"`
+	Message string      `json:"msg,omitempty"`
+	Error   interface{} `json:"error,omitempty"`
 }
 
 // Send JSON HTTP Response
@@ -29,10 +29,6 @@ func SendJson(w http.ResponseWriter, status_code int, v any) {
 }
 
 func SendError(w http.ResponseWriter, err error) {
-	if e, ok := err.(*ApiError); ok {
-		SendJson(w, e.Status, Response{Error: e.Error()})
-		return
-	}
-	// Otherwise create an InternalServerError
-	SendJson(w, http.StatusInternalServerError, Response{Error: err.Error()})
+	e := parseError(err)
+	SendJson(w, e.Status, Response{Error: e.Cause})
 }

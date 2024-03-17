@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -43,11 +42,11 @@ func InitMainRouter(config *viper.Viper) *chi.Mux {
 
 	// Not Found Handler
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		httputil.SendError(w, httputil.ErrBadRequest(fmt.Errorf("The requested url is not found")))
+		httputil.SendError(w, httputil.ErrNotFound("The requested url is not found"))
 	})
 	// Request Method Not Allowed Handler
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		httputil.SendError(w, httputil.ErrMethodNotAllowed(fmt.Errorf("The method is not allowed for the requested URL")))
+		httputil.SendError(w, httputil.ErrMethodNotAllowed("The method is not allowed for the requested URL"))
 	})
 
 	r.Get("/healthcheck", func(w http.ResponseWriter, r *http.Request) {
