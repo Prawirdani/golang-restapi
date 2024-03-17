@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func NewConfig() *viper.Viper {
+func ParseConfig() *viper.Viper {
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("json")
