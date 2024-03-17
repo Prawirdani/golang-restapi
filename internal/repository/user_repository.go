@@ -27,7 +27,7 @@ func (r *UserRepository) Create(ctx context.Context, u entity.User, tx pgx.Tx) e
 	if err != nil {
 		// Unique constraint error checker by PG error code.
 		if strings.Contains(err.Error(), "23505") {
-			return httputil.ErrConflict(fmt.Errorf("Email already exists"))
+			return httputil.ErrConflict("Email already exists")
 		}
 		return err
 	}
