@@ -15,7 +15,7 @@ func (c *Collection) Authenticate(next http.Handler) http.Handler {
 		claims, err := c.jwtAuth.VerifyRequest(r)
 
 		if err != nil {
-			httputil.SendError(w, err)
+			httputil.HandleError(w, err)
 			return
 		}
 

@@ -3,40 +3,40 @@ package httputil
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
 )
 
 // Use these error wrappers for known errors to have precise response status codes, can be used on any abstraction layer.
-// You can either pass string, error object or anything as the error cause message.
+// It will only set the message in ErrorResponse, if you want to provide details in the ErrorResponse you should create custom ApiError object.
 var (
 	ErrBadRequest       = buildApiError(http.StatusBadRequest)
 	ErrConflict         = buildApiError(http.StatusConflict)
 	ErrNotFound         = buildApiError(http.StatusNotFound)
 	ErrUnauthorized     = buildApiError(http.StatusUnauthorized)
-	ErrInternalServer   = buildApiError(http.StatusInternalServerError)
 	ErrMethodNotAllowed = buildApiError(http.StatusMethodNotAllowed)
 )
 
-type ApiError struct {
-	// Response Status Code
-	Status int
-	// Error Cause
-	Cause interface{}
+type apiError struct {
+	status  int
+	message string
+	cause   interface{}
 }
 
 // Return ApiErr in string format
-func (e *ApiError) Error() string {
-	return fmt.Sprintf("status: %v cause: %v", e.Status, e.Cause)
+func (e *apiError) Error() string {
+	return e.message
 }
 
-func buildApiError(status int) func(err interface{}) *ApiError {
-	return func(e interface{}) *ApiError {
-		return &ApiError{
-			Status: status,
-			Cause:  e,
+func buildApiError(status int) func(msg string) *apiError {
+	return func(m string) *apiError {
+		return &apiError{
+			status:  status,
+			message: m,
 		}
 	}
 }
@@ -44,50 +44,84 @@ func buildApiError(status int) func(err interface{}) *ApiError {
 // Error parser, parse every error an turn it into ApiError,
 // So it can be used to determine what status code should be put on the res headers.
 // You can always add your `known error` or make a custom parser for 3rd library/package error.
-func parseError(err error) *ApiError {
+func parseErrors(err error) *apiError {
 	// By Error string
-	switch {
-	case strings.Contains(err.Error(), "EOF"): // Empty JSON Req body
-		return ErrBadRequest("Empty json request body")
+	if strings.Contains(err.Error(), "EOF") { // Empty JSON Req body
+		return &apiError{
+			status:  http.StatusBadRequest,
+			message: "Invalid request body",
+			cause:   "EOF, empty json request body",
+		}
 	}
 
 	// By Error type
 	switch e := err.(type) {
 	// If the error is instance of ApiErr then no need to do aditional parsing.
-	case *ApiError:
+	case *apiError:
 		return e
 	case validator.ValidationErrors:
 		return parseValidationError(e)
 	case *json.UnmarshalTypeError:
 		return parseJsonUnmarshalTypeError(e)
+	case *json.SyntaxError:
+		return parseJsonSyntaxError(e)
 	default:
-		return ErrInternalServer(err.Error())
+		// Log the unknown error
+		errReflectType := reflect.TypeOf(err) // Determine the reflect type of the error for easier examination
+		slog.Error("Unknown ERROR", slog.Any("cause", err), slog.String("reflectType", errReflectType.String()))
+		return &apiError{
+			status:  500,
+			message: "An unexpected error occurred, try again latter",
+		}
+
 	}
 
 }
 
 // For go-playground/validator/v10 package
-func parseValidationError(err validator.ValidationErrors) *ApiError {
+func parseValidationError(err validator.ValidationErrors) *apiError {
 	// Validation error mapped into a map, so the response will look like "field":"the error"
 	errors := make(map[string]interface{})
 	for _, errField := range err {
 		field := strings.ToLower(errField.Field())
 		switch errField.Tag() {
 		case "required":
-			errors[field] = fmt.Sprintf("%s field is required", field)
+			errors[field] = "Field is required"
 		case "email":
 			errors[field] = "Invalid email format"
+		case "min":
+			if field == "password" {
+				errors[field] = "Must be at least 6 characters long"
+			}
 		default:
 			errors[field] = errField.Error()
 		}
 	}
-	return ErrBadRequest(errors)
+	return &apiError{
+		status:  http.StatusUnprocessableEntity,
+		message: "Invalid request, the provided data does not meet the required format or rules",
+		cause:   errors,
+	}
 }
 
 // JSON Unmarshal mismatch type error
-func parseJsonUnmarshalTypeError(err *json.UnmarshalTypeError) *ApiError {
-	if strings.Contains(err.Error(), "unmarshal") {
-		return ErrBadRequest(fmt.Sprintf("Type mismatch at %s, Expected type %s, Got %s", err.Field, err.Type, err.Value))
+func parseJsonUnmarshalTypeError(err *json.UnmarshalTypeError) *apiError {
+	e := &apiError{
+		status:  http.StatusBadRequest,
+		message: "Invalid request body, type error",
+		cause:   err.Error(),
 	}
-	return ErrBadRequest(err.Error())
+	if strings.Contains(err.Error(), "unmarshal") {
+		e.cause = fmt.Sprintf("Type mismatch at %s field, expected type %s, got %s", err.Field, err.Type, err.Value)
+	}
+	return e
+}
+
+func parseJsonSyntaxError(err *json.SyntaxError) *apiError {
+	return &apiError{
+		status:  http.StatusBadRequest,
+		message: "Invalid request body, syntax error",
+		cause:   err.Error(),
+	}
+
 }
