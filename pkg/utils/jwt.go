@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/prawirdani/golang-restapi/internal/entity"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
 	"github.com/spf13/viper"
 )
@@ -51,10 +50,10 @@ func (p *JWTProvider) VerifyRequest(r *http.Request) (map[string]interface{}, er
 }
 
 // Sign new token and return the token string.
-func (p *JWTProvider) CreateToken(u *entity.User) (*string, error) {
+func (p *JWTProvider) CreateToken(userID string) (*string, error) {
 	timeNow := time.Now()
 	claims := &jwtClaims{
-		UserID: u.ID.String(),
+		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(timeNow),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(p.expiry)),
