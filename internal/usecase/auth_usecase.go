@@ -27,8 +27,8 @@ func NewAuthUseCase(db *pgxpool.Pool, ur *repository.UserRepository, jp *utils.J
 	}
 }
 
-func (u *AuthUseCase) CreateNewUser(ctx context.Context, request *model.UserRegisterRequest) error {
-	if err := utils.ValidateStruct(request); err != nil {
+func (u *AuthUseCase) CreateNewUser(ctx context.Context, request *model.RegisterRequestPayload) error {
+	if err := request.Validate(); err != nil {
 		return err
 	}
 
@@ -61,9 +61,9 @@ func (u *AuthUseCase) CreateNewUser(ctx context.Context, request *model.UserRegi
 	return nil
 }
 
-func (u *AuthUseCase) Login(ctx context.Context, request *model.UserLoginRequest) (*string, error) {
+func (u *AuthUseCase) Login(ctx context.Context, request *model.LoginRequestPayload) (*string, error) {
 	// Validate request body
-	if err := utils.ValidateStruct(request); err != nil {
+	if err := request.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -82,7 +82,7 @@ func (u *AuthUseCase) Login(ctx context.Context, request *model.UserLoginRequest
 	}
 
 	// Generate jwt token
-	tokenString, err := u.jwtProvider.CreateToken(user)
+	tokenString, err := u.jwtProvider.CreateToken(user.ID.String())
 	if err != nil {
 		return nil, err
 	}
