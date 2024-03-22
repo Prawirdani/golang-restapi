@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
+	"github.com/prawirdani/golang-restapi/pkg/utils"
 )
 
 const TOKEN_CLAIMS_CTX_KEY = "token_claims"
@@ -12,7 +13,19 @@ const TOKEN_CLAIMS_CTX_KEY = "token_claims"
 // Token Authenticator Middleware
 func (c *Collection) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		claims, err := c.jwtAuth.VerifyRequest(r)
+
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			httputil.HandleError(w, httputil.ErrUnauthorized("Missing auth bearer token"))
+			return
+		}
+		tokenString := authHeader[len("Bearer "):]
+
+		claims, err := utils.ParseToken(tokenString, "secret")
+		if err != nil {
+			httputil.HandleError(w, err)
+			return
+		}
 
 		if err != nil {
 			httputil.HandleError(w, err)
