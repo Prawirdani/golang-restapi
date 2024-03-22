@@ -50,7 +50,7 @@ func (p *JWTProvider) VerifyRequest(r *http.Request) (map[string]interface{}, er
 }
 
 // Sign new token and return the token string.
-func (p *JWTProvider) CreateToken(userID string) (*string, error) {
+func (p *JWTProvider) CreateToken(userID string) (string, error) {
 	timeNow := time.Now()
 	claims := &jwtClaims{
 		UserID: userID,
@@ -64,10 +64,10 @@ func (p *JWTProvider) CreateToken(userID string) (*string, error) {
 	token := jwt.NewWithClaims(jwtSigningMethod, claims)
 	tokenStr, err := token.SignedString(p.secretKey)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return &tokenStr, nil
+	return tokenStr, nil
 }
 
 // Parse and validate token and returning the token map claims / payload.
