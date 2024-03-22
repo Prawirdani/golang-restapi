@@ -7,7 +7,6 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/delivery/http/middleware"
 	"github.com/prawirdani/golang-restapi/internal/repository"
 	"github.com/prawirdani/golang-restapi/internal/usecase"
-	"github.com/prawirdani/golang-restapi/pkg/utils"
 	"github.com/spf13/viper"
 )
 
@@ -20,15 +19,14 @@ type Configuration struct {
 // Init & Injects all dependencies.
 // This function should be called at main.go file to set up all required services and components.
 func Bootstrap(c *Configuration) {
-	jwtProvider := utils.NewJWTProvider(c.Config)
 
 	// Setup Repos
-	userRepository := repository.NewUserRepository("users")
+	userRepository := repository.NewUserRepository(c.DBPool, "users")
 
 	// Setup Usecases
-	authUC := usecase.NewAuthUseCase(c.DBPool, userRepository, jwtProvider)
+	authUC := usecase.NewAuthUseCase(userRepository)
 
-	middlewares := middleware.New(jwtProvider)
+	middlewares := middleware.New()
 	// Setup Handlers
 	authHandler := http.NewAuthHandler(middlewares, authUC)
 
