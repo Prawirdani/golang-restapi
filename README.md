@@ -22,16 +22,16 @@ Simple, structured, easy to use and new commer friendly golang REST API project.
 Application configuration is in `config.example.json`, rename it to `config.json` before you proceed.
 
 ### Database Migration
-All migrations file is in `db/migrations` directory.
+All migrations file is in `database/migrations` directory.
 ##### Create Migration
 ```bash
 # To Create new db migration.
-migrate create -ext sql -dir db/migrations <migration_name>
+migrate create -ext sql -dir database/migrations <migration_name>
 ```
 ##### Run Migration
 ```bash
 # To Execute/Run the migration file.
-migrate -path db/migrations -database "postgresql://<username>:<password>@localhost:5432/<db-name>?sslmode=disable" -verbose up
+migrate -path database/migrations -database "postgresql://<username>:<password>@localhost:5432/<db-name>?sslmode=disable" -verbose up
 ```
 Please refer to [migrate](https://github.com/golang-migrate/migrate) for detail documentation & instruction.
 
