@@ -27,11 +27,6 @@ func (c *Collection) Authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		if err != nil {
-			httputil.HandleError(w, err)
-			return
-		}
-
 		// Passing the map claims / payload to the next handler via Context.
 		ctx := context.WithValue(r.Context(), TOKEN_CLAIMS_CTX_KEY, claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
