@@ -3,89 +3,59 @@ package usecase
 import (
 	"context"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/internal/entity"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/repository"
-	"github.com/prawirdani/golang-restapi/pkg/httputil"
-	"github.com/prawirdani/golang-restapi/pkg/utils"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthUseCase struct {
-	db          *pgxpool.Pool
-	userRepo    *repository.UserRepository
-	jwtProvider *utils.JWTProvider
+	userRepo *repository.UserRepository
 }
 
-func NewAuthUseCase(db *pgxpool.Pool, ur *repository.UserRepository, jp *utils.JWTProvider) *AuthUseCase {
+func NewAuthUseCase(ur *repository.UserRepository) *AuthUseCase {
 	return &AuthUseCase{
-		db:          db,
-		userRepo:    ur,
-		jwtProvider: jp,
+		userRepo: ur,
 	}
 }
 
-func (u *AuthUseCase) CreateNewUser(ctx context.Context, request *model.RegisterRequestPayload) error {
-	if err := request.Validate(); err != nil {
+func (u AuthUseCase) CreateNewUser(ctx context.Context, request model.RegisterRequestPayload) error {
+	newUser := entity.NewUser(request)
+
+	// Validate Struct
+	if err := newUser.Validate(); err != nil {
 		return err
 	}
 
-	// Hashing request password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
-	if err != nil {
+	// Encrypt password
+	if err := newUser.EncryptPassword(); err != nil {
 		return err
 	}
 
-	newUser := entity.User{
-		ID:       uuid.New(),
-		Name:     request.Name,
-		Email:    request.Email,
-		Password: string(hashedPassword),
-	}
-
-	tx, err := u.db.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	if err := u.userRepo.Create(ctx, newUser, tx); err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
+	if err := u.userRepo.Create(ctx, newUser); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (u *AuthUseCase) Login(ctx context.Context, request *model.LoginRequestPayload) (*string, error) {
-	// Validate request body
-	if err := request.Validate(); err != nil {
-		return nil, err
-	}
+func (u AuthUseCase) Login(ctx context.Context, request model.LoginRequestPayload) (string, error) {
+	var token string
+
+	//TODO validate LoginRequest
 
 	// Query user from database by request email
-	user, _ := u.userRepo.SelectByEmail(ctx, request.Email, u.db)
-
-	// Helper function to check user password
-	isPasswordMatch := func(storedPassword, requestPassword string) bool {
-		err := bcrypt.CompareHashAndPassword([]byte(storedPassword), []byte(requestPassword))
-		return err == nil
-	}
-
-	// Check if user exist and check is the password matched
-	if user == nil || !isPasswordMatch(user.Password, request.Password) {
-		return nil, httputil.ErrUnauthorized("Check your credentials")
-	}
-
-	// Generate jwt token
-	tokenString, err := u.jwtProvider.CreateToken(user.ID.String())
+	user, err := u.userRepo.SelectByEmail(ctx, request.Email)
 	if err != nil {
-		return nil, err
+		return token, err
 	}
 
-	return tokenString, nil
+	if err := user.VerifyPassword(request.Password); err != nil {
+		return token, err
+	}
+
+	token, err = user.GenerateToken("secret")
+	if err != nil {
+		return token, err
+	}
+
+	return token, nil
 }
