@@ -3,18 +3,21 @@ package usecase
 import (
 	"context"
 
+	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/entity"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/repository"
 )
 
 type AuthUseCase struct {
-	userRepo *repository.UserRepository
+	userRepo    *repository.UserRepository
+	tokenConfig config.TokenConfig
 }
 
-func NewAuthUseCase(ur *repository.UserRepository) *AuthUseCase {
+func NewAuthUseCase(tokenCfg config.TokenConfig, ur *repository.UserRepository) *AuthUseCase {
 	return &AuthUseCase{
-		userRepo: ur,
+		tokenConfig: tokenCfg,
+		userRepo:    ur,
 	}
 }
 
@@ -52,7 +55,7 @@ func (u AuthUseCase) Login(ctx context.Context, request model.LoginRequestPayloa
 		return token, err
 	}
 
-	token, err = user.GenerateToken("secret")
+	token, err = user.GenerateToken(u.tokenConfig.SecretKey)
 	if err != nil {
 		return token, err
 	}

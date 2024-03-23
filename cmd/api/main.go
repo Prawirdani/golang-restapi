@@ -17,6 +17,7 @@ func main() {
 	app.Bootstrap(&app.Configuration{
 		MainRouter: router,
 		DBPool:     dbPool,
+		Config:     cfg,
 	})
 
 	server := app.NewServer(cfg.App, router)

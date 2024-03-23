@@ -23,7 +23,7 @@ func (c *Collection) Authenticate(next http.Handler) http.Handler {
 		}
 		tokenString := authHeader[len("Bearer "):]
 
-		claims, err := utils.ParseToken(tokenString, "secret")
+		claims, err := utils.ParseToken(tokenString, c.tokenCfg.SecretKey)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
