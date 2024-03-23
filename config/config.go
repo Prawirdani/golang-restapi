@@ -61,11 +61,11 @@ type TokenConfig struct {
 	Expiry    int // In Hour
 }
 
-func LoadConfig() *viper.Viper {
+func LoadConfig(path string) *viper.Viper {
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yml")
-	v.AddConfigPath("./config") // Respectfully from the root directory
+	v.AddConfigPath(path) // Respectfully from the root directory
 
 	if err := v.ReadInConfig(); err != nil {
 		log.Fatalf("fatal config error: %v", err.Error())

@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"log/slog"
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/database"
@@ -9,7 +10,7 @@ import (
 )
 
 func main() {
-	viper := config.LoadConfig()
+	viper := config.LoadConfig("./config")
 	cfg := config.ParseConfig(viper)
 	app.InitLogger(cfg.App)
 
@@ -17,6 +18,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	slog.Info("PostgreSQL DB Connection Established")
 
 	router := app.InitMainRouter(*cfg)
 
