@@ -19,7 +19,7 @@ Simple, structured, easy to use and new commer friendly golang REST API project.
 
 
 ### Configuration
-Application configuration is in `config.example.json`, rename it to `config.json` before you proceed.
+Application configuration is in `config/config.example.yml`, rename it to `config.yml` before you proceed.
 
 ### Database Migration
 All migrations file is in `database/migrations` directory.
