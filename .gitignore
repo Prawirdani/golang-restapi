@@ -1,6 +1,6 @@
 tmp
 .env
-/cmd/bin
+/cmd/api/bin
 .env
 config.json
 
