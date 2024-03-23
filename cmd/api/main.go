@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/database"
 	"github.com/prawirdani/golang-restapi/internal/app"
@@ -11,7 +13,11 @@ func main() {
 	cfg := config.ParseConfig(viper)
 	app.InitLogger(cfg.App)
 
-	dbPool := database.NewPGPool(cfg.DB)
+	dbPool, err := database.NewPGConnection(cfg.DB)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	router := app.InitMainRouter(*cfg)
 
 	app.Bootstrap(&app.Configuration{

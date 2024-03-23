@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -12,7 +11,7 @@ import (
 )
 
 // Return PostgreSQL database pooling
-func NewPGPool(cfg config.DBConfig) *pgxpool.Pool {
+func NewPGConnection(cfg config.DBConfig) (*pgxpool.Pool, error) {
 	// DSN Format postgres://username:password@localhost:5432/db_name
 	dsn := fmt.Sprintf("postgres://%s:%s@%s:%v/%s",
 		cfg.Username,
@@ -24,7 +23,7 @@ func NewPGPool(cfg config.DBConfig) *pgxpool.Pool {
 
 	pgConf, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		slog.Error("Error parsing postgres dns address", err)
+		return nil, err
 	}
 
 	pgConf.MinConns = int32(cfg.MinConns)
@@ -33,15 +32,13 @@ func NewPGPool(cfg config.DBConfig) *pgxpool.Pool {
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), pgConf)
 	if err != nil {
-		slog.Error("PGSQL Init Failed", "cause", err)
-		os.Exit(1)
+		return nil, err
 	}
 
 	if err := pool.Ping(context.Background()); err != nil {
-		slog.Error("PostgreSQL Ping error", "cause", err)
-		os.Exit(1)
+		return nil, err
 	}
 
 	slog.Info("PostgreSQL DB Connection Established")
-	return pool
+	return pool, nil
 }
