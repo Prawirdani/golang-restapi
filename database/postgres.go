@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -39,6 +38,5 @@ func NewPGConnection(cfg config.DBConfig) (*pgxpool.Pool, error) {
 		return nil, err
 	}
 
-	slog.Info("PostgreSQL DB Connection Established")
 	return pool, nil
 }
