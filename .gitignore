@@ -3,5 +3,4 @@ tmp
 /cmd/api/bin
 /config/config.yml
 .env
-config.json
 
