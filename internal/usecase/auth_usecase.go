@@ -10,12 +10,12 @@ import (
 )
 
 type AuthUseCase struct {
-	userRepo    *repository.UserRepository
+	userRepo    repository.UserRepository
 	tokenConfig config.TokenConfig
 }
 
-func NewAuthUseCase(tokenCfg config.TokenConfig, ur *repository.UserRepository) *AuthUseCase {
-	return &AuthUseCase{
+func NewAuthUseCase(tokenCfg config.TokenConfig, ur repository.UserRepository) AuthUseCase {
+	return AuthUseCase{
 		tokenConfig: tokenCfg,
 		userRepo:    ur,
 	}

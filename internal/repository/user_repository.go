@@ -15,14 +15,14 @@ type UserRepository struct {
 	db        *pgxpool.Pool
 }
 
-func NewUserRepository(pgpool *pgxpool.Pool, tableName string) *UserRepository {
-	return &UserRepository{
+func NewUserRepository(pgpool *pgxpool.Pool, tableName string) UserRepository {
+	return UserRepository{
 		tableName: tableName,
 		db:        pgpool,
 	}
 }
 
-func (r *UserRepository) Create(ctx context.Context, u entity.User) error {
+func (r UserRepository) Create(ctx context.Context, u entity.User) error {
 	query := fmt.Sprintf("INSERT INTO %s(id, name, email, password) VALUES($1, $2, $3, $4)", r.tableName)
 	_, err := r.db.Exec(ctx, query, u.ID, u.Name, u.Email, u.Password)
 	if err != nil {
@@ -35,7 +35,7 @@ func (r *UserRepository) Create(ctx context.Context, u entity.User) error {
 	return nil
 }
 
-func (r *UserRepository) SelectById(ctx context.Context, userId string) (entity.User, error) {
+func (r UserRepository) SelectById(ctx context.Context, userId string) (entity.User, error) {
 	var user entity.User
 	query := fmt.Sprintf("SELECT id, name, email, password, created_at, updated_at FROM %s WHERE id=$1", r.tableName)
 
@@ -51,7 +51,7 @@ func (r *UserRepository) SelectById(ctx context.Context, userId string) (entity.
 	}
 	return user, nil
 }
-func (r *UserRepository) SelectByEmail(ctx context.Context, email string) (entity.User, error) {
+func (r UserRepository) SelectByEmail(ctx context.Context, email string) (entity.User, error) {
 	var user entity.User
 	query := fmt.Sprintf("SELECT id, name, email, password, created_at, updated_at FROM %s WHERE email=$1", r.tableName)
 

@@ -6,8 +6,8 @@ type Collection struct {
 	tokenCfg config.TokenConfig
 }
 
-func New(cfg *config.Config) *Collection {
-	return &Collection{
+func New(cfg *config.Config) Collection {
+	return Collection{
 		tokenCfg: cfg.Token,
 	}
 }
