@@ -24,12 +24,10 @@ func NewAuthUseCase(tokenCfg config.TokenConfig, ur repository.UserRepository) A
 func (u AuthUseCase) CreateNewUser(ctx context.Context, request model.RegisterRequestPayload) error {
 	newUser := entity.NewUser(request)
 
-	// Validate Struct
 	if err := newUser.Validate(); err != nil {
 		return err
 	}
 
-	// Encrypt password
 	if err := newUser.EncryptPassword(); err != nil {
 		return err
 	}
@@ -42,8 +40,6 @@ func (u AuthUseCase) CreateNewUser(ctx context.Context, request model.RegisterRe
 
 func (u AuthUseCase) Login(ctx context.Context, request model.LoginRequestPayload) (string, error) {
 	var token string
-
-	//TODO validate LoginRequest
 
 	// Query user from database by request email
 	user, err := u.userRepo.SelectByEmail(ctx, request.Email)
