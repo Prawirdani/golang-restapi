@@ -41,8 +41,6 @@ type TokenConfig struct {
 	Expiry    int // In Hour
 }
 
-var Cfg *Config
-
 func LoadConfig() *viper.Viper {
 	v := viper.New()
 	v.SetConfigName("config")
@@ -55,10 +53,10 @@ func LoadConfig() *viper.Viper {
 	return v
 }
 
-func ParseConfig(v *viper.Viper) {
+func ParseConfig(v *viper.Viper) *Config {
 	var c Config
 	if err := v.Unmarshal(&c); err != nil {
 		log.Fatalf("fail parse config: %v", err.Error())
 	}
-	Cfg = &c
+	return &c
 }
