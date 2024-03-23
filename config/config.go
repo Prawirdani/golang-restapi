@@ -2,6 +2,8 @@ package config
 
 import (
 	"log"
+	"net/url"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -34,6 +36,24 @@ type CorsConfig struct {
 	AllowedOrigins string
 	AllowedMethods string
 	Credentials    bool
+}
+
+// Convert AllowedOrigins into Array of string
+func (cc CorsConfig) OriginsToArray() []string {
+	origins := strings.Split(cc.AllowedOrigins, ",")
+	// Validate Origins URL
+	for _, origin := range origins {
+		_, err := url.ParseRequestURI(origin)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	return origins
+}
+
+// Convert AllowedMethods into Array of string
+func (cc CorsConfig) MethodsToArray() []string {
+	return strings.Split(cc.AllowedMethods, ",")
 }
 
 type TokenConfig struct {

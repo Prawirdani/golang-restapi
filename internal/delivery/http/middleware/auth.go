@@ -8,7 +8,9 @@ import (
 	"github.com/prawirdani/golang-restapi/pkg/utils"
 )
 
-const TOKEN_CLAIMS_CTX_KEY = "token_claims"
+type ClaimsKey string
+
+const TOKEN_CLAIMS_CTX_KEY ClaimsKey = "token_claims"
 
 // Token Authenticator Middleware
 func (c *Collection) Authenticate(next http.Handler) http.Handler {

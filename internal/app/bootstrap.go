@@ -7,13 +7,11 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/delivery/http/middleware"
 	"github.com/prawirdani/golang-restapi/internal/repository"
 	"github.com/prawirdani/golang-restapi/internal/usecase"
-	"github.com/spf13/viper"
 )
 
 type Configuration struct {
 	MainRouter *chi.Mux
 	DBPool     *pgxpool.Pool
-	Config     *viper.Viper
 }
 
 // Init & Injects all dependencies.

@@ -7,13 +7,14 @@ import (
 
 	"log/slog"
 
-	"github.com/spf13/viper"
+	"github.com/prawirdani/golang-restapi/config"
 )
 
-func InitLogger(config *viper.Viper) {
+func InitLogger(cfg config.AppConfig) {
 	handler := new(slog.HandlerOptions)
 
-	currentEnv := strings.ToUpper(config.GetString("app.env"))
+	currentEnv := strings.ToUpper(cfg.Environment)
+	log.Printf("App Version: %s\n", cfg.Version)
 	log.Printf("Environtment: %s\n", currentEnv)
 
 	if currentEnv == "PROD" {

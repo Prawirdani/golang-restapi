@@ -8,18 +8,18 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/spf13/viper"
+	"github.com/prawirdani/golang-restapi/config"
 )
 
 // Return PostgreSQL database pooling
-func NewPGPool(config *viper.Viper) *pgxpool.Pool {
+func NewPGPool(cfg config.DBConfig) *pgxpool.Pool {
 	// DSN Format postgres://username:password@localhost:5432/db_name
 	dsn := fmt.Sprintf("postgres://%s:%s@%s:%v/%s",
-		config.GetString("db.username"),
-		config.GetString("db.password"),
-		config.GetString("db.host"),
-		config.GetInt("db.port"),
-		config.GetString("db.name"),
+		cfg.Username,
+		cfg.Password,
+		cfg.Host,
+		cfg.Port,
+		cfg.Name,
 	)
 
 	pgConf, err := pgxpool.ParseConfig(dsn)
@@ -27,9 +27,9 @@ func NewPGPool(config *viper.Viper) *pgxpool.Pool {
 		slog.Error("Error parsing postgres dns address", err)
 	}
 
-	pgConf.MinConns = config.GetInt32("db.pool.min")
-	pgConf.MaxConns = config.GetInt32("db.pool.max")
-	pgConf.MaxConnLifetime = time.Minute * time.Duration(config.GetInt("db.pool.lifetime"))
+	pgConf.MinConns = int32(cfg.MinConns)
+	pgConf.MaxConns = int32(cfg.MaxConns)
+	pgConf.MaxConnLifetime = time.Minute * time.Duration(cfg.MaxConnLifetime)
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), pgConf)
 	if err != nil {

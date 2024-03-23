@@ -1,43 +1,29 @@
 package app
 
 import (
-	"log"
 	"log/slog"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
-	"github.com/spf13/viper"
 )
 
-func InitMainRouter(config *viper.Viper) *chi.Mux {
+func InitMainRouter(cfg config.Config) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(RequestLogger)
 	// Gzip Compressor
 	r.Use(middleware.Compress(6))
 
-	allowedOrigins := func() []string {
-		origins := strings.Split(config.GetString("cors.origins"), ",")
-		// Validate Origins URL
-		for _, origin := range origins {
-			_, err := url.ParseRequestURI(origin)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-		return origins
-	}()
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   allowedOrigins,
-		AllowedMethods:   strings.Split(config.GetString("cors.methods"), ","),
-		AllowCredentials: config.GetBool("cors.credentials"),
-		Debug:            config.GetString("app.env") == "dev",
+		AllowedOrigins:   cfg.Cors.OriginsToArray(),
+		AllowedMethods:   cfg.Cors.MethodsToArray(),
+		AllowCredentials: cfg.Cors.Credentials,
+		Debug:            cfg.App.Environment == "dev",
 	}))
 
 	// Not Found Handler

@@ -10,16 +10,16 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/spf13/viper"
+	"github.com/prawirdani/golang-restapi/config"
 )
 
 type Server struct {
 	*http.Server
 }
 
-func NewServer(config *viper.Viper, multiplexer http.Handler) *Server {
+func NewServer(cfg config.AppConfig, multiplexer http.Handler) *Server {
 	svr := http.Server{
-		Addr:    fmt.Sprintf(":%v", config.GetInt("app.port")),
+		Addr:    fmt.Sprintf(":%v", cfg.Port),
 		Handler: multiplexer,
 	}
 
