@@ -15,7 +15,6 @@ db:
 
 cors:
   AllowedOrigins: localhost:3000
-  AllowedMethods: GET,POST,PUT,PATCH,HEAD,DELETE,OPTIONS
   Credentials: true
 
 token:

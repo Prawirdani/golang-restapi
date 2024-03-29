@@ -34,7 +34,6 @@ type DBConfig struct {
 
 type CorsConfig struct {
 	AllowedOrigins string
-	AllowedMethods string
 	Credentials    bool
 }
 
@@ -49,11 +48,6 @@ func (cc CorsConfig) ParseOrigins() ([]string, error) {
 		}
 	}
 	return origins, nil
-}
-
-// Convert AllowedMethods into Array of string
-func (cc CorsConfig) MethodsToArray() []string {
-	return strings.Split(cc.AllowedMethods, ",")
 }
 
 type TokenConfig struct {

@@ -23,9 +23,10 @@ func InitMainRouter(cfg *config.Config) (*chi.Mux, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   origins,
-		AllowedMethods:   cfg.Cors.MethodsToArray(),
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "HEAD", "DELETE", "OPTIONS"},
 		AllowCredentials: cfg.Cors.Credentials,
 		Debug:            cfg.App.Environment == "dev",
 	}))
