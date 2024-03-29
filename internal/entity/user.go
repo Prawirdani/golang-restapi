@@ -10,6 +10,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var (
+	ErrorWrongCredentials = httputil.ErrUnauthorized("check your credentials")
+)
+
 type User struct {
 	ID        uuid.UUID `validate:"required,uuid"`
 	Name      string    `validate:"required"`
@@ -48,7 +52,7 @@ func (u *User) EncryptPassword() error {
 func (u User) VerifyPassword(plain string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(plain))
 	if err != nil {
-		return httputil.ErrUnauthorized("check your credentials")
+		return ErrorWrongCredentials
 	}
 	return nil
 }
