@@ -9,19 +9,24 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/repository"
 )
 
-type AuthUseCase struct {
+type AuthUseCase interface {
+	CreateNewUser(ctx context.Context, request model.RegisterRequestPayload) error
+	Login(ctx context.Context, request model.LoginRequestPayload) (string, error)
+}
+
+type authUseCase struct {
 	userRepo    repository.UserRepository
 	tokenConfig config.TokenConfig
 }
 
-func NewAuthUseCase(tokenCfg config.TokenConfig, ur repository.UserRepository) AuthUseCase {
-	return AuthUseCase{
+func NewAuthUseCase(tokenCfg config.TokenConfig, ur repository.UserRepository) authUseCase {
+	return authUseCase{
 		tokenConfig: tokenCfg,
 		userRepo:    ur,
 	}
 }
 
-func (u AuthUseCase) CreateNewUser(ctx context.Context, request model.RegisterRequestPayload) error {
+func (u authUseCase) CreateNewUser(ctx context.Context, request model.RegisterRequestPayload) error {
 	newUser := entity.NewUser(request)
 
 	if err := newUser.Validate(); err != nil {
@@ -32,13 +37,13 @@ func (u AuthUseCase) CreateNewUser(ctx context.Context, request model.RegisterRe
 		return err
 	}
 
-	if err := u.userRepo.Create(ctx, newUser); err != nil {
+	if err := u.userRepo.InsertUser(ctx, newUser); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (u AuthUseCase) Login(ctx context.Context, request model.LoginRequestPayload) (string, error) {
+func (u authUseCase) Login(ctx context.Context, request model.LoginRequestPayload) (string, error) {
 	var token string
 
 	// Query user from database by request email
