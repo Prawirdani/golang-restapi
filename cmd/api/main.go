@@ -10,12 +10,11 @@ import (
 )
 
 func main() {
-	viper, err := config.LoadConfig("./config")
+	cfg, err := config.LoadConfig("./config")
 	if err != nil {
 		panic(err)
 	}
 
-	cfg := config.ParseConfig(viper)
 	app.InitLogger(cfg.App)
 
 	dbPool, err := database.NewPGConnection(cfg.DB)
@@ -24,7 +23,7 @@ func main() {
 	}
 	slog.Info("PostgreSQL DB Connection Established")
 
-	router := app.InitMainRouter(*cfg)
+	router := app.InitMainRouter(cfg)
 
 	app.Bootstrap(&app.Configuration{
 		MainRouter: router,

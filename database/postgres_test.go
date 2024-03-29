@@ -11,11 +11,11 @@ var c *config.Config
 
 func init() {
 	path := "../config"
-	viper, err := config.LoadConfig(path)
+	cfg, err := config.LoadConfig(path)
 	if err != nil {
 		panic(err)
 	}
-	c = config.ParseConfig(viper)
+	c = cfg
 }
 
 func TestPostgresConnection(t *testing.T) {

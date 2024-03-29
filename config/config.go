@@ -62,22 +62,20 @@ type TokenConfig struct {
 	Expiry    int // In Hour
 }
 
-func LoadConfig(path string) (*viper.Viper, error) {
+// Load and Parse Config
+func LoadConfig(path string) (*Config, error) {
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yml")
 	v.AddConfigPath(path) // Respectfully from the root directory
 
 	if err := v.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("failed load config: %v", err.Error())
+		return nil, fmt.Errorf("fail load config: %v", err.Error())
 	}
-	return v, nil
-}
 
-func ParseConfig(v *viper.Viper) *Config {
 	var c Config
 	if err := v.Unmarshal(&c); err != nil {
-		log.Fatalf("fail parse config: %v", err.Error())
+		return nil, fmt.Errorf("fail parse config: %v", err.Error())
 	}
-	return &c
+	return &c, nil
 }
