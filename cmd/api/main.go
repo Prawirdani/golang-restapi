@@ -10,7 +10,11 @@ import (
 )
 
 func main() {
-	viper := config.LoadConfig("./config")
+	viper, err := config.LoadConfig("./config")
+	if err != nil {
+		panic(err)
+	}
+
 	cfg := config.ParseConfig(viper)
 	app.InitLogger(cfg.App)
 

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"net/url"
 	"strings"
@@ -61,16 +62,16 @@ type TokenConfig struct {
 	Expiry    int // In Hour
 }
 
-func LoadConfig(path string) *viper.Viper {
+func LoadConfig(path string) (*viper.Viper, error) {
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yml")
 	v.AddConfigPath(path) // Respectfully from the root directory
 
 	if err := v.ReadInConfig(); err != nil {
-		log.Fatalf("fatal config error: %v", err.Error())
+		return nil, fmt.Errorf("failed load config: %v", err.Error())
 	}
-	return v
+	return v, nil
 }
 
 func ParseConfig(v *viper.Viper) *Config {

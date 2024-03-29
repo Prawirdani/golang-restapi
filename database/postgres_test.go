@@ -11,7 +11,10 @@ var c *config.Config
 
 func init() {
 	path := "../config"
-	viper := config.LoadConfig(path)
+	viper, err := config.LoadConfig(path)
+	if err != nil {
+		panic(err)
+	}
 	c = config.ParseConfig(viper)
 }
 
