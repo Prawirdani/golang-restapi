@@ -26,11 +26,10 @@ func Bootstrap(c *Configuration) {
 	// Setup Usecases
 	authUC := usecase.NewAuthUseCase(c.Config.Token, userRepository)
 
-	middlewares := middleware.New(c.Config)
+	middlewares := middleware.NewMiddlewareManager(c.Config)
 	// Setup Handlers
 	authHandler := http.NewAuthHandler(middlewares, authUC)
 
 	routes := http.SetupAPIRoutes(c.MainRouter)
 	routes.RegisterHandlers(authHandler)
-	routes.Init()
 }

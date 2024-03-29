@@ -11,11 +11,11 @@ import (
 )
 
 type AuthHandler struct {
-	middleware middleware.Collection
+	middleware middleware.MiddlewareManager
 	userUC     usecase.AuthUseCase
 }
 
-func NewAuthHandler(mw middleware.Collection, us usecase.AuthUseCase) Handler {
+func NewAuthHandler(mw middleware.MiddlewareManager, us usecase.AuthUseCase) AuthHandler {
 	return AuthHandler{
 		userUC:     us,
 		middleware: mw,

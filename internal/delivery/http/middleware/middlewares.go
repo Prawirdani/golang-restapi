@@ -2,12 +2,12 @@ package middleware
 
 import "github.com/prawirdani/golang-restapi/config"
 
-type Collection struct {
+type MiddlewareManager struct {
 	tokenCfg config.TokenConfig
 }
 
-func New(cfg *config.Config) Collection {
-	return Collection{
+func NewMiddlewareManager(cfg *config.Config) MiddlewareManager {
+	return MiddlewareManager{
 		tokenCfg: cfg.Token,
 	}
 }
