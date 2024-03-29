@@ -17,8 +17,7 @@ type Handler interface {
 }
 
 type RoutesConfiguration struct {
-	router   *chi.Mux
-	handlers []Handler
+	router *chi.Mux
 }
 
 func SetupAPIRoutes(r *chi.Mux) *RoutesConfiguration {
@@ -27,15 +26,11 @@ func SetupAPIRoutes(r *chi.Mux) *RoutesConfiguration {
 	}
 }
 
-// Register All handler, should use this only once because it's directly assigning handlers field.
+// Register All handler.
 func (c *RoutesConfiguration) RegisterHandlers(handlers ...Handler) {
-	c.handlers = handlers
-}
-
-func (c *RoutesConfiguration) Init() {
 	c.router.Route("/v1", func(subRouter chi.Router) {
 		// Iterate handlers and register to the router
-		for _, eachHandler := range c.handlers {
+		for _, eachHandler := range handlers {
 			subRouter.Route(eachHandler.URLPattern(), func(r chi.Router) {
 				eachHandler.Routes(r)
 			})
