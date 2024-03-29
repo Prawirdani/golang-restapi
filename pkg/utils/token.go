@@ -8,6 +8,11 @@ import (
 )
 
 var (
+	ErrorTokenInvalid    = httputil.ErrUnauthorized("invalid or expired token")
+	ErrorTokenSignMethod = httputil.ErrUnauthorized("Invalid or mismatch token signing method")
+)
+
+var (
 	jwtSigningMethod = jwt.SigningMethodHS256
 )
 
@@ -38,17 +43,18 @@ func GenerateToken(userID string, secret string, expiry time.Duration) (string, 
 }
 
 // Parse and validate token and returning the token map claims / payload.
+
 func ParseToken(tokenString, secret string) (map[string]interface{}, error) {
 	claims := new(jwt.MapClaims)
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
 		if method, ok := t.Method.(*jwt.SigningMethodHMAC); !ok || method != jwtSigningMethod {
-			return nil, httputil.ErrUnauthorized("Invalid or mismatch token signing method")
+			return nil, ErrorTokenSignMethod
 		}
 		return []byte(secret), nil
 	})
 
 	if err != nil || !token.Valid {
-		return nil, httputil.ErrUnauthorized("Invalid or expired token")
+		return nil, ErrorTokenInvalid
 	}
 
 	return *claims, err
