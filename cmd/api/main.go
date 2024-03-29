@@ -12,7 +12,7 @@ import (
 func main() {
 	cfg, err := config.LoadConfig("./config")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	app.InitLogger(cfg.App)
@@ -23,7 +23,10 @@ func main() {
 	}
 	slog.Info("PostgreSQL DB Connection Established")
 
-	router := app.InitMainRouter(cfg)
+	router, err := app.InitMainRouter(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	app.Bootstrap(&app.Configuration{
 		MainRouter: router,

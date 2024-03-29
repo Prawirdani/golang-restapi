@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"net/url"
 	"strings"
 
@@ -40,16 +39,16 @@ type CorsConfig struct {
 }
 
 // Convert AllowedOrigins into Array of string
-func (cc CorsConfig) OriginsToArray() []string {
+func (cc CorsConfig) ParseOrigins() ([]string, error) {
 	origins := strings.Split(cc.AllowedOrigins, ",")
 	// Validate Origins URL
 	for _, origin := range origins {
 		_, err := url.ParseRequestURI(origin)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 	}
-	return origins
+	return origins, nil
 }
 
 // Convert AllowedMethods into Array of string

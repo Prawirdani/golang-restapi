@@ -12,15 +12,19 @@ import (
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
 )
 
-func InitMainRouter(cfg *config.Config) *chi.Mux {
+func InitMainRouter(cfg *config.Config) (*chi.Mux, error) {
 	r := chi.NewRouter()
 
 	r.Use(RequestLogger)
 	// Gzip Compressor
 	r.Use(middleware.Compress(6))
 
+	origins, err := cfg.Cors.ParseOrigins()
+	if err != nil {
+		return nil, err
+	}
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   cfg.Cors.OriginsToArray(),
+		AllowedOrigins:   origins,
 		AllowedMethods:   cfg.Cors.MethodsToArray(),
 		AllowCredentials: cfg.Cors.Credentials,
 		Debug:            cfg.App.Environment == "dev",
@@ -35,7 +39,7 @@ func InitMainRouter(cfg *config.Config) *chi.Mux {
 		httputil.HandleError(w, httputil.ErrMethodNotAllowed("The method is not allowed for the requested URL"))
 	})
 
-	return r
+	return r, nil
 }
 
 func RequestLogger(next http.Handler) http.Handler {
