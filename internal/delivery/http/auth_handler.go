@@ -65,14 +65,17 @@ func (h AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	return httputil.SendJSON(w, http.StatusOK, map[string]string{
-		"token": tokenString,
-	})
+	response := model.TokenResponse{
+		Token: tokenString,
+	}
+
+	return httputil.SendJSON(w, http.StatusOK, response)
 }
 
 func (h AuthHandler) Current(w http.ResponseWriter, r *http.Request) error {
 	tokenClaims := h.middleware.GetAuthCtx(r.Context())
-	return httputil.SendJSON(w, http.StatusOK, map[string]interface{}{
-		"userInfo": tokenClaims,
-	})
+	response := model.IdentifyResponse{
+		UserInfo: tokenClaims,
+	}
+	return httputil.SendJSON(w, http.StatusOK, response)
 }

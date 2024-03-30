@@ -22,3 +22,11 @@ type LoginRequestPayload struct {
 func (r LoginRequestPayload) ValidateRequest() error {
 	return utils.Validate.Struct(r)
 }
+
+type TokenResponse struct {
+	Token string `json:"token"`
+}
+
+type IdentifyResponse struct {
+	UserInfo map[string]interface{} `json:"userInfo"`
+}
