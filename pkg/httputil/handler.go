@@ -18,8 +18,11 @@ func HandlerWrapper(fn CustomHandlerFn) http.HandlerFunc {
 func HandleError(w http.ResponseWriter, err error) {
 	e := parseErrors(err)
 	response := errorResponse{
-		Message: e.message,
-		Details: e.cause,
+		Error: errorBody{
+			Code:    e.status,
+			Message: e.message,
+			Details: e.cause,
+		},
 	}
 
 	writeErr := writeJSON(w, e.status, response)
