@@ -9,16 +9,21 @@ import (
 )
 
 type Config struct {
-	App   AppConfig
-	DB    DBConfig
-	Cors  CorsConfig
-	Token TokenConfig
+	App     AppConfig
+	Context ContextConfig
+	DB      DBConfig
+	Cors    CorsConfig
+	Token   TokenConfig
 }
 
 type AppConfig struct {
 	Version     string
 	Port        int
 	Environment string
+}
+
+type ContextConfig struct {
+	Timeout int
 }
 
 type DBConfig struct {

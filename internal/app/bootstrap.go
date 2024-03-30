@@ -24,7 +24,7 @@ func Bootstrap(c *Configuration) {
 	userRepository := repository.NewUserRepository(c.DBPool, "users")
 
 	// Setup Usecases
-	authUC := usecase.NewAuthUseCase(c.Config.Token, userRepository)
+	authUC := usecase.NewAuthUseCase(c.Config, userRepository)
 
 	middlewares := middleware.NewMiddlewareManager(c.Config)
 	// Setup Handlers

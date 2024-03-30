@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/entity"
@@ -17,16 +18,21 @@ type AuthUseCase interface {
 type authUseCase struct {
 	userRepo    repository.UserRepository
 	tokenConfig config.TokenConfig
+	ctxTimeout  time.Duration
 }
 
-func NewAuthUseCase(tokenCfg config.TokenConfig, ur repository.UserRepository) authUseCase {
+func NewAuthUseCase(cfg *config.Config, ur repository.UserRepository) authUseCase {
 	return authUseCase{
-		tokenConfig: tokenCfg,
+		tokenConfig: cfg.Token,
 		userRepo:    ur,
+		ctxTimeout:  time.Duration(cfg.Context.Timeout * int(time.Second)),
 	}
 }
 
 func (u authUseCase) CreateNewUser(ctx context.Context, request model.RegisterRequestPayload) error {
+	ctxWT, cancel := context.WithTimeout(ctx, u.ctxTimeout)
+	defer cancel()
+
 	newUser := entity.NewUser(request)
 
 	if err := newUser.Validate(); err != nil {
@@ -37,16 +43,19 @@ func (u authUseCase) CreateNewUser(ctx context.Context, request model.RegisterRe
 		return err
 	}
 
-	if err := u.userRepo.InsertUser(ctx, newUser); err != nil {
+	if err := u.userRepo.InsertUser(ctxWT, newUser); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (u authUseCase) Login(ctx context.Context, request model.LoginRequestPayload) (string, error) {
+	ctxWT, cancel := context.WithTimeout(ctx, u.ctxTimeout)
+	defer cancel()
+
 	var token string
 
-	user, _ := u.userRepo.SelectByEmail(ctx, request.Email)
+	user, _ := u.userRepo.SelectByEmail(ctxWT, request.Email)
 	if err := user.VerifyPassword(request.Password); err != nil {
 		return token, err
 	}
