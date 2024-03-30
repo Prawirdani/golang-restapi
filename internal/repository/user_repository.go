@@ -37,11 +37,12 @@ func NewUserRepository(pgpool *pgxpool.Pool, tableName string) userRepository {
 func (r userRepository) InsertUser(ctx context.Context, u entity.User) error {
 	query := fmt.Sprintf("INSERT INTO %s(id, name, email, password) VALUES($1, $2, $3, $4)", r.tableName)
 	_, err := r.db.Exec(ctx, query, u.ID, u.Name, u.Email, u.Password)
+
+	// Unique constraint duplicate err by PG error code.
+	if err != nil && strings.Contains(err.Error(), "23505") {
+		return ErrorEmailExists
+	}
 	if err != nil {
-		// Unique constraint error checker by PG error code.
-		if strings.Contains(err.Error(), "23505") {
-			return ErrorEmailExists
-		}
 		return err
 	}
 	return nil
@@ -51,36 +52,40 @@ func (r userRepository) SelectByID(ctx context.Context, userId string) (entity.U
 	var user entity.User
 	query := fmt.Sprintf("SELECT id, name, email, password, created_at, updated_at FROM %s WHERE id=$1", r.tableName)
 
-	if err := r.db.QueryRow(ctx, query, userId).Scan(
+	err := r.db.QueryRow(ctx, query, userId).Scan(
 		&user.ID,
 		&user.Name,
 		&user.Email,
 		&user.Password,
 		&user.CreatedAt,
 		&user.UpdatedAt,
-	); err != nil {
-		if err == pgx.ErrNoRows {
-			return user, ErrorUserNotFound
-		}
+	)
+	if err != nil && err == pgx.ErrNoRows {
+		return user, ErrorUserNotFound
+	}
+	if err != nil {
 		return user, err
 	}
+
 	return user, nil
 }
 func (r userRepository) SelectByEmail(ctx context.Context, email string) (entity.User, error) {
 	var user entity.User
 	query := fmt.Sprintf("SELECT id, name, email, password, created_at, updated_at FROM %s WHERE email=$1", r.tableName)
 
-	if err := r.db.QueryRow(ctx, query, email).Scan(
+	err := r.db.QueryRow(ctx, query, email).Scan(
 		&user.ID,
 		&user.Name,
 		&user.Email,
 		&user.Password,
 		&user.CreatedAt,
 		&user.UpdatedAt,
-	); err != nil {
-		if err == pgx.ErrNoRows {
-			return user, ErrorUserNotFound
-		}
+	)
+
+	if err != nil && err == pgx.ErrNoRows {
+		return user, ErrorUserNotFound
+	}
+	if err != nil {
 		return user, err
 	}
 	return user, nil
