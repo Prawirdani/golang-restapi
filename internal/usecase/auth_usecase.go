@@ -46,17 +46,12 @@ func (u authUseCase) CreateNewUser(ctx context.Context, request model.RegisterRe
 func (u authUseCase) Login(ctx context.Context, request model.LoginRequestPayload) (string, error) {
 	var token string
 
-	// Query user from database by request email
-	user, err := u.userRepo.SelectByEmail(ctx, request.Email)
-	if err != nil {
-		return token, err
-	}
-
+	user, _ := u.userRepo.SelectByEmail(ctx, request.Email)
 	if err := user.VerifyPassword(request.Password); err != nil {
 		return token, err
 	}
 
-	token, err = user.GenerateToken(u.tokenConfig.SecretKey)
+	token, err := user.GenerateToken(u.tokenConfig.SecretKey)
 	if err != nil {
 		return token, err
 	}

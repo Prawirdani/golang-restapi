@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/internal/entity"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
 )
 
 var (
-	ErrorEmailExists = httputil.ErrConflict("email already exists")
+	ErrorEmailExists  = httputil.ErrConflict("Email already exists")
+	ErrorUserNotFound = httputil.ErrNotFound("User not found")
 )
 
 type UserRepository interface {
@@ -57,6 +59,9 @@ func (r userRepository) SelectByID(ctx context.Context, userId string) (entity.U
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	); err != nil {
+		if err == pgx.ErrNoRows {
+			return user, ErrorUserNotFound
+		}
 		return user, err
 	}
 	return user, nil
@@ -73,6 +78,9 @@ func (r userRepository) SelectByEmail(ctx context.Context, email string) (entity
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	); err != nil {
+		if err == pgx.ErrNoRows {
+			return user, ErrorUserNotFound
+		}
 		return user, err
 	}
 	return user, nil
