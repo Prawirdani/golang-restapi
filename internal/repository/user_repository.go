@@ -10,6 +10,10 @@ import (
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
 )
 
+var (
+	ErrorEmailExists = httputil.ErrConflict("email already exists")
+)
+
 type UserRepository interface {
 	InsertUser(ctx context.Context, u entity.User) error
 	SelectByID(ctx context.Context, userID string) (entity.User, error)
@@ -34,7 +38,7 @@ func (r userRepository) InsertUser(ctx context.Context, u entity.User) error {
 	if err != nil {
 		// Unique constraint error checker by PG error code.
 		if strings.Contains(err.Error(), "23505") {
-			return httputil.ErrConflict("Email already exists")
+			return ErrorEmailExists
 		}
 		return err
 	}
