@@ -26,7 +26,7 @@ func (h AuthHandler) Routes(r chi.Router) {
 	handlerFn := httputil.HandlerWrapper
 	r.Post("/register", handlerFn(h.Register))
 	r.Post("/login", handlerFn(h.Login))
-	r.With(h.middleware.Authenticate).Get("/identify", handlerFn(h.Current))
+	r.With(h.middleware.Authenticate).Get("/current", handlerFn(h.Current))
 }
 
 func (h AuthHandler) URLPattern() string {
@@ -74,8 +74,8 @@ func (h AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 
 func (h AuthHandler) Current(w http.ResponseWriter, r *http.Request) error {
 	tokenClaims := h.middleware.GetAuthCtx(r.Context())
-	response := model.IdentifyResponse{
-		UserInfo: tokenClaims,
+	response := model.TokenInfoResponse{
+		TokenInfo: tokenClaims,
 	}
 	return httputil.SendJSON(w, http.StatusOK, response)
 }

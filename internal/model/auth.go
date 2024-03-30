@@ -27,6 +27,6 @@ type TokenResponse struct {
 	Token string `json:"token"`
 }
 
-type IdentifyResponse struct {
-	UserInfo map[string]interface{} `json:"userInfo"`
+type TokenInfoResponse struct {
+	TokenInfo interface{} `json:"tokenInfo"`
 }
