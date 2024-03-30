@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ErrorTokenInvalid    = httputil.ErrUnauthorized("invalid or expired token")
+	ErrorTokenInvalid    = httputil.ErrUnauthorized("Invalid or expired token")
 	ErrorTokenSignMethod = httputil.ErrUnauthorized("Invalid or mismatch token signing method")
 )
 
