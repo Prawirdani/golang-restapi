@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	ErrorWrongCredentials = httputil.ErrUnauthorized("check your credentials")
+	ErrorWrongCredentials = httputil.ErrUnauthorized("Check your credentials")
 )
 
 type User struct {
