@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/model"
@@ -52,6 +53,16 @@ func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+
+	tokenCookie := &http.Cookie{
+		Name:     h.cfg.Token.AccessCookieName,
+		Value:    tokenString,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Duration(h.cfg.Token.Expiry * int(time.Hour))),
+		HttpOnly: h.cfg.App.Environment != "dev",
+	}
+
+	http.SetCookie(w, tokenCookie)
 
 	response := model.TokenResponse{
 		Token: tokenString,
