@@ -13,7 +13,7 @@ import (
 type Configuration struct {
 	MainRouter *chi.Mux
 	DBPool     *pgxpool.Pool
-	Config     *config.Config
+	Config     config.Config
 }
 
 // Init & Injects all dependencies.

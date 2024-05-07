@@ -12,7 +12,7 @@ import (
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
 )
 
-func InitMainRouter(cfg *config.Config) (*chi.Mux, error) {
+func InitMainRouter(cfg config.Config) (*chi.Mux, error) {
 	r := chi.NewRouter()
 
 	r.Use(RequestLogger)

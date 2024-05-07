@@ -23,4 +23,4 @@ cors:
 token:
   SecretKey: secret
   Expiry: 6 # In Hour
-
+  AccessCookieName: accessToken

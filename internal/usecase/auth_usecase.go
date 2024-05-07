@@ -16,21 +16,19 @@ type AuthUseCase interface {
 }
 
 type authUseCase struct {
-	userRepo    repository.UserRepository
-	tokenConfig config.TokenConfig
-	ctxTimeout  time.Duration
+	userRepo repository.UserRepository
+	cfg      config.Config
 }
 
-func NewAuthUseCase(cfg *config.Config, ur repository.UserRepository) authUseCase {
+func NewAuthUseCase(cfg config.Config, ur repository.UserRepository) authUseCase {
 	return authUseCase{
-		tokenConfig: cfg.Token,
-		userRepo:    ur,
-		ctxTimeout:  time.Duration(cfg.Context.Timeout * int(time.Second)),
+		cfg:      cfg,
+		userRepo: ur,
 	}
 }
 
 func (u authUseCase) CreateNewUser(ctx context.Context, request model.RegisterRequestPayload) error {
-	ctxWT, cancel := context.WithTimeout(ctx, u.ctxTimeout)
+	ctxWT, cancel := context.WithTimeout(ctx, time.Duration(u.cfg.Context.Timeout*int(time.Second)))
 	defer cancel()
 
 	newUser := entity.NewUser(request)
@@ -50,7 +48,7 @@ func (u authUseCase) CreateNewUser(ctx context.Context, request model.RegisterRe
 }
 
 func (u authUseCase) Login(ctx context.Context, request model.LoginRequestPayload) (string, error) {
-	ctxWT, cancel := context.WithTimeout(ctx, u.ctxTimeout)
+	ctxWT, cancel := context.WithTimeout(ctx, time.Duration(u.cfg.Context.Timeout*int(time.Second)))
 	defer cancel()
 
 	var token string
@@ -60,7 +58,7 @@ func (u authUseCase) Login(ctx context.Context, request model.LoginRequestPayloa
 		return token, err
 	}
 
-	token, err := user.GenerateToken(u.tokenConfig.SecretKey)
+	token, err := user.GenerateToken(u.cfg.Token.SecretKey)
 	if err != nil {
 		return token, err
 	}

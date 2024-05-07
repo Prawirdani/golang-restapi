@@ -56,24 +56,25 @@ func (cc CorsConfig) ParseOrigins() ([]string, error) {
 }
 
 type TokenConfig struct {
-	SecretKey string
-	Expiry    int // In Hour
+	SecretKey        string
+	Expiry           int    // In Hour
+	AccessCookieName string // Access Token Cookie Name
 }
 
 // Load and Parse Config
-func LoadConfig(path string) (*Config, error) {
+func LoadConfig(path string) (Config, error) {
+	var c Config
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yml")
 	v.AddConfigPath(path) // Respectfully from the root directory
 
 	if err := v.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("fail load config: %v", err.Error())
+		return c, fmt.Errorf("fail load config: %v", err.Error())
 	}
 
-	var c Config
 	if err := v.Unmarshal(&c); err != nil {
-		return nil, fmt.Errorf("fail parse config: %v", err.Error())
+		return c, fmt.Errorf("fail parse config: %v", err.Error())
 	}
-	return &c, nil
+	return c, nil
 }
