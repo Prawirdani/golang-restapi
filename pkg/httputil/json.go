@@ -6,14 +6,6 @@ import (
 	"net/http"
 )
 
-// Send JSON HTTP Response, it's recommend to wrap data inside a map.
-func SendJSON(w http.ResponseWriter, status_code int, data any) error {
-	response := response{
-		Data: data,
-	}
-	return writeJSON(w, status_code, response)
-}
-
 // JSON Request body binder
 func BindJSON(r *http.Request, data any) error {
 	defer r.Body.Close()

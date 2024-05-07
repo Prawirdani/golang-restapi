@@ -8,6 +8,7 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/usecase"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
+	"github.com/prawirdani/golang-restapi/pkg/with"
 )
 
 type AuthHandler struct {
@@ -36,7 +37,8 @@ func (h AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) erro
 	if err := h.userUC.Register(r.Context(), reqBody); err != nil {
 		return err
 	}
-	return httputil.SendJSON(w, http.StatusCreated, nil)
+
+	return httputil.Response(w, with.Status(201), with.Message("Registration successful."))
 }
 
 func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
@@ -59,7 +61,7 @@ func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
 		Value:    tokenString,
 		Path:     "/",
 		Expires:  time.Now().Add(time.Duration(h.cfg.Token.Expiry * int(time.Hour))),
-		HttpOnly: h.cfg.App.Environment != "dev",
+		HttpOnly: h.cfg.IsProduction(),
 	}
 
 	http.SetCookie(w, tokenCookie)
@@ -68,13 +70,11 @@ func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
 		Token: tokenString,
 	}
 
-	return httputil.SendJSON(w, http.StatusOK, response)
+	return httputil.Response(w, with.Data(response), with.Message("Login successful."))
 }
 
 func (h AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error {
 	tokenClaims := httputil.GetAuthCtx(r.Context())
-	response := model.TokenInfoResponse{
-		TokenInfo: tokenClaims,
-	}
-	return httputil.SendJSON(w, http.StatusOK, response)
+
+	return httputil.Response(w, with.Data(tokenClaims))
 }
