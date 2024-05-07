@@ -22,11 +22,3 @@ type LoginRequest struct {
 func (r LoginRequest) ValidateRequest() error {
 	return utils.Validate.Struct(r)
 }
-
-type TokenResponse struct {
-	Token string `json:"token"`
-}
-
-type TokenInfoResponse struct {
-	TokenInfo interface{} `json:"tokenInfo"`
-}

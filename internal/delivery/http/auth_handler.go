@@ -66,11 +66,10 @@ func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
 
 	http.SetCookie(w, tokenCookie)
 
-	response := model.TokenResponse{
-		Token: tokenString,
+	data := map[string]string{
+		"token": tokenString,
 	}
-
-	return httputil.Response(w, with.Data(response), with.Message("Login successful."))
+	return httputil.Response(w, with.Data(data), with.Message("Login successful."))
 }
 
 func (h AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error {
