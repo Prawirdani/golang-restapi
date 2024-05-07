@@ -1,11 +1,19 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
 
 	"github.com/spf13/viper"
+)
+
+type AppEnv string
+
+const (
+	ENV_PRODUCTION  AppEnv = "PROD"
+	ENV_DEVELOPMENT AppEnv = "DEV"
 )
 
 type Config struct {
@@ -16,10 +24,14 @@ type Config struct {
 	Token   TokenConfig
 }
 
+func (c Config) IsProduction() bool {
+	return c.App.Environment == ENV_PRODUCTION
+}
+
 type AppConfig struct {
 	Version     string
 	Port        int
-	Environment string
+	Environment AppEnv
 }
 
 type ContextConfig struct {
@@ -76,5 +88,10 @@ func LoadConfig(path string) (Config, error) {
 	if err := v.Unmarshal(&c); err != nil {
 		return c, fmt.Errorf("fail parse config: %v", err.Error())
 	}
+
+	if c.App.Environment != ENV_PRODUCTION && c.App.Environment != ENV_DEVELOPMENT {
+		return c, errors.New("Invalid app.Environtment value, expecting DEV or PROD")
+	}
+
 	return c, nil
 }
