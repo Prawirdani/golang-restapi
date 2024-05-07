@@ -9,10 +9,6 @@ import (
 	"github.com/prawirdani/golang-restapi/pkg/utils"
 )
 
-type ClaimsKey string
-
-const TOKEN_CLAIMS_CTX_KEY ClaimsKey = "token_claims"
-
 // Token Authenticator Middleware
 func (c *MiddlewareManager) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -40,12 +36,7 @@ func (c *MiddlewareManager) Authenticate(next http.Handler) http.Handler {
 		}
 
 		// Passing the map claims / payload to the next handler via Context.
-		ctx := context.WithValue(r.Context(), TOKEN_CLAIMS_CTX_KEY, claims)
+		ctx := context.WithValue(r.Context(), httputil.TOKEN_CLAIMS_CTX_KEY, claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
-}
-
-// Util Function to retrieve Token map claims from the Request Context
-func (c *MiddlewareManager) GetAuthCtx(ctx context.Context) map[string]interface{} {
-	return ctx.Value(TOKEN_CLAIMS_CTX_KEY).(map[string]interface{})
 }
