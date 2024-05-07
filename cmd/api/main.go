@@ -21,6 +21,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer dbPool.Close()
 	slog.Info("PostgreSQL DB Connection Established")
 
 	router, err := app.InitMainRouter(cfg)
@@ -28,7 +29,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	app.Bootstrap(&app.Configuration{
+	app.Bootstrap(app.Configuration{
 		MainRouter: router,
 		DBPool:     dbPool,
 		Config:     cfg,

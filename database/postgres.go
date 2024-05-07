@@ -33,7 +33,6 @@ func NewPGConnection(cfg config.DBConfig) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer pool.Close()
 
 	if err := pool.Ping(context.Background()); err != nil {
 		return nil, err
