@@ -25,10 +25,12 @@ func Bootstrap(c Configuration) {
 	// Setup Usecases
 	authUC := usecase.NewAuthUseCase(c.Config, userRepository)
 
-	middlewares := middleware.NewMiddlewareManager(c.Config)
 	// Setup Handlers
-	authHandler := http.NewAuthHandler(middlewares, authUC)
+	authHandler := http.NewAuthHandler(c.Config, authUC)
 
-	routes := http.SetupAPIRoutes(c.MainRouter)
-	routes.RegisterHandlers(authHandler)
+	middlewares := middleware.NewMiddlewareManager(c.Config)
+
+	c.MainRouter.Route("/api/v1", func(v1 chi.Router) {
+		http.MapAuthRoutes(v1, authHandler, middlewares)
+	})
 }

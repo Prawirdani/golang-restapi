@@ -3,34 +3,22 @@ package http
 import (
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/prawirdani/golang-restapi/internal/middleware"
+	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/usecase"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
 )
 
 type AuthHandler struct {
-	middleware middleware.MiddlewareManager
-	userUC     usecase.AuthUseCase
+	userUC usecase.AuthUseCase
+	cfg    config.Config
 }
 
-func NewAuthHandler(mw middleware.MiddlewareManager, us usecase.AuthUseCase) AuthHandler {
+func NewAuthHandler(cfg config.Config, us usecase.AuthUseCase) AuthHandler {
 	return AuthHandler{
-		userUC:     us,
-		middleware: mw,
+		userUC: us,
+		cfg:    cfg,
 	}
-}
-
-func (h AuthHandler) Routes(r chi.Router) {
-	handlerFn := httputil.HandlerWrapper
-	r.Post("/register", handlerFn(h.HandleRegister))
-	r.Post("/login", handlerFn(h.HandleLogin))
-	r.With(h.middleware.Authenticate).Get("/current", handlerFn(h.CurrentUser))
-}
-
-func (h AuthHandler) URLPattern() string {
-	return "/auth"
 }
 
 func (h AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) error {
@@ -73,7 +61,7 @@ func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (h AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error {
-	tokenClaims := h.middleware.GetAuthCtx(r.Context())
+	tokenClaims := httputil.GetAuthCtx(r.Context())
 	response := model.TokenInfoResponse{
 		TokenInfo: tokenClaims,
 	}
