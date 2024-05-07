@@ -18,8 +18,7 @@ type Configuration struct {
 
 // Init & Injects all dependencies.
 // This function should be called at main.go file to set up all required services and components.
-func Bootstrap(c *Configuration) {
-
+func Bootstrap(c Configuration) {
 	// Setup Repos
 	userRepository := repository.NewUserRepository(c.DBPool, "users")
 
