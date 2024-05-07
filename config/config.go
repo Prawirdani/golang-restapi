@@ -74,7 +74,7 @@ type TokenConfig struct {
 }
 
 // Load and Parse Config
-func LoadConfig(path string) (Config, error) {
+func LoadConfig(path string) (*Config, error) {
 	var c Config
 	v := viper.New()
 	v.SetConfigName("config")
@@ -82,16 +82,16 @@ func LoadConfig(path string) (Config, error) {
 	v.AddConfigPath(path) // Respectfully from the root directory
 
 	if err := v.ReadInConfig(); err != nil {
-		return c, fmt.Errorf("fail load config: %v", err.Error())
+		return nil, fmt.Errorf("fail load config: %v", err.Error())
 	}
 
 	if err := v.Unmarshal(&c); err != nil {
-		return c, fmt.Errorf("fail parse config: %v", err.Error())
+		return nil, fmt.Errorf("fail parse config: %v", err.Error())
 	}
 
 	if c.App.Environment != ENV_PRODUCTION && c.App.Environment != ENV_DEVELOPMENT {
-		return c, errors.New("Invalid app.Environtment value, expecting DEV or PROD")
+		return nil, errors.New("Invalid app.Environtment value, expecting DEV or PROD")
 	}
 
-	return c, nil
+	return &c, nil
 }

@@ -12,10 +12,10 @@ import (
 
 type AuthHandler struct {
 	userUC usecase.AuthUseCase
-	cfg    config.Config
+	cfg    *config.Config
 }
 
-func NewAuthHandler(cfg config.Config, us usecase.AuthUseCase) AuthHandler {
+func NewAuthHandler(cfg *config.Config, us usecase.AuthUseCase) AuthHandler {
 	return AuthHandler{
 		userUC: us,
 		cfg:    cfg,

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var c config.Config
+var c *config.Config
 
 func init() {
 	path := "../config"

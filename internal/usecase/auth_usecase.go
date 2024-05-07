@@ -17,10 +17,10 @@ type AuthUseCase interface {
 
 type authUseCase struct {
 	userRepo repository.UserRepository
-	cfg      config.Config
+	cfg      *config.Config
 }
 
-func NewAuthUseCase(cfg config.Config, ur repository.UserRepository) authUseCase {
+func NewAuthUseCase(cfg *config.Config, ur repository.UserRepository) authUseCase {
 	return authUseCase{
 		cfg:      cfg,
 		userRepo: ur,

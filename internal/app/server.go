@@ -23,17 +23,17 @@ import (
 type Server struct {
 	pg     *pgxpool.Pool
 	router *chi.Mux
-	cfg    config.Config
+	cfg    *config.Config
 }
 
 // Server Initialization function, also bootstraping dependency
-func InitServer(cfg config.Config, pgPool *pgxpool.Pool) (*Server, error) {
+func InitServer(cfg *config.Config, pgPool *pgxpool.Pool) (*Server, error) {
 	router := chi.NewRouter()
 
 	logger := httplog.NewLogger("request-logger", httplog.Options{
 		LogLevel:         slog.LevelDebug,
 		JSON:             cfg.IsProduction(),
-		Concise:          cfg.IsProduction(),
+		Concise:          !cfg.IsProduction(),
 		RequestHeaders:   true,
 		ResponseHeaders:  true,
 		MessageFieldName: "message",
