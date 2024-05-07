@@ -18,8 +18,7 @@ var (
 
 type UserRepository interface {
 	InsertUser(ctx context.Context, u entity.User) error
-	SelectByID(ctx context.Context, userID string) (entity.User, error)
-	SelectByEmail(ctx context.Context, email string) (entity.User, error)
+	SelectWhere(ctx context.Context, field string, searchVal any) (entity.User, error)
 }
 
 type userRepository struct {
@@ -48,32 +47,11 @@ func (r userRepository) InsertUser(ctx context.Context, u entity.User) error {
 	return nil
 }
 
-func (r userRepository) SelectByID(ctx context.Context, userId string) (entity.User, error) {
+func (r userRepository) SelectWhere(ctx context.Context, field string, searchVal any) (entity.User, error) {
 	var user entity.User
-	query := fmt.Sprintf("SELECT id, name, email, password, created_at, updated_at FROM %s WHERE id=$1", r.tableName)
+	query := fmt.Sprintf("SELECT id, name, email, password, created_at, updated_at FROM %s WHERE %s=$1", r.tableName, field)
 
-	err := r.db.QueryRow(ctx, query, userId).Scan(
-		&user.ID,
-		&user.Name,
-		&user.Email,
-		&user.Password,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-	if err != nil && err == pgx.ErrNoRows {
-		return user, ErrorUserNotFound
-	}
-	if err != nil {
-		return user, err
-	}
-
-	return user, nil
-}
-func (r userRepository) SelectByEmail(ctx context.Context, email string) (entity.User, error) {
-	var user entity.User
-	query := fmt.Sprintf("SELECT id, name, email, password, created_at, updated_at FROM %s WHERE email=$1", r.tableName)
-
-	err := r.db.QueryRow(ctx, query, email).Scan(
+	err := r.db.QueryRow(ctx, query, searchVal).Scan(
 		&user.ID,
 		&user.Name,
 		&user.Email,
@@ -88,5 +66,6 @@ func (r userRepository) SelectByEmail(ctx context.Context, email string) (entity
 	if err != nil {
 		return user, err
 	}
+
 	return user, nil
 }
