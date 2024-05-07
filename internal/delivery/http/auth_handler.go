@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/prawirdani/golang-restapi/internal/delivery/http/middleware"
+	"github.com/prawirdani/golang-restapi/internal/middleware"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/usecase"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"

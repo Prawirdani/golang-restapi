@@ -5,7 +5,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/delivery/http"
-	"github.com/prawirdani/golang-restapi/internal/delivery/http/middleware"
+	"github.com/prawirdani/golang-restapi/internal/middleware"
 	"github.com/prawirdani/golang-restapi/internal/repository"
 	"github.com/prawirdani/golang-restapi/internal/usecase"
 )
