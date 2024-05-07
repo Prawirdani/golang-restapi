@@ -11,7 +11,7 @@ import (
 )
 
 type AuthUseCase interface {
-	CreateNewUser(ctx context.Context, request model.RegisterRequestPayload) error
+	Register(ctx context.Context, request model.RegisterRequestPayload) error
 	Login(ctx context.Context, request model.LoginRequestPayload) (string, error)
 }
 
@@ -27,7 +27,7 @@ func NewAuthUseCase(cfg config.Config, ur repository.UserRepository) authUseCase
 	}
 }
 
-func (u authUseCase) CreateNewUser(ctx context.Context, request model.RegisterRequestPayload) error {
+func (u authUseCase) Register(ctx context.Context, request model.RegisterRequestPayload) error {
 	ctxWT, cancel := context.WithTimeout(ctx, time.Duration(u.cfg.Context.Timeout*int(time.Second)))
 	defer cancel()
 

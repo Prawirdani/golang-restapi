@@ -24,16 +24,16 @@ func NewAuthHandler(mw middleware.MiddlewareManager, us usecase.AuthUseCase) Aut
 
 func (h AuthHandler) Routes(r chi.Router) {
 	handlerFn := httputil.HandlerWrapper
-	r.Post("/register", handlerFn(h.Register))
-	r.Post("/login", handlerFn(h.Login))
-	r.With(h.middleware.Authenticate).Get("/current", handlerFn(h.Current))
+	r.Post("/register", handlerFn(h.HandleRegister))
+	r.Post("/login", handlerFn(h.HandleLogin))
+	r.With(h.middleware.Authenticate).Get("/current", handlerFn(h.CurrentUser))
 }
 
 func (h AuthHandler) URLPattern() string {
 	return "/auth"
 }
 
-func (h AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
+func (h AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) error {
 	var reqBody model.RegisterRequestPayload
 
 	if err := httputil.BindJSON(r, &reqBody); err != nil {
@@ -44,13 +44,13 @@ func (h AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	if err := h.userUC.CreateNewUser(r.Context(), reqBody); err != nil {
+	if err := h.userUC.Register(r.Context(), reqBody); err != nil {
 		return err
 	}
 	return httputil.SendJSON(w, http.StatusCreated, nil)
 }
 
-func (h AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
+func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
 	var reqBody model.LoginRequestPayload
 	if err := httputil.BindJSON(r, &reqBody); err != nil {
 		return err
@@ -72,7 +72,7 @@ func (h AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	return httputil.SendJSON(w, http.StatusOK, response)
 }
 
-func (h AuthHandler) Current(w http.ResponseWriter, r *http.Request) error {
+func (h AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error {
 	tokenClaims := h.middleware.GetAuthCtx(r.Context())
 	response := model.TokenInfoResponse{
 		TokenInfo: tokenClaims,

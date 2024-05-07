@@ -17,7 +17,7 @@ const TOKEN_CLAIMS_CTX_KEY ClaimsKey = "token_claims"
 func (c *MiddlewareManager) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Retrieve Access Token from cookie header
-		tokenString := httputil.GetCookie(r, c.tokenCfg.AccessCookieName)
+		tokenString := httputil.GetCookie(r, c.cfg.Token.AccessCookieName)
 
 		// If token doesn't exist in cookie, retrieve from Authorization header
 		if tokenString == "" {
@@ -33,7 +33,7 @@ func (c *MiddlewareManager) Authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		claims, err := utils.ParseToken(tokenString, c.tokenCfg.SecretKey)
+		claims, err := utils.ParseToken(tokenString, c.cfg.Token.SecretKey)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
