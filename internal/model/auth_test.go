@@ -7,7 +7,7 @@ import (
 )
 
 func TestValidateRegisterRequest(t *testing.T) {
-	request := RegisterRequestPayload{
+	request := RegisterRequest{
 		Name:     "doe",
 		Email:    "doe@mail.com",
 		Password: "doe123",
@@ -41,7 +41,7 @@ func TestValidateRegisterRequest(t *testing.T) {
 }
 
 func TestValidateLoginRequest(t *testing.T) {
-	request := LoginRequestPayload{
+	request := LoginRequest{
 		Email:    "doe@mail.com",
 		Password: "doe123",
 	}

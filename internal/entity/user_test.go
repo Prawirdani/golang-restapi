@@ -10,7 +10,7 @@ import (
 
 func TestNewUser(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		user := NewUser(model.RegisterRequestPayload{
+		user := NewUser(model.RegisterRequest{
 			Name:     "doe",
 			Email:    "doe@mail.com",
 			Password: "doe321",
@@ -26,7 +26,7 @@ func TestNewUser(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
-	user := NewUser(model.RegisterRequestPayload{
+	user := NewUser(model.RegisterRequest{
 		Name:     "doe",
 		Email:    "doe@mail.com",
 		Password: "doe321",
@@ -71,7 +71,7 @@ func TestValidate(t *testing.T) {
 
 func TestEncryptPassword(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		newUser := NewUser(model.RegisterRequestPayload{
+		newUser := NewUser(model.RegisterRequest{
 			Name:     "john doe",
 			Email:    "doe@mail.com",
 			Password: "doe321",
@@ -86,7 +86,7 @@ func TestEncryptPassword(t *testing.T) {
 }
 
 func TestVerifyPassword(t *testing.T) {
-	user := NewUser(model.RegisterRequestPayload{
+	user := NewUser(model.RegisterRequest{
 		Name:     "john doe",
 		Email:    "doe@mail.com",
 		Password: "doe321",
@@ -111,7 +111,7 @@ func TestVerifyPassword(t *testing.T) {
 }
 
 func TestGenerateToken(t *testing.T) {
-	user := NewUser(model.RegisterRequestPayload{
+	user := NewUser(model.RegisterRequest{
 		Name:     "doe",
 		Email:    "doe@mail.com",
 		Password: "doe321",

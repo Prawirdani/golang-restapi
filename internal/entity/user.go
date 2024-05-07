@@ -24,7 +24,7 @@ type User struct {
 }
 
 // Create new user from request payload
-func NewUser(request model.RegisterRequestPayload) User {
+func NewUser(request model.RegisterRequest) User {
 	return User{
 		ID:       uuid.New(),
 		Name:     request.Name,

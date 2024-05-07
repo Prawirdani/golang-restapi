@@ -34,7 +34,7 @@ func (h AuthHandler) URLPattern() string {
 }
 
 func (h AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) error {
-	var reqBody model.RegisterRequestPayload
+	var reqBody model.RegisterRequest
 
 	if err := httputil.BindJSON(r, &reqBody); err != nil {
 		return err
@@ -51,7 +51,7 @@ func (h AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) erro
 }
 
 func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
-	var reqBody model.LoginRequestPayload
+	var reqBody model.LoginRequest
 	if err := httputil.BindJSON(r, &reqBody); err != nil {
 		return err
 	}
