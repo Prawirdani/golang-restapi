@@ -37,11 +37,11 @@ func (r userRepository) InsertUser(ctx context.Context, u entity.User) error {
 	query := fmt.Sprintf("INSERT INTO %s(id, name, email, password) VALUES($1, $2, $3, $4)", r.tableName)
 	_, err := r.db.Exec(ctx, query, u.ID, u.Name, u.Email, u.Password)
 
-	// Unique constraint duplicate err by PG error code.
-	if err != nil && strings.Contains(err.Error(), "23505") {
-		return ErrorEmailExists
-	}
 	if err != nil {
+		// Unique constraint duplicate err by PG error code.
+		if strings.Contains(err.Error(), "23505") {
+			return ErrorEmailExists
+		}
 		return err
 	}
 	return nil
@@ -60,10 +60,10 @@ func (r userRepository) SelectWhere(ctx context.Context, field string, searchVal
 		&user.UpdatedAt,
 	)
 
-	if err != nil && err == pgx.ErrNoRows {
-		return user, ErrorUserNotFound
-	}
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return user, ErrorUserNotFound
+		}
 		return user, err
 	}
 
