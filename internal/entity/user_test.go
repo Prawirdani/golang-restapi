@@ -124,7 +124,7 @@ func TestGenerateToken(t *testing.T) {
 	err = user.EncryptPassword()
 	require.Nil(t, err)
 
-	tokenStr, err := user.GenerateToken("secret-key")
+	tokenStr, err := user.GenerateToken("secret-key", 1)
 	require.Nil(t, err)
 	require.NotEmpty(t, tokenStr)
 }
