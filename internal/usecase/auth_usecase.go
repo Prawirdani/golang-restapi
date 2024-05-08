@@ -58,7 +58,7 @@ func (u authUseCase) Login(ctx context.Context, request model.LoginRequest) (str
 		return token, err
 	}
 
-	token, err := user.GenerateToken(u.cfg.Token.SecretKey)
+	token, err := user.GenerateToken(u.cfg.Token.SecretKey, u.cfg.Token.Expiry)
 	if err != nil {
 		return token, err
 	}

@@ -58,6 +58,6 @@ func (u User) VerifyPassword(plain string) error {
 }
 
 // Generate JWT Token
-func (u User) GenerateToken(secret string) (string, error) {
-	return utils.GenerateToken(u.ID.String(), secret, 60*time.Minute)
+func (u User) GenerateToken(secret string, expiryHour int) (string, error) {
+	return utils.GenerateToken(u.ID.String(), u.Name, secret, time.Duration(expiryHour)*time.Hour)
 }
