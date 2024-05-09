@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
@@ -36,7 +35,7 @@ func (c *MiddlewareManager) Authenticate(next http.Handler) http.Handler {
 		}
 
 		// Passing the map claims / payload to the next handler via Context.
-		ctx := context.WithValue(r.Context(), httputil.TOKEN_CLAIMS_CTX_KEY, claims)
+		ctx := httputil.SetAuthCtx(r.Context(), claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

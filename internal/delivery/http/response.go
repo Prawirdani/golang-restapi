@@ -25,7 +25,7 @@ func status(status int) resOption {
 	}
 }
 
-func Response(w http.ResponseWriter, opts ...func(*httputil.Response)) error {
+func response(w http.ResponseWriter, opts ...func(*httputil.Response)) error {
 	res := &httputil.Response{
 		Status: 200, // Default
 	}

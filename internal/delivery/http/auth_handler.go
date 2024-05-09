@@ -37,7 +37,7 @@ func (h AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	return Response(w, status(201), message("Registration successful."))
+	return response(w, status(201), message("Registration successful."))
 }
 
 func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
@@ -68,11 +68,12 @@ func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
 	d := map[string]string{
 		"token": tokenString,
 	}
-	return Response(w, data(d), message("Login successful."))
+
+	return response(w, data(d), message("Login successful."))
 }
 
 func (h AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error {
 	tokenClaims := httputil.GetAuthCtx(r.Context())
 
-	return Response(w, data(tokenClaims))
+	return response(w, data(tokenClaims))
 }
