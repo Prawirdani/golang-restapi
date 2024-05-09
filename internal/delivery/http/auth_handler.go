@@ -8,7 +8,6 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/usecase"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
-	"github.com/prawirdani/golang-restapi/pkg/with"
 )
 
 type AuthHandler struct {
@@ -38,7 +37,7 @@ func (h AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	return httputil.Response(w, with.Status(201), with.Message("Registration successful."))
+	return Response(w, status(201), message("Registration successful."))
 }
 
 func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
@@ -66,14 +65,14 @@ func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
 
 	http.SetCookie(w, tokenCookie)
 
-	data := map[string]string{
+	d := map[string]string{
 		"token": tokenString,
 	}
-	return httputil.Response(w, with.Data(data), with.Message("Login successful."))
+	return Response(w, data(d), message("Login successful."))
 }
 
 func (h AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error {
 	tokenClaims := httputil.GetAuthCtx(r.Context())
 
-	return httputil.Response(w, with.Data(tokenClaims))
+	return Response(w, data(tokenClaims))
 }

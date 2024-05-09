@@ -17,7 +17,7 @@ func HandlerWrapper(fn CustomHandlerFn) http.HandlerFunc {
 // Response writer for handling error
 func HandleError(w http.ResponseWriter, err error) {
 	e := parseErrors(err)
-	response := HttpResponse{
+	response := Response{
 		Error: &errorBody{
 			Code:    e.status,
 			Message: e.message,
@@ -25,7 +25,7 @@ func HandleError(w http.ResponseWriter, err error) {
 		},
 	}
 
-	writeErr := writeJSON(w, e.status, response)
+	writeErr := WriteJSON(w, e.status, response)
 	if writeErr != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

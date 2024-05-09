@@ -17,7 +17,7 @@ func BindJSON(r *http.Request, data any) error {
 }
 
 // Utility function to help writing json to response body.
-func writeJSON(w http.ResponseWriter, status int, response interface{}) error {
+func WriteJSON(w http.ResponseWriter, status int, response interface{}) error {
 	buf := new(bytes.Buffer)
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(true)
