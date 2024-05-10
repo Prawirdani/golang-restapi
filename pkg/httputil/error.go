@@ -72,6 +72,7 @@ func parseErrors(err error) *apiError {
 		return &apiError{
 			status:  500,
 			message: "An unexpected error occurred, try again latter",
+			cause:   err.Error(),
 		}
 
 	}
