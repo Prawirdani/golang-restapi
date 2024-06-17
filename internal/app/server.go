@@ -47,6 +47,7 @@ func InitServer(cfg *config.Config, pgPool *pgxpool.Pool) (*Server, error) {
 	})
 
 	router.Use(httplog.RequestLogger(logger))
+	router.Use(panicRecoverer)
 
 	// Gzip Compressor
 	router.Use(middleware.Compress(6))
@@ -110,4 +111,16 @@ func (s *Server) Start() {
 	}
 
 	log.Println("Server gracefully stopped")
+}
+
+/* Panic recoverer middleware, it keep the service alive when crashes */
+func panicRecoverer(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rvr := recover(); rvr != nil {
+				httputil.HandleError(w, fmt.Errorf("%v", rvr))
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }

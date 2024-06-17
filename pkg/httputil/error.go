@@ -19,6 +19,7 @@ var (
 	ErrNotFound         = buildApiError(http.StatusNotFound)
 	ErrUnauthorized     = buildApiError(http.StatusUnauthorized)
 	ErrMethodNotAllowed = buildApiError(http.StatusMethodNotAllowed)
+	ErrInternalServer   = buildApiError(http.StatusInternalServerError)
 )
 
 type apiError struct {
