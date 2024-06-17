@@ -66,5 +66,5 @@ func (u authUseCase) RefreshToken(ctx context.Context, userID string) (utils.JWT
 	defer cancel()
 
 	user, _ := u.userRepo.SelectWhere(ctxWT, "id", userID)
-	return user.GenerateRefreshToken(u.cfg)
+	return user.GenerateAccessToken(u.cfg)
 }

@@ -87,14 +87,15 @@ func (h AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	userID := userPayload["id"].(string)
-	refreshedToken, err := h.authUC.RefreshToken(r.Context(), userID)
+	newAccessToken, err := h.authUC.RefreshToken(r.Context(), userID)
 	if err != nil {
 		return err
 	}
 
 	d := map[string]string{
-		"refreshToken": refreshedToken.String(),
+		"accessToken": newAccessToken.String(),
 	}
+	newAccessToken.SetCookie(w)
 
 	return response(w, data(d), message("Token refreshed."))
 }
