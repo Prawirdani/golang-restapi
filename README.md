@@ -3,9 +3,9 @@ Simple, structured, easy to use and new commer friendly golang REST API project.
 
 ### Architecture
 Common Layered architecture with following layers:
-- Handler/Controller/Delivery: Responsible for handling incoming HTTP request, parsing request, validating request, calling service layer and sending response.
-- Service/Usecase: Business logic layer, responsible for handling business logic, calling repository layer and returning response to handler.
-- Repository/Store: Responsible for handling database operation, query, insert, update, delete etc.
+- `Handler/Controller/Delivery`: Responsible for handling incoming HTTP request, parsing request, validating request, calling service layer and sending response.
+- `Service/Usecase`: Business logic layer, responsible for handling business logic, calling repository layer and returning response to handler.
+- `Repository/Store`: Responsible for handling database operation, query, insert, update, delete etc.
 
 ### Lib/Tool :
 - HTTP router: [chi](https://github.com/go-chi/chi)
