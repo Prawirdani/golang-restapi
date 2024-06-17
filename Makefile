@@ -21,3 +21,6 @@ lint:
 
 tidy:
 	go mod tidy
+
+test:
+	go test -v -count=1 --failfast ./...
