@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
 	"github.com/prawirdani/golang-restapi/pkg/utils"
@@ -57,15 +58,31 @@ func (u User) VerifyPassword(plain string) error {
 	return nil
 }
 
-// Generate JWT Token
-func (u User) GenerateToken(secret string, expiryHour int) (string, error) {
-	payload := utils.NewJwtClaims(
-		map[string]interface{}{
-			"id":   u.ID.String(),
-			"name": u.Name,
-		},
-		"user",
-	)
+func (u User) GenerateAccessToken(cfg *config.Config) (utils.JWT, error) {
+	payload := map[string]interface{}{
+		"id":   u.ID.String(),
+		"name": u.Name,
+	}
+	return utils.GenerateJWT(cfg, payload, utils.AccessToken)
+}
 
-	return utils.GenerateToken(payload, secret, time.Duration(expiryHour)*time.Hour)
+func (u User) GenerateRefreshToken(cfg *config.Config) (utils.JWT, error) {
+	payload := map[string]interface{}{
+		"id": u.ID.String(),
+	}
+	return utils.GenerateJWT(cfg, payload, utils.RefreshToken)
+}
+
+func (u User) GenerateTokenPair(cfg *config.Config) ([]utils.JWT, error) {
+	accessToken, err := u.GenerateAccessToken(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := u.GenerateRefreshToken(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return []utils.JWT{accessToken, refreshToken}, nil
 }

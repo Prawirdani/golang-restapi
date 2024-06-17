@@ -2,12 +2,12 @@ package http
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/usecase"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
+	"github.com/prawirdani/golang-restapi/pkg/utils"
 )
 
 type AuthHandler struct {
@@ -50,23 +50,20 @@ func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	tokenString, err := h.userUC.Login(r.Context(), reqBody)
+	tokens, err := h.userUC.Login(r.Context(), reqBody)
 	if err != nil {
 		return err
 	}
 
-	tokenCookie := &http.Cookie{
-		Name:     h.cfg.Token.AccessCookieName,
-		Value:    tokenString,
-		Path:     "/",
-		Expires:  time.Now().Add(time.Duration(h.cfg.Token.Expiry * int(time.Hour))),
-		HttpOnly: h.cfg.IsProduction(),
-	}
+	d := make(map[string]string)
 
-	http.SetCookie(w, tokenCookie)
-
-	d := map[string]string{
-		"token": tokenString,
+	for i := 0; i < len(tokens); i++ {
+		tokenTypeName := "accessToken"
+		if tokens[i].Claims.TokenType == utils.RefreshToken {
+			tokenTypeName = "refreshToken"
+		}
+		d[tokenTypeName] = tokens[i].String()
+		tokens[i].SetCookie(w)
 	}
 
 	return response(w, data(d), message("Login successful."))
@@ -76,4 +73,28 @@ func (h AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error {
 	tokenClaims := httputil.GetAuthCtx(r.Context())
 
 	return response(w, data(tokenClaims))
+}
+
+func (h AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error {
+	claims, err := utils.ParseJWT(r, &h.cfg.Token, utils.RefreshToken)
+	if err != nil {
+		return err
+	}
+
+	userPayload, ok := claims["user"].(map[string]interface{})
+	if !ok {
+		return httputil.ErrBadRequest("Missing user payload in token.")
+	}
+
+	userID := userPayload["id"].(string)
+	refreshedToken, err := h.userUC.RefreshToken(r.Context(), userID)
+	if err != nil {
+		return err
+	}
+
+	d := map[string]string{
+		"refreshToken": refreshedToken.String(),
+	}
+
+	return response(w, data(d), message("Token refreshed."))
 }

@@ -1,107 +1,101 @@
 package utils
 
 import (
-	"fmt"
+	"log"
 	"testing"
-	"time"
 
+	"github.com/prawirdani/golang-restapi/config"
 	"github.com/stretchr/testify/require"
 )
 
-const secretKey = "secret-key"
+var cfg *config.Config
 
-type payload_test struct {
-	name       string                 // Test name
-	payload    map[string]interface{} // Payload
-	payloadTag string                 // Payload Tag
+func init() {
+	config, err := config.LoadConfig("../../config")
+	if err != nil {
+		log.Fatal(err)
+	}
+	cfg = config
 }
 
-var tests = []payload_test{
-	{
-		name: "simple-payload",
-		payload: map[string]interface{}{
-			"foo": "bar",
-			"1":   2,
-		},
-		payloadTag: "simple",
-	},
-	{
-		name: "nested-payload",
-		payload: map[string]interface{}{
-			"nestedData": map[string]interface{}{
-				"value": "666",
-			},
-		},
-		payloadTag: "nested",
-	},
-	{
-		name: "mixed-payload",
-		payload: map[string]interface{}{
-			"string": "hello",
-			"number": 3.14,
-			"bool":   true,
-		},
-		payloadTag: "mixed",
-	},
-}
+var (
+	accessTokenPayload = map[string]interface{}{
+		"id":   "user-id-1",
+		"name": "doe",
+	}
+	refreshTokenPayload = map[string]interface{}{
+		"id": "user-id-1",
+	}
+)
 
-func TestGenerateToken(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		test := tests[0]
-		claims := NewJwtClaims(test.payload, test.payloadTag)
-		tokenStr, err := GenerateToken(claims, "secret-key", 5*time.Minute)
+func TestGenerateJWT(t *testing.T) {
+	t.Run("Generate-AccessToken", func(t *testing.T) {
+		acToken, err := GenerateJWT(cfg, accessTokenPayload, AccessToken)
 		require.Nil(t, err)
-		require.NotEmpty(t, tokenStr)
+		require.NotEmpty(t, acToken)
+
+		require.Equal(t, acToken.Claims.TokenType, AccessToken)
+		require.Equal(t, acToken.Claims.User["id"], accessTokenPayload["id"])
+		require.Equal(t, acToken.Claims.User["name"], accessTokenPayload["name"])
+	})
+
+	t.Run("Generate-RefreshToken", func(t *testing.T) {
+		rfToken, err := GenerateJWT(cfg, refreshTokenPayload, RefreshToken)
+		require.Nil(t, err)
+		require.NotEmpty(t, rfToken)
+		require.Equal(t, rfToken.Claims.TokenType, RefreshToken)
+		require.Equal(t, rfToken.Claims.User["id"], refreshTokenPayload["id"])
 	})
 }
 
 func TestParseToken(t *testing.T) {
-	for _, test := range tests {
-		testName := fmt.Sprintf("parse-%s-test", test.name)
-		t.Run(testName, func(t *testing.T) {
-			claims := NewJwtClaims(test.payload, test.payloadTag)
-			tokenStr, err := GenerateToken(claims, secretKey, 5*time.Minute)
-			require.Nil(t, err)
-			require.NotEmpty(t, tokenStr)
-
-			parsed, err := ParseToken(tokenStr, secretKey)
-			require.Nil(t, err)
-			require.NotNil(t, parsed)
-
-			parsedPayload := parsed[test.payloadTag].(map[string]interface{})
-			fmt.Println(test.payload, parsedPayload)
-			assertPayloadEqual(t, test.payload, parsedPayload)
-		})
-
-	}
-
-	t.Run("expired-token", func(t *testing.T) {
-		test := tests[0]
-		claims := NewJwtClaims(test.payload, test.payloadTag)
-
-		tokenStr, err := GenerateToken(claims, secretKey, -5*time.Minute)
+	t.Run("Parse-AccessToken", func(t *testing.T) {
+		acToken, err := GenerateJWT(cfg, accessTokenPayload, AccessToken)
 		require.Nil(t, err)
-		require.NotEmpty(t, tokenStr)
+		require.NotEmpty(t, acToken)
 
-		mapClaims, err := ParseToken(tokenStr, secretKey)
+		parsedToken, err := parseJWT(acToken.String(), cfg.Token.SecretKey)
+		require.Nil(t, err)
+		require.NotEmpty(t, parsedToken)
+		require.Equal(t, parsedToken["user"], accessTokenPayload)
+	})
+
+	t.Run("Parse-RefreshToken", func(t *testing.T) {
+		rfToken, err := GenerateJWT(cfg, refreshTokenPayload, RefreshToken)
+		require.Nil(t, err)
+		require.NotEmpty(t, rfToken)
+
+		parsedToken, err := parseJWT(rfToken.String(), cfg.Token.SecretKey)
+		require.Nil(t, err)
+		require.NotEmpty(t, parsedToken)
+		require.Equal(t, parsedToken["user"], refreshTokenPayload)
+	})
+
+	t.Run("Expired-AccessToken", func(t *testing.T) {
+		modifiedCfg := cfg
+		modifiedCfg.Token.AccessTokenExpiry = -5
+
+		acToken, err := GenerateJWT(modifiedCfg, accessTokenPayload, AccessToken)
+		require.Nil(t, err)
+		require.NotEmpty(t, acToken)
+
+		parsedToken, err := parseJWT(acToken.String(), cfg.Token.SecretKey)
 		require.NotNil(t, err)
-		require.Nil(t, mapClaims)
+		require.Nil(t, parsedToken)
 		require.Equal(t, err, ErrorTokenInvalid)
 	})
-}
 
-// When unmarshaling JSON data into a Go value, the JSON parser converts all numbers to float64 by default.
-// To fix this, you can use type assertion to convert the float64 value to an int before comparing it.
-func assertPayloadEqual(t *testing.T, expected, actual map[string]interface{}) {
-	for k, v := range expected {
-		actualVal, ok := actual[k]
-		require.True(t, ok, "Key not found in actual payload: %s", k)
+	t.Run("Expired-RefreshToken", func(t *testing.T) {
+		modifiedCfg := cfg
+		modifiedCfg.Token.RefreshTokenExpiry = -5
 
-		switch typedVal := v.(type) {
-		case int:
-			require.Equal(t, float64(typedVal), actualVal)
-		default:
-			require.Equal(t, v, actualVal)
-		}
-	}
+		rfToken, err := GenerateJWT(modifiedCfg, accessTokenPayload, AccessToken)
+		require.Nil(t, err)
+		require.NotEmpty(t, rfToken)
+
+		parsedToken, err := parseJWT(rfToken.String(), cfg.Token.SecretKey)
+		require.NotNil(t, err)
+		require.Nil(t, parsedToken)
+		require.Equal(t, err, ErrorTokenInvalid)
+	})
 }

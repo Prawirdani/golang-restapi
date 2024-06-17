@@ -1,7 +1,7 @@
 app:
   Version: 1.0.0
   Port: 42069 
-  Environment: dev
+  Environment: DEV
 
 context:
   timeout: 5 # in seconds
@@ -22,5 +22,7 @@ cors:
 
 token:
   SecretKey: secret
-  Expiry: 6 # In Hour
-  AccessCookieName: accessToken
+  AccessTokenExpiry: 15 # In Minutes
+  AccessTokenCookie: accessToken
+  RefreshTokenExpiry: 7 # In Days
+  RefreshTokenCookie: refreshToken

@@ -8,11 +8,13 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/entity"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/repository"
+	"github.com/prawirdani/golang-restapi/pkg/utils"
 )
 
 type AuthUseCase interface {
 	Register(ctx context.Context, request model.RegisterRequest) error
-	Login(ctx context.Context, request model.LoginRequest) (string, error)
+	Login(ctx context.Context, request model.LoginRequest) ([]utils.JWT, error)
+	RefreshToken(ctx context.Context, userID string) (utils.JWT, error)
 }
 
 type authUseCase struct {
@@ -47,21 +49,22 @@ func (u authUseCase) Register(ctx context.Context, request model.RegisterRequest
 	return nil
 }
 
-func (u authUseCase) Login(ctx context.Context, request model.LoginRequest) (string, error) {
+func (u authUseCase) Login(ctx context.Context, request model.LoginRequest) ([]utils.JWT, error) {
 	ctxWT, cancel := context.WithTimeout(ctx, time.Duration(u.cfg.Context.Timeout*int(time.Second)))
 	defer cancel()
 
-	var token string
-
 	user, _ := u.userRepo.SelectWhere(ctxWT, "email", request.Email)
 	if err := user.VerifyPassword(request.Password); err != nil {
-		return token, err
+		return nil, err
 	}
 
-	token, err := user.GenerateToken(u.cfg.Token.SecretKey, u.cfg.Token.Expiry)
-	if err != nil {
-		return token, err
-	}
+	return user.GenerateTokenPair(u.cfg)
+}
 
-	return token, nil
+func (u authUseCase) RefreshToken(ctx context.Context, userID string) (utils.JWT, error) {
+	ctxWT, cancel := context.WithTimeout(ctx, time.Duration(u.cfg.Context.Timeout*int(time.Second)))
+	defer cancel()
+
+	user, _ := u.userRepo.SelectWhere(ctxWT, "id", userID)
+	return user.GenerateRefreshToken(u.cfg)
 }

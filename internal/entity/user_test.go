@@ -1,12 +1,25 @@
 package entity
 
 import (
+	"log"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/model"
+	"github.com/prawirdani/golang-restapi/pkg/utils"
 	"github.com/stretchr/testify/require"
 )
+
+var cfg *config.Config
+
+func init() {
+	config, err := config.LoadConfig("../../config")
+	if err != nil {
+		log.Fatal(err)
+	}
+	cfg = config
+}
 
 func TestNewUser(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
@@ -124,7 +137,17 @@ func TestGenerateToken(t *testing.T) {
 	err = user.EncryptPassword()
 	require.Nil(t, err)
 
-	tokenStr, err := user.GenerateToken("secret-key", 1)
-	require.Nil(t, err)
-	require.NotEmpty(t, tokenStr)
+	t.Run("AccessToken", func(t *testing.T) {
+		accessToken, err := user.GenerateAccessToken(cfg)
+		require.Nil(t, err)
+		require.NotEmpty(t, accessToken)
+		require.Equal(t, accessToken.Claims.TokenType, utils.AccessToken)
+	})
+
+	t.Run("RefreshToken", func(t *testing.T) {
+		refreshToken, err := user.GenerateRefreshToken(cfg)
+		require.Nil(t, err)
+		require.NotEmpty(t, refreshToken)
+		require.Equal(t, refreshToken.Claims.TokenType, utils.RefreshToken)
+	})
 }

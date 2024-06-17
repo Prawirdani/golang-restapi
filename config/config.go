@@ -68,9 +68,11 @@ func (cc CorsConfig) ParseOrigins() ([]string, error) {
 }
 
 type TokenConfig struct {
-	SecretKey        string
-	Expiry           int    // In Hour
-	AccessCookieName string // Access Token Cookie Name
+	SecretKey          string
+	AccessTokenExpiry  int
+	AccessTokenCookie  string
+	RefreshTokenExpiry int
+	RefreshTokenCookie string
 }
 
 // Load and Parse Config
