@@ -11,13 +11,13 @@ import (
 )
 
 type AuthHandler struct {
-	userUC usecase.AuthUseCase
+	authUC usecase.AuthUseCase
 	cfg    *config.Config
 }
 
 func NewAuthHandler(cfg *config.Config, us usecase.AuthUseCase) AuthHandler {
 	return AuthHandler{
-		userUC: us,
+		authUC: us,
 		cfg:    cfg,
 	}
 }
@@ -33,7 +33,7 @@ func (h AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	if err := h.userUC.Register(r.Context(), reqBody); err != nil {
+	if err := h.authUC.Register(r.Context(), reqBody); err != nil {
 		return err
 	}
 
@@ -50,7 +50,7 @@ func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	tokens, err := h.userUC.Login(r.Context(), reqBody)
+	tokens, err := h.authUC.Login(r.Context(), reqBody)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (h AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	userID := userPayload["id"].(string)
-	refreshedToken, err := h.userUC.RefreshToken(r.Context(), userID)
+	refreshedToken, err := h.authUC.RefreshToken(r.Context(), userID)
 	if err != nil {
 		return err
 	}
