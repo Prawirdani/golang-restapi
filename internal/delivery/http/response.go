@@ -6,20 +6,21 @@ import (
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
 )
 
-type resOption func(*httputil.Response)
+type responseOption func(*httputil.Response)
 
-func data(v any) resOption {
+func data(v any) responseOption {
 	return func(r *httputil.Response) {
 		r.Data = v
 	}
 }
-func message(msg string) resOption {
+
+func message(msg string) responseOption {
 	return func(r *httputil.Response) {
-		r.Message = &msg
+		r.Message = msg
 	}
 }
 
-func status(status int) resOption {
+func status(status int) responseOption {
 	return func(r *httputil.Response) {
 		r.Status = status
 	}

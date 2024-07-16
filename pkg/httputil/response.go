@@ -1,10 +1,10 @@
 package httputil
 
 type Response struct {
-	Data    any        `json:"data,omitempty"`
-	Message *string    `json:"message,omitempty"`
+	Data    any        `json:"data"`
+	Message string     `json:"message"`
 	Status  int        `json:"-"`
-	Error   *errorBody `json:"error,omitempty"`
+	Error   *errorBody `json:"error"`
 }
 
 type errorBody struct {
