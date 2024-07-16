@@ -94,6 +94,8 @@ func parseValidationError(err validator.ValidationErrors) *apiError {
 		case "min":
 			if field == "password" {
 				errors[field] = "Must be at least 6 characters long"
+			} else {
+				errors[field] = fmt.Sprintf("Must be at least %s characters long", errField.Param())
 			}
 		default:
 			errors[field] = errField.Error()
