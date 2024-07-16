@@ -23,4 +23,4 @@ tidy:
 	go mod tidy
 
 test:
-	go test -v -count=1 --failfast ./...
+	go test -v -count=1 ./... -cover
