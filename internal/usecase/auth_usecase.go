@@ -33,13 +33,8 @@ func (u authUseCase) Register(ctx context.Context, request model.RegisterRequest
 	ctxWT, cancel := context.WithTimeout(ctx, time.Duration(u.cfg.Context.Timeout*int(time.Second)))
 	defer cancel()
 
-	newUser := entity.NewUser(request)
-
-	if err := newUser.Validate(); err != nil {
-		return err
-	}
-
-	if err := newUser.EncryptPassword(); err != nil {
+	newUser, err := entity.NewUser(request)
+	if err != nil {
 		return err
 	}
 

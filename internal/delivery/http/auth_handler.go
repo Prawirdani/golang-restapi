@@ -29,7 +29,7 @@ func (h AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	if err := reqBody.ValidateRequest(); err != nil {
+	if err := utils.Validate(reqBody); err != nil {
 		return err
 	}
 
@@ -46,7 +46,7 @@ func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	if err := reqBody.ValidateRequest(); err != nil {
+	if err := utils.Validate(reqBody); err != nil {
 		return err
 	}
 

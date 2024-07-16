@@ -4,6 +4,7 @@ import (
 	"log"
 	"testing"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/model"
@@ -21,98 +22,84 @@ func init() {
 	cfg = config
 }
 
+var registerPayload = model.RegisterRequest{
+	Name:     "doe",
+	Email:    "doe@mail.com",
+	Password: "doe321",
+}
+
 func TestNewUser(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		user := NewUser(model.RegisterRequest{
-			Name:     "doe",
-			Email:    "doe@mail.com",
-			Password: "doe321",
-		})
-
+		user, err := NewUser(registerPayload)
+		require.Nil(t, err)
 		require.NotNil(t, user)
-		require.Equal(t, "doe", user.Name)
-		require.Equal(t, "doe@mail.com", user.Email)
-		require.Equal(t, "doe321", user.Password)
+		require.Equal(t, registerPayload.Name, user.Name)
+		require.Equal(t, registerPayload.Email, user.Email)
+		require.NotEqual(t, registerPayload.Password, user.Password)
 		require.NotEqual(t, uuid.Nil, user.ID)
 	})
 
-}
-
-func TestValidate(t *testing.T) {
-	user := NewUser(model.RegisterRequest{
-		Name:     "doe",
-		Email:    "doe@mail.com",
-		Password: "doe321",
-	})
-	t.Run("success", func(t *testing.T) {
-		newUser := user
-		err := newUser.Validate()
-		require.Nil(t, err)
-	})
-
 	t.Run("fail-missing-name", func(t *testing.T) {
-		newUser := user
-		newUser.Name = ""
-		err := newUser.Validate()
+		payload := registerPayload
+		payload.Name = ""
+		user, err := NewUser(payload)
 		require.NotNil(t, err)
+		require.Equal(t, User{}, user)
+
 	})
+
 	t.Run("fail-missing-email", func(t *testing.T) {
-		newUser := user
-		newUser.Email = ""
-		err := newUser.Validate()
+		payload := registerPayload
+		payload.Email = ""
+
+		user, err := NewUser(payload)
 		require.NotNil(t, err)
+		require.Equal(t, User{}, user)
 	})
+
 	t.Run("fail-missing-password", func(t *testing.T) {
-		newUser := user
-		newUser.Password = ""
-		err := newUser.Validate()
+		payload := registerPayload
+		payload.Password = ""
+
+		user, err := NewUser(payload)
 		require.NotNil(t, err)
+		require.Equal(t, User{}, user)
+
+		_, ok := err.(validator.ValidationErrors)
+		require.True(t, ok)
 	})
+
 	t.Run("fail-invalid-email", func(t *testing.T) {
-		newUser := user
-		newUser.Email = "doe.mail.com"
-		err := newUser.Validate()
+		payload := registerPayload
+		payload.Email = "invalid.email"
+
+		user, err := NewUser(payload)
 		require.NotNil(t, err)
+		require.Equal(t, User{}, user)
+
+		_, ok := err.(validator.ValidationErrors)
+		require.True(t, ok)
 	})
+
 	t.Run("fail-minimum-password-chars", func(t *testing.T) {
-		newUser := user
-		newUser.Password = "12345"
-		err := newUser.Validate()
+		payload := registerPayload
+		payload.Password = "123"
+
+		user, err := NewUser(payload)
 		require.NotNil(t, err)
-	})
-}
-
-func TestEncryptPassword(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		newUser := NewUser(model.RegisterRequest{
-			Name:     "john doe",
-			Email:    "doe@mail.com",
-			Password: "doe321",
-		})
-
-		err := newUser.Validate()
-		require.Nil(t, err)
-
-		err = newUser.EncryptPassword()
-		require.Nil(t, err)
+		require.Equal(t, User{}, user)
+		_, ok := err.(validator.ValidationErrors)
+		require.True(t, ok)
 	})
 }
 
 func TestVerifyPassword(t *testing.T) {
-	user := NewUser(model.RegisterRequest{
-		Name:     "john doe",
-		Email:    "doe@mail.com",
-		Password: "doe321",
-	})
-
-	err := user.Validate()
+	user, err := NewUser(registerPayload)
 	require.Nil(t, err)
-
-	err = user.EncryptPassword()
-	require.Nil(t, err)
+	require.NotNil(t, user)
 
 	t.Run("success", func(t *testing.T) {
-		err := user.VerifyPassword("doe321")
+		err := user.VerifyPassword(registerPayload.Password)
 		require.Nil(t, err)
 	})
 
@@ -124,18 +111,9 @@ func TestVerifyPassword(t *testing.T) {
 }
 
 func TestGenerateToken(t *testing.T) {
-	user := NewUser(model.RegisterRequest{
-		Name:     "doe",
-		Email:    "doe@mail.com",
-		Password: "doe321",
-	})
+	user, err := NewUser(registerPayload)
+	require.Nil(t, err)
 	require.NotNil(t, user)
-
-	err := user.Validate()
-	require.Nil(t, err)
-
-	err = user.EncryptPassword()
-	require.Nil(t, err)
 
 	t.Run("AccessToken", func(t *testing.T) {
 		token, err := user.GenerateAccessToken(cfg)
@@ -149,5 +127,14 @@ func TestGenerateToken(t *testing.T) {
 		require.Nil(t, err)
 		require.NotEmpty(t, token)
 		require.Equal(t, token.Type(), utils.RefreshToken)
+	})
+
+	t.Run("TokenPair", func(t *testing.T) {
+		tokens, err := user.GenerateTokenPair(cfg)
+		require.Nil(t, err)
+		require.NotEmpty(t, tokens)
+		require.Equal(t, len(tokens), 2)
+		require.Equal(t, tokens[0].Type(), utils.AccessToken)
+		require.Equal(t, tokens[1].Type(), utils.RefreshToken)
 	})
 }

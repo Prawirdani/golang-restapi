@@ -25,28 +25,26 @@ type User struct {
 }
 
 // Create new user from request payload
-func NewUser(request model.RegisterRequest) User {
-	return User{
+func NewUser(request model.RegisterRequest) (User, error) {
+	u := User{
 		ID:       uuid.New(),
 		Name:     request.Name,
 		Email:    request.Email,
 		Password: request.Password,
 	}
-}
 
-// Semantic Validation
-func (u User) Validate() error {
-	return utils.Validate.Struct(u)
-}
+	if err := utils.Validate(u); err != nil {
+		return User{}, err
+	}
 
-// Encrypt user password
-func (u *User) EncryptPassword() error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return User{}, err
 	}
+
 	u.Password = string(hashedPassword)
-	return nil
+
+	return u, nil
 }
 
 // Verify / Decrypt user password
