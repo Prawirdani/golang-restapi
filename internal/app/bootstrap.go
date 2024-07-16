@@ -11,7 +11,7 @@ import (
 // Init & Injects all dependencies.
 func (s Server) bootstrap() {
 	// Setup Repos
-	userRepository := repository.NewUserRepository(s.pg, "users")
+	userRepository := repository.NewUserRepository(s.pg)
 
 	// Setup Usecases
 	authUC := usecase.NewAuthUseCase(s.cfg, userRepository)

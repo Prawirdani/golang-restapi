@@ -22,19 +22,17 @@ type UserRepository interface {
 }
 
 type userRepository struct {
-	tableName string
-	db        *pgxpool.Pool
+	db *pgxpool.Pool
 }
 
-func NewUserRepository(pgpool *pgxpool.Pool, tableName string) userRepository {
+func NewUserRepository(pgpool *pgxpool.Pool) userRepository {
 	return userRepository{
-		tableName: tableName,
-		db:        pgpool,
+		db: pgpool,
 	}
 }
 
 func (r userRepository) InsertUser(ctx context.Context, u entity.User) error {
-	query := fmt.Sprintf("INSERT INTO %s(id, name, email, password) VALUES($1, $2, $3, $4)", r.tableName)
+	query := "INSERT INTO users(id, name, email, password) VALUES($1, $2, $3, $4)"
 	_, err := r.db.Exec(ctx, query, u.ID, u.Name, u.Email, u.Password)
 
 	if err != nil {
@@ -49,7 +47,7 @@ func (r userRepository) InsertUser(ctx context.Context, u entity.User) error {
 
 func (r userRepository) SelectWhere(ctx context.Context, field string, searchVal any) (entity.User, error) {
 	var user entity.User
-	query := fmt.Sprintf("SELECT id, name, email, password, created_at, updated_at FROM %s WHERE %s=$1", r.tableName, field)
+	query := fmt.Sprintf("SELECT id, name, email, password, created_at, updated_at FROM users WHERE %s=$1", field)
 
 	err := r.db.QueryRow(ctx, query, searchVal).Scan(
 		&user.ID,
