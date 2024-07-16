@@ -138,16 +138,16 @@ func TestGenerateToken(t *testing.T) {
 	require.Nil(t, err)
 
 	t.Run("AccessToken", func(t *testing.T) {
-		accessToken, err := user.GenerateAccessToken(cfg)
+		token, err := user.GenerateAccessToken(cfg)
 		require.Nil(t, err)
-		require.NotEmpty(t, accessToken)
-		require.Equal(t, accessToken.Claims.TokenType, utils.AccessToken)
+		require.NotEmpty(t, token)
+		require.Equal(t, token.Type(), utils.AccessToken)
 	})
 
 	t.Run("RefreshToken", func(t *testing.T) {
-		refreshToken, err := user.GenerateRefreshToken(cfg)
+		token, err := user.GenerateRefreshToken(cfg)
 		require.Nil(t, err)
-		require.NotEmpty(t, refreshToken)
-		require.Equal(t, refreshToken.Claims.TokenType, utils.RefreshToken)
+		require.NotEmpty(t, token)
+		require.Equal(t, token.Type(), utils.RefreshToken)
 	})
 }

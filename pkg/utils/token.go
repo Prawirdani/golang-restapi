@@ -27,19 +27,41 @@ const (
 	RefreshToken
 )
 
+// String returns the string representation of the token type and used as token cookie name.
+func (t TokenType) String() string {
+	return [...]string{"accessToken", "refreshToken"}[t]
+}
+
 type JWT struct {
-	TokenStr string
-	Claims   *jwtClaims
-	Exp      time.Duration
-	Cookie   *http.Cookie
+	claims *jwtClaims
+	value  string
+	exp    time.Duration
+	cookie *http.Cookie
 }
 
+// String returns the JWT token string.
 func (j JWT) String() string {
-	return j.TokenStr
+	return j.value
 }
 
+// SetCookie sets the JWT token as a cookie in the response.
 func (j JWT) SetCookie(w http.ResponseWriter) {
-	http.SetCookie(w, j.Cookie)
+	http.SetCookie(w, j.cookie)
+}
+
+// Type returns the token type.
+func (j JWT) Type() TokenType {
+	return j.claims.TokenType
+}
+
+// TypeLabel returns the token type label.
+func (j JWT) TypeLabel() string {
+	return j.claims.TokenType.String()
+}
+
+// Payload returns the token payload.
+func (j JWT) Payload() map[string]interface{} {
+	return j.claims.User
 }
 
 type jwtClaims struct {
@@ -52,13 +74,10 @@ func GenerateJWT(cfg *config.Config, payload map[string]interface{}, tokenType T
 	timeNow := time.Now()
 
 	var expiry time.Duration
-	var cookieName string
 	if tokenType == AccessToken {
 		expiry = time.Duration(cfg.Token.AccessTokenExpiry) * time.Minute
-		cookieName = cfg.Token.AccessTokenCookie
 	} else {
 		expiry = time.Duration(cfg.Token.RefreshTokenExpiry) * time.Hour * 24
-		cookieName = cfg.Token.RefreshTokenCookie
 	}
 
 	claims := &jwtClaims{
@@ -79,7 +98,7 @@ func GenerateJWT(cfg *config.Config, payload map[string]interface{}, tokenType T
 
 	// Create cookie
 	cookie := &http.Cookie{
-		Name:     cookieName,
+		Name:     tokenType.String(),
 		Value:    tokenStr,
 		Path:     "/",
 		Expires:  timeNow.Add(expiry),
@@ -87,25 +106,16 @@ func GenerateJWT(cfg *config.Config, payload map[string]interface{}, tokenType T
 	}
 
 	return JWT{
-		TokenStr: tokenStr,
-		Claims:   claims,
-		Exp:      expiry,
-		Cookie:   cookie,
+		value:  tokenStr,
+		claims: claims,
+		exp:    expiry,
+		cookie: cookie,
 	}, nil
 }
 
 // Parse the JWT token from the request and returns the claims. tokenType is used to determine the expected token type.
 func ParseJWT(r *http.Request, cfg *config.TokenConfig, tokenType TokenType) (map[string]interface{}, error) {
-	var tokenString string
-	var tokenTypeName string
-
-	if tokenType == AccessToken {
-		tokenString = httputil.GetCookie(r, cfg.AccessTokenCookie)
-		tokenTypeName = "Access Token"
-	} else {
-		tokenString = httputil.GetCookie(r, cfg.RefreshTokenCookie)
-		tokenTypeName = "Refresh Token"
-	}
+	tokenString := httputil.GetCookie(r, tokenType.String())
 
 	// If token doesn't exist in cookie, retrieve from Authorization header
 	if tokenString == "" {
@@ -132,7 +142,7 @@ func ParseJWT(r *http.Request, cfg *config.TokenConfig, tokenType TokenType) (ma
 	}
 
 	if TokenType(claimsTokenType) != tokenType {
-		return nil, httputil.ErrUnauthorized(fmt.Sprintf("Invalid token type, expected %s", tokenTypeName))
+		return nil, httputil.ErrUnauthorized(fmt.Sprintf("Invalid token type, expected %s", tokenType.String()))
 	}
 
 	return claims, nil

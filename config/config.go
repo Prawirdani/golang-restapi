@@ -70,9 +70,7 @@ func (cc CorsConfig) ParseOrigins() ([]string, error) {
 type TokenConfig struct {
 	SecretKey          string
 	AccessTokenExpiry  int
-	AccessTokenCookie  string
 	RefreshTokenExpiry int
-	RefreshTokenCookie string
 }
 
 // Load and Parse Config

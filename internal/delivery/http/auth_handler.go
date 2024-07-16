@@ -57,13 +57,9 @@ func (h AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
 
 	d := make(map[string]string)
 
-	for i := 0; i < len(tokens); i++ {
-		tokenTypeName := "accessToken"
-		if tokens[i].Claims.TokenType == utils.RefreshToken {
-			tokenTypeName = "refreshToken"
-		}
-		d[tokenTypeName] = tokens[i].String()
-		tokens[i].SetCookie(w)
+	for _, token := range tokens {
+		d[token.TypeLabel()] = token.String()
+		token.SetCookie(w)
 	}
 
 	return response(w, data(d), message("Login successful."))

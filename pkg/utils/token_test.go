@@ -30,31 +30,31 @@ var (
 
 func TestGenerateJWT(t *testing.T) {
 	t.Run("Generate-AccessToken", func(t *testing.T) {
-		acToken, err := GenerateJWT(cfg, accessTokenPayload, AccessToken)
+		token, err := GenerateJWT(cfg, accessTokenPayload, AccessToken)
 		require.Nil(t, err)
-		require.NotEmpty(t, acToken)
+		require.NotEmpty(t, token)
 
-		require.Equal(t, acToken.Claims.TokenType, AccessToken)
-		require.Equal(t, acToken.Claims.User["id"], accessTokenPayload["id"])
-		require.Equal(t, acToken.Claims.User["name"], accessTokenPayload["name"])
+		require.Equal(t, token.Type(), AccessToken)
+		require.Equal(t, token.Payload()["id"], accessTokenPayload["id"])
+		require.Equal(t, token.Payload()["name"], accessTokenPayload["name"])
 	})
 
 	t.Run("Generate-RefreshToken", func(t *testing.T) {
 		rfToken, err := GenerateJWT(cfg, refreshTokenPayload, RefreshToken)
 		require.Nil(t, err)
 		require.NotEmpty(t, rfToken)
-		require.Equal(t, rfToken.Claims.TokenType, RefreshToken)
-		require.Equal(t, rfToken.Claims.User["id"], refreshTokenPayload["id"])
+		require.Equal(t, rfToken.Type(), RefreshToken)
+		require.Equal(t, rfToken.Payload()["id"], refreshTokenPayload["id"])
 	})
 }
 
 func TestParseToken(t *testing.T) {
 	t.Run("Parse-AccessToken", func(t *testing.T) {
-		acToken, err := GenerateJWT(cfg, accessTokenPayload, AccessToken)
+		token, err := GenerateJWT(cfg, accessTokenPayload, AccessToken)
 		require.Nil(t, err)
-		require.NotEmpty(t, acToken)
+		require.NotEmpty(t, token)
 
-		parsedToken, err := parseJWT(acToken.String(), cfg.Token.SecretKey)
+		parsedToken, err := parseJWT(token.String(), cfg.Token.SecretKey)
 		require.Nil(t, err)
 		require.NotEmpty(t, parsedToken)
 		require.Equal(t, parsedToken["user"], accessTokenPayload)
