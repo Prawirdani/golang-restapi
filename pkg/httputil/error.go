@@ -85,18 +85,16 @@ func parseValidationError(err validator.ValidationErrors) *apiError {
 	// Validation error mapped into a map, so the response will look like "field":"the error"
 	errors := make(map[string]interface{})
 	for _, errField := range err {
-		field := strings.ToLower(errField.Field())
+		field := strings.ToLower(errField.Field()[0:1]) + errField.Field()[1:]
 		switch errField.Tag() {
 		case "required":
 			errors[field] = "Field is required"
 		case "email":
 			errors[field] = "Invalid email format"
 		case "min":
-			if field == "password" {
-				errors[field] = "Must be at least 6 characters long"
-			} else {
-				errors[field] = fmt.Sprintf("Must be at least %s characters long", errField.Param())
-			}
+			errors[field] = fmt.Sprintf("Must be at least %s characters long", errField.Param())
+		case "eqfield":
+			errors[field] = fmt.Sprintf("Must be the same as %s", strings.ToLower(errField.Param()[0:1])+errField.Param()[1:])
 		default:
 			errors[field] = errField.Error()
 		}
