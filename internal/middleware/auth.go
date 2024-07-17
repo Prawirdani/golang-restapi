@@ -7,18 +7,20 @@ import (
 	"github.com/prawirdani/golang-restapi/pkg/utils"
 )
 
-// Token Authenticator Middleware
-func (c *MiddlewareManager) Authenticate(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Retrieve, Parse, Validate access token from request
-		claims, err := utils.ParseJWT(r, &c.cfg.Token, utils.AccessToken)
-		if err != nil {
-			httputil.HandleError(w, err)
-			return
-		}
+// Token Authoriziation Middleware
+func (c *MiddlewareManager) authorize(tt utils.TokenType) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Retrieve, parse and validate the JWT token from the request.
+			claims, err := utils.ParseJWT(r, &c.cfg.Token, tt)
+			if err != nil {
+				httputil.HandleError(w, err)
+				return
+			}
 
-		// Passing the map claims / payload to the next handler via Context.
-		ctx := httputil.SetAuthCtx(r.Context(), claims)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+			// Passing the map claims / payload to the next handler via Context.
+			ctx := httputil.SetAuthCtx(r.Context(), claims)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }

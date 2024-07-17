@@ -72,17 +72,9 @@ func (h AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (h AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error {
-	claims, err := utils.ParseJWT(r, &h.cfg.Token, utils.RefreshToken)
-	if err != nil {
-		return err
-	}
+	refreshTokenPayload := httputil.GetAuthCtx(r.Context())
+	userID := refreshTokenPayload["user"].(map[string]interface{})["id"].(string)
 
-	userPayload, ok := claims["user"].(map[string]interface{})
-	if !ok {
-		return httputil.ErrBadRequest("Missing user payload in token.")
-	}
-
-	userID := userPayload["id"].(string)
 	newAccessToken, err := h.authUC.RefreshToken(r.Context(), userID)
 	if err != nil {
 		return err
