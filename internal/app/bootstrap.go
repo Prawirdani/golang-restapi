@@ -21,7 +21,7 @@ func (s Server) bootstrap() {
 
 	middlewares := middleware.NewMiddlewareManager(s.cfg)
 
-	s.router.Route("/api/v1", func(v1 chi.Router) {
-		http.MapAuthRoutes(v1, authHandler, middlewares)
+	s.router.Route("/api", func(r chi.Router) {
+		http.MapAuthRoutes(r, authHandler, middlewares)
 	})
 }
