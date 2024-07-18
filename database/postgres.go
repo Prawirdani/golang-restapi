@@ -10,14 +10,15 @@ import (
 )
 
 // Return PostgreSQL database pooling
-func NewPGConnection(cfg config.DBConfig) (*pgxpool.Pool, error) {
+func NewPGConnection(cfg *config.Config) (*pgxpool.Pool, error) {
 	// DSN Format postgres://username:password@localhost:5432/db_name
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%v/%s",
-		cfg.Username,
-		cfg.Password,
-		cfg.Host,
-		cfg.Port,
-		cfg.Name,
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%v/%s?application_name=%s",
+		cfg.DB.Username,
+		cfg.DB.Password,
+		cfg.DB.Host,
+		cfg.DB.Port,
+		cfg.DB.Name,
+		cfg.App.Name,
 	)
 
 	pgConf, err := pgxpool.ParseConfig(dsn)
@@ -25,9 +26,9 @@ func NewPGConnection(cfg config.DBConfig) (*pgxpool.Pool, error) {
 		return nil, err
 	}
 
-	pgConf.MinConns = int32(cfg.MinConns)
-	pgConf.MaxConns = int32(cfg.MaxConns)
-	pgConf.MaxConnLifetime = time.Minute * time.Duration(cfg.MaxConnLifetime)
+	pgConf.MinConns = int32(cfg.DB.MinConns)
+	pgConf.MaxConns = int32(cfg.DB.MaxConns)
+	pgConf.MaxConnLifetime = time.Minute * time.Duration(cfg.DB.MaxConnLifetime)
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), pgConf)
 	if err != nil {

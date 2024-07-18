@@ -29,6 +29,7 @@ func (c Config) IsProduction() bool {
 }
 
 type AppConfig struct {
+	Name        string
 	Version     string
 	Port        int
 	Environment AppEnv

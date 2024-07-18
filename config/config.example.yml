@@ -1,4 +1,5 @@
 app:
+  Name: golang-restapi
   Version: 1.0.0
   Port: 42069 
   Environment: DEV

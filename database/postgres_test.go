@@ -20,7 +20,7 @@ func init() {
 
 func TestPostgresConnection(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		pgpool, err := NewPGConnection(c.DB)
+		pgpool, err := NewPGConnection(c)
 		require.Nil(t, err)
 		require.NotNil(t, pgpool)
 	})

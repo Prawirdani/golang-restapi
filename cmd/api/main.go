@@ -19,7 +19,7 @@ func main() {
 
 	initAppLogger(cfg.IsProduction())
 
-	dbPool, err := database.NewPGConnection(cfg.DB)
+	dbPool, err := database.NewPGConnection(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
