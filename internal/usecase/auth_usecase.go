@@ -20,17 +20,19 @@ type AuthUseCase interface {
 type authUseCase struct {
 	userRepo repository.UserRepository
 	cfg      *config.Config
+	timeout  time.Duration
 }
 
 func NewAuthUseCase(cfg *config.Config, ur repository.UserRepository) authUseCase {
 	return authUseCase{
 		cfg:      cfg,
 		userRepo: ur,
+		timeout:  time.Duration(5 * int(time.Second)),
 	}
 }
 
 func (u authUseCase) Register(ctx context.Context, request model.RegisterRequest) error {
-	ctxWT, cancel := context.WithTimeout(ctx, time.Duration(u.cfg.Context.Timeout*int(time.Second)))
+	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
 	newUser, err := entity.NewUser(request)
@@ -45,7 +47,7 @@ func (u authUseCase) Register(ctx context.Context, request model.RegisterRequest
 }
 
 func (u authUseCase) Login(ctx context.Context, request model.LoginRequest) ([]utils.JWT, error) {
-	ctxWT, cancel := context.WithTimeout(ctx, time.Duration(u.cfg.Context.Timeout*int(time.Second)))
+	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
 	user, _ := u.userRepo.SelectWhere(ctxWT, "email", request.Email)
@@ -57,7 +59,7 @@ func (u authUseCase) Login(ctx context.Context, request model.LoginRequest) ([]u
 }
 
 func (u authUseCase) RefreshToken(ctx context.Context, userID string) (utils.JWT, error) {
-	ctxWT, cancel := context.WithTimeout(ctx, time.Duration(u.cfg.Context.Timeout*int(time.Second)))
+	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
 	user, _ := u.userRepo.SelectWhere(ctxWT, "id", userID)

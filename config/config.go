@@ -17,11 +17,10 @@ const (
 )
 
 type Config struct {
-	App     AppConfig
-	Context ContextConfig
-	DB      DBConfig
-	Cors    CorsConfig
-	Token   TokenConfig
+	App   AppConfig
+	DB    DBConfig
+	Cors  CorsConfig
+	Token TokenConfig
 }
 
 func (c Config) IsProduction() bool {
@@ -33,10 +32,6 @@ type AppConfig struct {
 	Version     string
 	Port        int
 	Environment AppEnv
-}
-
-type ContextConfig struct {
-	Timeout int
 }
 
 type DBConfig struct {

@@ -4,9 +4,6 @@ app:
   Port: 42069 
   Environment: DEV
 
-context:
-  timeout: 5 # in seconds
-
 db:
   Username: postgres
   Password: 
