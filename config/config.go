@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -46,21 +45,8 @@ type DBConfig struct {
 }
 
 type CorsConfig struct {
-	AllowedOrigins string
-	Credentials    bool
-}
-
-// Convert AllowedOrigins into Array of string
-func (cc CorsConfig) ParseOrigins() ([]string, error) {
-	origins := strings.Split(cc.AllowedOrigins, ",")
-	// Validate Origins URL
-	for _, origin := range origins {
-		_, err := url.ParseRequestURI(origin)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return origins, nil
+	Origins     []string
+	Credentials bool
 }
 
 type TokenConfig struct {
@@ -69,13 +55,13 @@ type TokenConfig struct {
 	RefreshTokenExpiry int
 }
 
-// Load and Parse Config
+// Load and Parse Config, pass the path of the config file relatively from the root dir
 func LoadConfig(path string) (*Config, error) {
 	var c Config
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yml")
-	v.AddConfigPath(path) // Respectfully from the root directory
+	v.AddConfigPath(path)
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("fail load config: %v", err.Error())
@@ -88,6 +74,15 @@ func LoadConfig(path string) (*Config, error) {
 	if c.App.Environment != ENV_PRODUCTION && c.App.Environment != ENV_DEVELOPMENT {
 		return nil, errors.New("Invalid app.Environtment value, expecting DEV or PROD")
 	}
+
+	// Validate origins URL
+	for _, origin := range c.Cors.Origins {
+		if _, err := url.ParseRequestURI(origin); err != nil {
+			return nil, fmt.Errorf("Invalid cors.Origins URL: %s", origin)
+		}
+	}
+
+	fmt.Println("Length of Origins: ", len(c.Cors.Origins))
 
 	return &c, nil
 }

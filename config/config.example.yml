@@ -15,7 +15,7 @@ db:
   MaxConnLifetime: 60 # In Minute
 
 cors:
-  AllowedOrigins: localhost:3000 # Comma separated list of origins
+  Origins: localhost:3000 # Comma separated list of origins
   Credentials: true
 
 token:
