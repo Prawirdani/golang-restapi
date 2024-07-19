@@ -7,6 +7,14 @@ import (
 	"github.com/prawirdani/golang-restapi/pkg/token"
 )
 
+func (mw *Collection) AuthAccessToken(next http.Handler) http.Handler {
+	return mw.authorize(token.Access)(next)
+}
+
+func (mw *Collection) AuthRefreshToken(next http.Handler) http.Handler {
+	return mw.authorize(token.Refresh)(next)
+}
+
 // Token Authoriziation Middleware
 func (mw *Collection) authorize(tt token.Type) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

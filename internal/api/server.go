@@ -13,17 +13,15 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/config"
-	"github.com/prawirdani/golang-restapi/internal/api/middleware"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
 	"github.com/prawirdani/golang-restapi/pkg/metrics"
 )
 
 type Server struct {
-	pg          *pgxpool.Pool
-	router      *chi.Mux
-	middlewares *middleware.Collection
-	metrics     *metrics.Metrics
-	cfg         *config.Config
+	router  *chi.Mux
+	pg      *pgxpool.Pool
+	metrics *metrics.Metrics
+	cfg     *config.Config
 }
 
 // Server Initialization function, also bootstraping dependency
@@ -33,15 +31,13 @@ func InitServer(cfg *config.Config, pgPool *pgxpool.Pool) (*Server, error) {
 	m := metrics.Init()
 	m.SetAppInfo(cfg.App.Version, string(cfg.App.Environment))
 
-	mws := middleware.NewCollection(cfg)
-
-	router.Use(mws.PanicRecoverer)
-	router.Use(mws.Logger)
-	router.Use(mws.Gzip)
-	router.Use(mws.Cors)
+	router.Use(panicRecoverer)
+	router.Use(reqLogger)
+	router.Use(gzip)
+	router.Use(cors(cfg))
 
 	if cfg.IsProduction() {
-		router.Use(mws.RateLimitter)
+		router.Use(rateLimit)
 	}
 
 	// Not Found Handler
@@ -55,11 +51,10 @@ func InitServer(cfg *config.Config, pgPool *pgxpool.Pool) (*Server, error) {
 	})
 
 	svr := &Server{
-		router:      router,
-		cfg:         cfg,
-		pg:          pgPool,
-		metrics:     m,
-		middlewares: mws,
+		router:  router,
+		cfg:     cfg,
+		pg:      pgPool,
+		metrics: m,
 	}
 
 	svr.bootstrap()
