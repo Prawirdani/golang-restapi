@@ -22,7 +22,7 @@ func (s *Server) bootstrap() {
 	mws := middleware.NewCollection(s.cfg)
 	s.router.Route("/api", func(r chi.Router) {
 		r.Use(s.metrics.Instrument)
-		http.AuthRoutes(r, authHandler, mws)
+		http.RegisterAuthRoutes(r, authHandler, mws)
 
 	})
 }

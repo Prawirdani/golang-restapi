@@ -8,7 +8,7 @@ import (
 
 var handlerFn = httputil.HandlerWrapper
 
-func AuthRoutes(r chi.Router, h AuthHandler, mw *middleware.Collection) {
+func RegisterAuthRoutes(r chi.Router, h AuthHandler, mw *middleware.Collection) {
 	r.Post("/auth/register", handlerFn(h.HandleRegister))
 	r.Post("/auth/login", handlerFn(h.HandleLogin))
 	r.With(mw.AuthAccessToken).Get("/auth/current", handlerFn(h.CurrentUser))
