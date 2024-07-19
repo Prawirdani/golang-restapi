@@ -8,11 +8,11 @@ import (
 )
 
 // Token Authoriziation Middleware
-func (c *MiddlewareManager) authorize(tt utils.TokenType) func(http.Handler) http.Handler {
+func (mw *Collection) authorize(tt utils.TokenType) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Retrieve, parse and validate the JWT token from the request.
-			claims, err := utils.ParseJWT(r, &c.cfg.Token, tt)
+			claims, err := utils.ParseJWT(r, &mw.cfg.Token, tt)
 			if err != nil {
 				httputil.HandleError(w, err)
 				return

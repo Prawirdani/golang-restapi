@@ -1,10 +1,9 @@
-package app
+package api
 
 import (
 	"context"
 	"fmt"
 	"log"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,71 +11,55 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
-	"github.com/go-chi/httplog/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/config"
+	"github.com/prawirdani/golang-restapi/internal/api/middleware"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
+	"github.com/prawirdani/golang-restapi/pkg/metrics"
 )
 
 type Server struct {
-	pg     *pgxpool.Pool
-	router *chi.Mux
-	cfg    *config.Config
+	pg          *pgxpool.Pool
+	router      *chi.Mux
+	middlewares *middleware.Collection
+	metrics     *metrics.Metrics
+	cfg         *config.Config
 }
 
 // Server Initialization function, also bootstraping dependency
 func InitServer(cfg *config.Config, pgPool *pgxpool.Pool) (*Server, error) {
 	router := chi.NewRouter()
 
-	logger := httplog.NewLogger("request-logger", httplog.Options{
-		LogLevel:         slog.LevelDebug,
-		JSON:             cfg.IsProduction(),
-		Concise:          !cfg.IsProduction(),
-		RequestHeaders:   true,
-		ResponseHeaders:  true,
-		MessageFieldName: "message",
-		TimeFieldFormat:  time.RFC3339,
-		Tags: map[string]string{
-			"version": cfg.App.Version,
-			"env":     string(cfg.App.Environment),
-		},
-		QuietDownRoutes: []string{"/"},
-		QuietDownPeriod: 10 * time.Second,
-	})
+	m := metrics.Init()
+	m.SetAppInfo(cfg.App.Version, string(cfg.App.Environment))
 
-	router.Use(httplog.RequestLogger(logger))
-	router.Use(panicRecoverer)
+	mws := middleware.NewCollection(cfg)
 
-	// Gzip Compressor
-	router.Use(middleware.Compress(6))
+	router.Use(mws.PanicRecoverer)
+	router.Use(mws.Logger)
+	router.Use(mws.Gzip)
+	router.Use(mws.Cors)
 
-	origins, err := cfg.Cors.ParseOrigins()
-	if err != nil {
-		return nil, err
+	if cfg.IsProduction() {
+		router.Use(mws.RateLimitter)
 	}
-
-	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   origins,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "HEAD", "DELETE", "OPTIONS"},
-		AllowCredentials: cfg.Cors.Credentials,
-		Debug:            cfg.IsProduction(),
-	}))
 
 	// Not Found Handler
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		httputil.HandleError(w, httputil.ErrNotFound("The requested resource could not be found"))
 	})
+
 	// Request Method Not Allowed Handler
 	router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		httputil.HandleError(w, httputil.ErrMethodNotAllowed("The method is not allowed for the requested URL"))
 	})
 
 	svr := &Server{
-		router: router,
-		cfg:    cfg,
-		pg:     pgPool,
+		router:      router,
+		cfg:         cfg,
+		pg:          pgPool,
+		metrics:     m,
+		middlewares: mws,
 	}
 
 	svr.bootstrap()
@@ -85,18 +68,21 @@ func InitServer(cfg *config.Config, pgPool *pgxpool.Pool) (*Server, error) {
 }
 
 func (s *Server) Start() {
-
 	svr := http.Server{
 		Addr:    fmt.Sprintf(":%v", s.cfg.App.Port),
 		Handler: s.router,
 	}
 
+	// Application Server
 	go func() {
-		log.Printf("Listening on 0.0.0.0%s", svr.Addr)
+		log.Printf("Listening on localhost%s", svr.Addr)
 		if err := svr.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server startup failed, cause: %s", err.Error())
 		}
 	}()
+
+	// Metrics Server
+	go s.metrics.RunServer(s.cfg.App.Port + 1)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
@@ -111,16 +97,4 @@ func (s *Server) Start() {
 	}
 
 	log.Println("Server gracefully stopped")
-}
-
-/* Panic recoverer middleware, it keep the service alive when crashes */
-func panicRecoverer(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if rvr := recover(); rvr != nil {
-				httputil.HandleError(w, fmt.Errorf("%v", rvr))
-			}
-		}()
-		next.ServeHTTP(w, r)
-	})
 }
