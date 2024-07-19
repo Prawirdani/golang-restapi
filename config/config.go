@@ -82,7 +82,5 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
-	fmt.Println("Length of Origins: ", len(c.Cors.Origins))
-
 	return &c, nil
 }
