@@ -10,7 +10,7 @@ type Layer string
 const (
 	Handler Layer = "Handler"
 	Repo    Layer = "Repository"
-	Usecase Layer = "Usecase"
+	Service Layer = "Service"
 	Utility Layer = "Utility"
 )
 

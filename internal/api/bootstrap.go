@@ -5,7 +5,7 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/delivery/http"
 	"github.com/prawirdani/golang-restapi/internal/delivery/http/middleware"
 	"github.com/prawirdani/golang-restapi/internal/repository"
-	"github.com/prawirdani/golang-restapi/internal/usecase"
+	"github.com/prawirdani/golang-restapi/internal/service"
 )
 
 // Init & Injects all dependencies.
@@ -13,8 +13,8 @@ func (s *Server) bootstrap() {
 	// Setup Repos
 	userRepository := repository.NewUserRepository(s.pg)
 
-	// Setup Usecases
-	authUC := usecase.NewAuthUseCase(s.cfg, userRepository)
+	// Setup Services
+	authUC := service.NewAuthService(s.cfg, userRepository)
 
 	// Setup Handlers
 	authHandler := http.NewAuthHandler(s.cfg, authUC)

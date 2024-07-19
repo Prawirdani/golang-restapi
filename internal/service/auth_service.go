@@ -1,4 +1,4 @@
-package usecase
+package service
 
 import (
 	"context"
@@ -11,27 +11,21 @@ import (
 	"github.com/prawirdani/golang-restapi/pkg/token"
 )
 
-type AuthUseCase interface {
-	Register(ctx context.Context, request model.RegisterRequest) error
-	Login(ctx context.Context, request model.LoginRequest) ([]token.JWT, error)
-	RefreshToken(ctx context.Context, userID string) (token.JWT, error)
-}
-
-type authUseCase struct {
-	userRepo repository.UserRepository
+type AuthService struct {
+	userRepo *repository.UserRepository
 	cfg      *config.Config
 	timeout  time.Duration
 }
 
-func NewAuthUseCase(cfg *config.Config, ur repository.UserRepository) authUseCase {
-	return authUseCase{
+func NewAuthService(cfg *config.Config, ur *repository.UserRepository) *AuthService {
+	return &AuthService{
 		cfg:      cfg,
 		userRepo: ur,
 		timeout:  time.Duration(5 * int(time.Second)),
 	}
 }
 
-func (u authUseCase) Register(ctx context.Context, request model.RegisterRequest) error {
+func (u *AuthService) Register(ctx context.Context, request model.RegisterRequest) error {
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
@@ -46,7 +40,7 @@ func (u authUseCase) Register(ctx context.Context, request model.RegisterRequest
 	return nil
 }
 
-func (u authUseCase) Login(ctx context.Context, request model.LoginRequest) ([]token.JWT, error) {
+func (u *AuthService) Login(ctx context.Context, request model.LoginRequest) ([]token.JWT, error) {
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
@@ -58,7 +52,7 @@ func (u authUseCase) Login(ctx context.Context, request model.LoginRequest) ([]t
 	return user.GenerateTokenPair(u.cfg)
 }
 
-func (u authUseCase) RefreshToken(ctx context.Context, userID string) (token.JWT, error) {
+func (u *AuthService) RefreshToken(ctx context.Context, userID string) (token.JWT, error) {
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 

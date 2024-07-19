@@ -16,22 +16,17 @@ var (
 	ErrorUserNotFound = httputil.ErrNotFound("User not found")
 )
 
-type UserRepository interface {
-	InsertUser(ctx context.Context, u entity.User) error
-	SelectWhere(ctx context.Context, field string, searchVal any) (entity.User, error)
-}
-
-type userRepository struct {
+type UserRepository struct {
 	db *pgxpool.Pool
 }
 
-func NewUserRepository(pgpool *pgxpool.Pool) userRepository {
-	return userRepository{
+func NewUserRepository(pgpool *pgxpool.Pool) *UserRepository {
+	return &UserRepository{
 		db: pgpool,
 	}
 }
 
-func (r userRepository) InsertUser(ctx context.Context, u entity.User) error {
+func (r *UserRepository) InsertUser(ctx context.Context, u entity.User) error {
 	query := "INSERT INTO users(id, name, email, password) VALUES($1, $2, $3, $4)"
 	_, err := r.db.Exec(ctx, query, u.ID, u.Name, u.Email, u.Password)
 
@@ -45,7 +40,7 @@ func (r userRepository) InsertUser(ctx context.Context, u entity.User) error {
 	return nil
 }
 
-func (r userRepository) SelectWhere(ctx context.Context, field string, searchVal any) (entity.User, error) {
+func (r *UserRepository) SelectWhere(ctx context.Context, field string, searchVal any) (entity.User, error) {
 	var user entity.User
 	query := fmt.Sprintf("SELECT id, name, email, password, created_at, updated_at FROM users WHERE %s=$1", field)
 
