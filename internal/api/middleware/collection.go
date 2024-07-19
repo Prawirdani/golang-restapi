@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/prawirdani/golang-restapi/config"
-	"github.com/prawirdani/golang-restapi/pkg/utils"
+	"github.com/prawirdani/golang-restapi/pkg/token"
 )
 
 type Collection struct {
@@ -21,8 +21,8 @@ func NewCollection(cfg *config.Config) *Collection {
 	mw := Collection{
 		cfg: cfg,
 	}
-	mw.Auth.AccessToken = mw.authorize(utils.AccessToken)
-	mw.Auth.RefreshToken = mw.authorize(utils.RefreshToken)
+	mw.Auth.AccessToken = mw.authorize(token.Access)
+	mw.Auth.RefreshToken = mw.authorize(token.Refresh)
 
 	return &mw
 }

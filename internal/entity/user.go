@@ -7,6 +7,7 @@ import (
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
+	"github.com/prawirdani/golang-restapi/pkg/token"
 	"github.com/prawirdani/golang-restapi/pkg/utils"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -56,22 +57,22 @@ func (u User) VerifyPassword(plain string) error {
 	return nil
 }
 
-func (u User) GenerateAccessToken(cfg *config.Config) (utils.JWT, error) {
+func (u User) GenerateAccessToken(cfg *config.Config) (token.JWT, error) {
 	payload := map[string]interface{}{
 		"id":   u.ID.String(),
 		"name": u.Name,
 	}
-	return utils.GenerateJWT(cfg, payload, utils.AccessToken)
+	return token.GenerateJWT(cfg, payload, token.Access)
 }
 
-func (u User) GenerateRefreshToken(cfg *config.Config) (utils.JWT, error) {
+func (u User) GenerateRefreshToken(cfg *config.Config) (token.JWT, error) {
 	payload := map[string]interface{}{
 		"id": u.ID.String(),
 	}
-	return utils.GenerateJWT(cfg, payload, utils.RefreshToken)
+	return token.GenerateJWT(cfg, payload, token.Refresh)
 }
 
-func (u User) GenerateTokenPair(cfg *config.Config) ([]utils.JWT, error) {
+func (u User) GenerateTokenPair(cfg *config.Config) ([]token.JWT, error) {
 	accessToken, err := u.GenerateAccessToken(cfg)
 	if err != nil {
 		return nil, err
@@ -82,5 +83,5 @@ func (u User) GenerateTokenPair(cfg *config.Config) ([]utils.JWT, error) {
 		return nil, err
 	}
 
-	return []utils.JWT{accessToken, refreshToken}, nil
+	return []token.JWT{accessToken, refreshToken}, nil
 }

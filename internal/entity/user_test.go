@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/model"
-	"github.com/prawirdani/golang-restapi/pkg/utils"
+	"github.com/prawirdani/golang-restapi/pkg/token"
 	"github.com/stretchr/testify/require"
 )
 
@@ -116,25 +116,25 @@ func TestGenerateToken(t *testing.T) {
 	require.NotNil(t, user)
 
 	t.Run("AccessToken", func(t *testing.T) {
-		token, err := user.GenerateAccessToken(cfg)
+		tk, err := user.GenerateAccessToken(cfg)
 		require.Nil(t, err)
-		require.NotEmpty(t, token)
-		require.Equal(t, token.Type(), utils.AccessToken)
+		require.NotEmpty(t, tk)
+		require.Equal(t, tk.Type(), token.Access)
 	})
 
 	t.Run("RefreshToken", func(t *testing.T) {
-		token, err := user.GenerateRefreshToken(cfg)
+		tk, err := user.GenerateRefreshToken(cfg)
 		require.Nil(t, err)
-		require.NotEmpty(t, token)
-		require.Equal(t, token.Type(), utils.RefreshToken)
+		require.NotEmpty(t, tk)
+		require.Equal(t, tk.Type(), token.Refresh)
 	})
 
 	t.Run("TokenPair", func(t *testing.T) {
-		tokens, err := user.GenerateTokenPair(cfg)
+		tk, err := user.GenerateTokenPair(cfg)
 		require.Nil(t, err)
-		require.NotEmpty(t, tokens)
-		require.Equal(t, len(tokens), 2)
-		require.Equal(t, tokens[0].Type(), utils.AccessToken)
-		require.Equal(t, tokens[1].Type(), utils.RefreshToken)
+		require.NotEmpty(t, tk)
+		require.Equal(t, len(tk), 2)
+		require.Equal(t, tk[0].Type(), token.Access)
+		require.Equal(t, tk[1].Type(), token.Refresh)
 	})
 }

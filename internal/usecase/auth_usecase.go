@@ -8,13 +8,13 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/entity"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/repository"
-	"github.com/prawirdani/golang-restapi/pkg/utils"
+	"github.com/prawirdani/golang-restapi/pkg/token"
 )
 
 type AuthUseCase interface {
 	Register(ctx context.Context, request model.RegisterRequest) error
-	Login(ctx context.Context, request model.LoginRequest) ([]utils.JWT, error)
-	RefreshToken(ctx context.Context, userID string) (utils.JWT, error)
+	Login(ctx context.Context, request model.LoginRequest) ([]token.JWT, error)
+	RefreshToken(ctx context.Context, userID string) (token.JWT, error)
 }
 
 type authUseCase struct {
@@ -46,7 +46,7 @@ func (u authUseCase) Register(ctx context.Context, request model.RegisterRequest
 	return nil
 }
 
-func (u authUseCase) Login(ctx context.Context, request model.LoginRequest) ([]utils.JWT, error) {
+func (u authUseCase) Login(ctx context.Context, request model.LoginRequest) ([]token.JWT, error) {
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
@@ -58,7 +58,7 @@ func (u authUseCase) Login(ctx context.Context, request model.LoginRequest) ([]u
 	return user.GenerateTokenPair(u.cfg)
 }
 
-func (u authUseCase) RefreshToken(ctx context.Context, userID string) (utils.JWT, error) {
+func (u authUseCase) RefreshToken(ctx context.Context, userID string) (token.JWT, error) {
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
