@@ -1,8 +1,8 @@
-package http
+package app
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/prawirdani/golang-restapi/internal/delivery/http/handler"
+	"github.com/prawirdani/golang-restapi/internal/handler"
 	"github.com/prawirdani/golang-restapi/internal/repository"
 	"github.com/prawirdani/golang-restapi/internal/service"
 )

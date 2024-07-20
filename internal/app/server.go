@@ -1,4 +1,4 @@
-package http
+package app
 
 import (
 	"context"
@@ -13,10 +13,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/config"
-	"github.com/prawirdani/golang-restapi/internal/delivery/http/helper"
-	"github.com/prawirdani/golang-restapi/internal/delivery/http/middleware"
+	"github.com/prawirdani/golang-restapi/internal/app/middleware"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/metrics"
+	"github.com/prawirdani/golang-restapi/pkg/response"
 )
 
 type Server struct {
@@ -47,12 +47,12 @@ func InitServer(cfg *config.Config, pgPool *pgxpool.Pool) (*Server, error) {
 
 	// Not Found Handler
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		helper.HandleError(w, errors.NotFound("The requested resource could not be found"))
+		response.HandleError(w, errors.NotFound("The requested resource could not be found"))
 	})
 
 	// Request Method Not Allowed Handler
 	router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		helper.HandleError(w, errors.MethodNotAllowed("The method is not allowed for the requested URL"))
+		response.HandleError(w, errors.MethodNotAllowed("The method is not allowed for the requested URL"))
 	})
 
 	svr := &Server{

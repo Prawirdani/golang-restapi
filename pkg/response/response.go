@@ -1,6 +1,6 @@
-package model
+package response
 
-type Response struct {
+type Base struct {
 	Data    any        `json:"data"`
 	Message string     `json:"message"`
 	Status  int        `json:"-"`

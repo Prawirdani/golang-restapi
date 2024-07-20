@@ -1,9 +1,8 @@
-package helper
+package response
 
 import (
 	"net/http"
 
-	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
 )
@@ -11,8 +10,8 @@ import (
 // Response writer for handling error
 func HandleError(w http.ResponseWriter, err error) {
 	e := errors.Parse(err)
-	response := model.Response{
-		Error: &model.ErrorBody{
+	response := Base{
+		Error: &ErrorBody{
 			Code:    e.Status,
 			Message: e.Message,
 			Details: e.Cause,

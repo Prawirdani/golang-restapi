@@ -6,7 +6,7 @@ import (
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/database"
-	"github.com/prawirdani/golang-restapi/internal/delivery/http"
+	"github.com/prawirdani/golang-restapi/internal/app"
 	"github.com/prawirdani/golang-restapi/pkg/logger"
 )
 
@@ -25,7 +25,7 @@ func main() {
 	defer dbPool.Close()
 	slog.Info("PostgreSQL DB Connection Established")
 
-	server, err := http.InitServer(cfg, dbPool)
+	server, err := app.InitServer(cfg, dbPool)
 	if err != nil {
 		log.Fatal(err)
 	}
