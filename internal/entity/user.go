@@ -8,7 +8,7 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/token"
-	"github.com/prawirdani/golang-restapi/pkg/utils"
+	"github.com/prawirdani/golang-restapi/pkg/validator"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -34,7 +34,7 @@ func NewUser(request model.RegisterRequest) (User, error) {
 		Password: request.Password,
 	}
 
-	if err := utils.Validate(u); err != nil {
+	if err := validator.Struct(u); err != nil {
 		return User{}, err
 	}
 

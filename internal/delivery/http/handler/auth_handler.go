@@ -7,7 +7,7 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/service"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
-	"github.com/prawirdani/golang-restapi/pkg/utils"
+	"github.com/prawirdani/golang-restapi/pkg/validator"
 )
 
 type AuthHandler struct {
@@ -29,7 +29,7 @@ func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) err
 		return err
 	}
 
-	if err := utils.Validate(reqBody); err != nil {
+	if err := validator.Struct(reqBody); err != nil {
 		return err
 	}
 
@@ -46,7 +46,7 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	if err := utils.Validate(reqBody); err != nil {
+	if err := validator.Struct(reqBody); err != nil {
 		return err
 	}
 
