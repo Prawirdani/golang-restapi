@@ -20,10 +20,11 @@ import (
 )
 
 type Server struct {
-	router  *chi.Mux
-	pg      *pgxpool.Pool
-	metrics *metrics.Metrics
-	cfg     *config.Config
+	router      *chi.Mux
+	pg          *pgxpool.Pool
+	metrics     *metrics.Metrics
+	cfg         *config.Config
+	middlewares *middleware.Collection
 }
 
 // Server Initialization function, also bootstraping dependency
@@ -55,10 +56,11 @@ func InitServer(cfg *config.Config, pgPool *pgxpool.Pool) (*Server, error) {
 	})
 
 	svr := &Server{
-		router:  router,
-		cfg:     cfg,
-		pg:      pgPool,
-		metrics: m,
+		router:      router,
+		cfg:         cfg,
+		pg:          pgPool,
+		metrics:     m,
+		middlewares: mws,
 	}
 
 	svr.bootstrap()

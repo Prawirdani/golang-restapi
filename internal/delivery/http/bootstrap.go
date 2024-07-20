@@ -3,7 +3,6 @@ package http
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/prawirdani/golang-restapi/internal/delivery/http/handler"
-	"github.com/prawirdani/golang-restapi/internal/delivery/http/middleware"
 	"github.com/prawirdani/golang-restapi/internal/repository"
 	"github.com/prawirdani/golang-restapi/internal/service"
 )
@@ -19,10 +18,9 @@ func (s *Server) bootstrap() {
 	// Setup Handlers
 	authHandler := handler.NewAuthHandler(s.cfg, authUC)
 
-	mws := middleware.NewCollection(s.cfg)
 	s.router.Route("/api", func(r chi.Router) {
 		r.Use(s.metrics.Instrument)
 		// route.RegisterAuthRoutes(r, authHandler, mws)
-		registerAuthRoutes(r, authHandler, mws)
+		registerAuthRoutes(r, authHandler, s.middlewares)
 	})
 }
