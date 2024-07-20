@@ -8,12 +8,12 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/internal/entity"
-	"github.com/prawirdani/golang-restapi/pkg/httputil"
+	"github.com/prawirdani/golang-restapi/pkg/errors"
 )
 
 var (
-	ErrorEmailExists  = httputil.ErrConflict("Email already exists")
-	ErrorUserNotFound = httputil.ErrNotFound("User not found")
+	ErrorEmailExists  = errors.Conflict("Email already exists")
+	ErrorUserNotFound = errors.NotFound("User not found")
 )
 
 type UserRepository struct {

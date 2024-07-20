@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/prawirdani/golang-restapi/config"
+	"github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
 )
 
@@ -24,7 +25,7 @@ func ParseJWT(r *http.Request, cfg *config.TokenConfig, tokenType Type) (map[str
 
 	// If token is still empty, return an error
 	if tokenString == "" {
-		return nil, httputil.ErrUnauthorized("Missing auth token from cookie or Authorization bearer token")
+		return nil, errors.Unauthorized("Missing auth token from cookie or Authorization bearer token")
 	}
 
 	claims, err := parseJWT(tokenString, cfg.SecretKey)
@@ -35,11 +36,11 @@ func ParseJWT(r *http.Request, cfg *config.TokenConfig, tokenType Type) (map[str
 	// Validate expected token type
 	claimsTokenType, ok := claims["type"].(float64)
 	if !ok {
-		return nil, httputil.ErrUnauthorized("Invalid token type")
+		return nil, errors.Unauthorized("Invalid token type")
 	}
 
 	if Type(claimsTokenType) != tokenType {
-		return nil, httputil.ErrUnauthorized(fmt.Sprintf("Invalid token type, expected %s", tokenType.String()))
+		return nil, errors.Unauthorized(fmt.Sprintf("Invalid token type, expected %s", tokenType.String()))
 	}
 
 	return claims, nil

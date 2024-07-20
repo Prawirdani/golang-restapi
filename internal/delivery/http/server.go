@@ -1,4 +1,4 @@
-package api
+package http
 
 import (
 	"context"
@@ -13,7 +13,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/config"
-	"github.com/prawirdani/golang-restapi/pkg/httputil"
+	"github.com/prawirdani/golang-restapi/internal/delivery/http/helper"
+	"github.com/prawirdani/golang-restapi/internal/delivery/http/middleware"
+	"github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/metrics"
 )
 
@@ -31,23 +33,25 @@ func InitServer(cfg *config.Config, pgPool *pgxpool.Pool) (*Server, error) {
 	m := metrics.Init()
 	m.SetAppInfo(cfg.App.Version, string(cfg.App.Environment))
 
-	router.Use(panicRecoverer)
-	router.Use(reqLogger)
-	router.Use(gzip)
-	router.Use(cors(cfg))
+	mws := middleware.NewCollection(cfg)
+
+	router.Use(mws.PanicRecoverer)
+	router.Use(mws.ReqLogger)
+	router.Use(mws.Gzip)
+	router.Use(mws.Cors)
 
 	if cfg.IsProduction() {
-		router.Use(rateLimit)
+		router.Use(mws.RateLimit)
 	}
 
 	// Not Found Handler
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		httputil.HandleError(w, httputil.ErrNotFound("The requested resource could not be found"))
+		helper.HandleError(w, errors.NotFound("The requested resource could not be found"))
 	})
 
 	// Request Method Not Allowed Handler
 	router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		httputil.HandleError(w, httputil.ErrMethodNotAllowed("The method is not allowed for the requested URL"))
+		helper.HandleError(w, errors.MethodNotAllowed("The method is not allowed for the requested URL"))
 	})
 
 	svr := &Server{

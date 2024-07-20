@@ -6,14 +6,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/model"
-	"github.com/prawirdani/golang-restapi/pkg/httputil"
+	"github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/token"
 	"github.com/prawirdani/golang-restapi/pkg/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var (
-	ErrorWrongCredentials = httputil.ErrUnauthorized("Check your credentials")
+	ErrorWrongCredentials = errors.Unauthorized("Check your credentials")
 )
 
 type User struct {

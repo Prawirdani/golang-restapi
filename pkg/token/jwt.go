@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/prawirdani/golang-restapi/pkg/httputil"
+	"github.com/prawirdani/golang-restapi/pkg/errors"
 )
 
 var (
-	ErrorTokenInvalid    = httputil.ErrUnauthorized("Invalid or expired token")
-	ErrorTokenSignMethod = httputil.ErrUnauthorized("Invalid or mismatch token signing method")
+	ErrorTokenInvalid    = errors.Unauthorized("Invalid or expired token")
+	ErrorTokenSignMethod = errors.Unauthorized("Invalid or mismatch token signing method")
 )
 
 var (

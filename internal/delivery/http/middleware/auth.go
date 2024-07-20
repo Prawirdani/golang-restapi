@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 
+	"github.com/prawirdani/golang-restapi/internal/delivery/http/helper"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
 	"github.com/prawirdani/golang-restapi/pkg/token"
 )
@@ -22,7 +23,7 @@ func (mw *Collection) authorize(tt token.Type) func(http.Handler) http.Handler {
 			// Retrieve, parse and validate the JWT token from the request.
 			claims, err := token.ParseJWT(r, &mw.cfg.Token, tt)
 			if err != nil {
-				httputil.HandleError(w, err)
+				helper.HandleError(w, err)
 				return
 			}
 
