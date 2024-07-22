@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -51,8 +52,8 @@ type CorsConfig struct {
 
 type TokenConfig struct {
 	SecretKey          string
-	AccessTokenExpiry  int
-	RefreshTokenExpiry int
+	AccessTokenExpiry  time.Duration
+	RefreshTokenExpiry time.Duration
 }
 
 // Load and Parse Config, pass the path of the config file relatively from the root dir
@@ -81,6 +82,9 @@ func LoadConfig(path string) (*Config, error) {
 			return nil, fmt.Errorf("Invalid cors.Origins URL: %s", origin)
 		}
 	}
+
+	c.Token.AccessTokenExpiry = c.Token.AccessTokenExpiry * time.Minute
+	c.Token.RefreshTokenExpiry = c.Token.RefreshTokenExpiry * time.Hour * 24
 
 	return &c, nil
 }
