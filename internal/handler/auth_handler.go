@@ -9,7 +9,6 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/service"
 	"github.com/prawirdani/golang-restapi/pkg/common"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
-	"github.com/prawirdani/golang-restapi/pkg/validator"
 )
 
 type AuthHandler struct {
@@ -25,13 +24,8 @@ func NewAuthHandler(cfg *config.Config, us *service.AuthService) *AuthHandler {
 }
 
 func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) error {
-	var reqBody model.RegisterRequest
-
-	if err := httputil.BindJSON(r, &reqBody); err != nil {
-		return err
-	}
-
-	if err := validator.Struct(reqBody); err != nil {
+	reqBody, err := BindValidate[model.RegisterRequest](r)
+	if err != nil {
 		return err
 	}
 
@@ -43,12 +37,8 @@ func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) err
 }
 
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
-	var reqBody model.LoginRequest
-	if err := httputil.BindJSON(r, &reqBody); err != nil {
-		return err
-	}
-
-	if err := validator.Struct(reqBody); err != nil {
+	reqBody, err := BindValidate[model.LoginRequest](r)
+	if err != nil {
 		return err
 	}
 
