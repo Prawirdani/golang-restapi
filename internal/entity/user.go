@@ -1,11 +1,13 @@
 package entity
 
 import (
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/model"
+	"github.com/prawirdani/golang-restapi/pkg/common"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/token"
 	"github.com/prawirdani/golang-restapi/pkg/validator"
@@ -57,31 +59,64 @@ func (u User) VerifyPassword(plain string) error {
 	return nil
 }
 
-func (u User) GenerateAccessToken(cfg *config.Config) (token.JWT, error) {
-	payload := map[string]interface{}{
-		"id":   u.ID.String(),
-		"name": u.Name,
+func (u User) GenerateAccessToken(cfg *config.Config) (string, error) {
+	p := map[string]interface{}{
+		"user": map[string]interface{}{
+			"id":   u.ID.String(),
+			"name": u.Name,
+		},
+		"type": common.AccessToken,
 	}
-	return token.GenerateJWT(cfg, payload, token.Access)
+
+	return token.Encode(cfg.Token.SecretKey, p, cfg.Token.AccessTokenExpiry)
 }
 
-func (u User) GenerateRefreshToken(cfg *config.Config) (token.JWT, error) {
-	payload := map[string]interface{}{
-		"id": u.ID.String(),
+func (u User) GenerateRefreshToken(cfg *config.Config) (string, error) {
+	p := map[string]interface{}{
+		"user": map[string]interface{}{
+			"id": u.ID.String(),
+		},
+		"type": common.RefreshToken,
 	}
-	return token.GenerateJWT(cfg, payload, token.Refresh)
+
+	return token.Encode(cfg.Token.SecretKey, p, cfg.Token.RefreshTokenExpiry)
 }
 
-func (u User) GenerateTokenPair(cfg *config.Config) ([]token.JWT, error) {
-	accessToken, err := u.GenerateAccessToken(cfg)
-	if err != nil {
-		return nil, err
+// GenerateTokenPair generates access token and refresh token using goroutines
+func (u User) GenerateTokenPair(cfg *config.Config) (at string, rf string, err error) {
+	var wg sync.WaitGroup
+	errCh := make(chan error, 2)
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		token, e := u.GenerateAccessToken(cfg)
+		if e != nil {
+			errCh <- e
+		}
+		at = token
+	}()
+
+	go func() {
+		defer wg.Done()
+		token, e := u.GenerateRefreshToken(cfg)
+		if e != nil {
+			errCh <- e
+		}
+		rf = token
+	}()
+
+	go func() {
+		wg.Wait()
+		close(errCh)
+	}()
+
+	for e := range errCh {
+		if e != nil {
+			return "", "", e
+		}
 	}
 
-	refreshToken, err := u.GenerateRefreshToken(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return []token.JWT{accessToken, refreshToken}, nil
+	return at, rf, nil
 }

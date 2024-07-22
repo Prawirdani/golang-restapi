@@ -1,17 +1,40 @@
 package httputil
 
-import "context"
+import (
+	"context"
+	"encoding/json"
+	"errors"
+
+	"github.com/prawirdani/golang-restapi/internal/model"
+)
 
 type CtxKey string
 
-const TOKEN_CLAIMS CtxKey = "token_claims"
+const AuthCtxKey CtxKey = "auth_ctx"
 
-// Auth Context Setter
-func SetAuthCtx(ctx context.Context, claims map[string]interface{}) context.Context {
-	return context.WithValue(ctx, TOKEN_CLAIMS, claims)
+// SetAuthCtx sets the token payload to the context.
+func SetAuthCtx(ctx context.Context, tokenPayload map[string]interface{}) context.Context {
+	return context.WithValue(ctx, AuthCtxKey, tokenPayload)
 }
 
-// Retrieve Token map claims from the Request Context
-func GetAuthCtx(ctx context.Context) map[string]interface{} {
-	return ctx.Value(TOKEN_CLAIMS).(map[string]interface{})
+// GetAuthCtx retrieves the token payload from the context.
+
+type PayloadModel interface {
+	model.AccessTokenPayload | model.RefreshTokenPayload
+}
+
+func GetAuthCtx[T PayloadModel](ctx context.Context) (T, error) {
+	var payload T
+
+	mapPayload, ok := ctx.Value(AuthCtxKey).(map[string]interface{})
+	if !ok {
+		return payload, errors.New("auth context not found")
+	}
+
+	jsonPayload, _ := json.Marshal(mapPayload)
+	if err := json.Unmarshal(jsonPayload, &payload); err != nil {
+		return payload, err
+	}
+
+	return payload, nil
 }

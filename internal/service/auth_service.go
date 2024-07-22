@@ -8,7 +8,6 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/entity"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/repository"
-	"github.com/prawirdani/golang-restapi/pkg/token"
 )
 
 type AuthService struct {
@@ -40,19 +39,24 @@ func (u *AuthService) Register(ctx context.Context, request model.RegisterReques
 	return nil
 }
 
-func (u *AuthService) Login(ctx context.Context, request model.LoginRequest) ([]token.JWT, error) {
+func (u *AuthService) Login(ctx context.Context, request model.LoginRequest) (accessToken string, refreshToken string, err error) {
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
 	user, _ := u.userRepo.SelectWhere(ctxWT, "email", request.Email)
 	if err := user.VerifyPassword(request.Password); err != nil {
-		return nil, err
+		return "", "", err
 	}
 
-	return user.GenerateTokenPair(u.cfg)
+	accessToken, refreshToken, err = user.GenerateTokenPair(u.cfg)
+	if err != nil {
+		return "", "", err
+	}
+
+	return accessToken, refreshToken, nil
 }
 
-func (u *AuthService) RefreshToken(ctx context.Context, userID string) (token.JWT, error) {
+func (u *AuthService) RefreshToken(ctx context.Context, userID string) (string, error) {
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 

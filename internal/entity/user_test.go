@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/model"
-	"github.com/prawirdani/golang-restapi/pkg/token"
 	"github.com/stretchr/testify/require"
 )
 
@@ -119,22 +118,18 @@ func TestGenerateToken(t *testing.T) {
 		tk, err := user.GenerateAccessToken(cfg)
 		require.Nil(t, err)
 		require.NotEmpty(t, tk)
-		require.Equal(t, tk.Type(), token.Access)
 	})
 
 	t.Run("RefreshToken", func(t *testing.T) {
 		tk, err := user.GenerateRefreshToken(cfg)
 		require.Nil(t, err)
 		require.NotEmpty(t, tk)
-		require.Equal(t, tk.Type(), token.Refresh)
 	})
 
 	t.Run("TokenPair", func(t *testing.T) {
-		tk, err := user.GenerateTokenPair(cfg)
+		at, rt, err := user.GenerateTokenPair(cfg)
 		require.Nil(t, err)
-		require.NotEmpty(t, tk)
-		require.Equal(t, len(tk), 2)
-		require.Equal(t, tk[0].Type(), token.Access)
-		require.Equal(t, tk[1].Type(), token.Refresh)
+		require.NotEmpty(t, at)
+		require.NotEmpty(t, rt)
 	})
 }
