@@ -7,13 +7,13 @@ build:
 	@echo "Linting codebase..."
 	golangci-lint run
 	@echo "Building binary..."
-	go build -o ./cmd/api/bin ./cmd/api/main.go
+	go build -o ./cmd/app/bin ./cmd/app/main.go
 	@echo "Build completed successfully..."
 
 # Run binary
 run:
 	@echo "Running binary..."
-	./cmd/api/bin
+	./cmd/app/bin
 
 # Lint Code
 lint:	

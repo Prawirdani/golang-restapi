@@ -1,7 +1,7 @@
 tmp
 .env
-/cmd/api/bin
-/cmd/api/logs
+/cmd/app/bin
+/cmd/app/logs
 /config/config.yml
 .env
 

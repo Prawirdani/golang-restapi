@@ -14,7 +14,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	logger := logging.NewLogger(cfg)
+
 	dbPool, err := database.NewPGConnection(cfg)
 	if err != nil {
 		logger.Fatal(logging.Postgres, "main.NewPGConnection", err.Error())
