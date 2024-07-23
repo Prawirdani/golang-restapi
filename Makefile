@@ -12,7 +12,6 @@ build:
 
 # Run binary
 run:
-	@echo "Running binary..."
 	./cmd/app/bin
 
 # Lint Code
@@ -24,3 +23,11 @@ tidy:
 
 test:
 	go test -v -count=1 ./... -cover
+
+
+# Make sure to install migrate cli binary on the system before running this command. https://github.com/golang-migrate/migrate
+migrate\:create:
+	@echo "Create Migration"
+	@read -p "Enter migration name: " migration_name; \
+	migrate create -ext sql -dir database/migrations -seq $$migration_name
+	@echo "Migration created successfully, fill in the schema in the generated file."
