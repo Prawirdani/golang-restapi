@@ -18,8 +18,6 @@ func newZeroLogger(cfg *config.Config) Logger {
 	var w io.Writer = os.Stdout
 	var level zerolog.Level = zerolog.DebugLevel
 
-	initTime := time.Now()
-
 	// Write logs into file if in production mode
 	if cfg.IsProduction() {
 		level = zerolog.InfoLevel
@@ -31,7 +29,7 @@ func newZeroLogger(cfg *config.Config) Logger {
 		}
 
 		// Create log file
-		filename := fmt.Sprintf("%s%v.%s", cfg.App.LogPath, initTime.Format("2006-01-02 15:04:05"), "log")
+		filename := fmt.Sprintf("%s%v.%s", cfg.App.LogPath, time.Now().Format("2006-01-02 15:04:05"), "log")
 
 		logFile, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
