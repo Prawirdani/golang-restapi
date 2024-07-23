@@ -22,7 +22,6 @@ func main() {
 		logger.Fatal(logging.Postgres, "main.NewPGConnection", err.Error())
 	}
 	defer dbPool.Close()
-	logger.Info(logging.Startup, "main", "Postgres connection established")
 
 	server, err := app.InitServer(cfg, logger, dbPool)
 	if err != nil {
