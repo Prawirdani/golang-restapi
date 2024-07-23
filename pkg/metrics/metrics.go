@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -41,15 +40,11 @@ func Init() *Metrics {
 	return m
 }
 
-func (m *Metrics) RunServer(port int) {
+func (m *Metrics) RunServer(port int) error {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
 
-	log.Printf("Metrics serves at localhost:%v/metrics", port)
-	log.Fatal(http.ListenAndServe(
-		fmt.Sprintf(":%v", port),
-		mux,
-	))
+	return http.ListenAndServe(fmt.Sprintf(":%v", port), mux)
 }
 
 func (m *Metrics) SetAppInfo(version, env string) {

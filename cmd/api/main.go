@@ -2,12 +2,11 @@ package main
 
 import (
 	"log"
-	"log/slog"
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/database"
 	"github.com/prawirdani/golang-restapi/internal/app"
-	"github.com/prawirdani/golang-restapi/pkg/logger"
+	"github.com/prawirdani/golang-restapi/pkg/logging"
 )
 
 func main() {
@@ -15,19 +14,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	logger.Init(cfg.IsProduction())
-	log.Printf("Version: %s, Environtment: %s", cfg.App.Version, cfg.App.Environment)
-
+	logger := logging.NewLogger(cfg)
 	dbPool, err := database.NewPGConnection(cfg)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(logging.Postgres, "main.NewPGConnection", err.Error())
 	}
 	defer dbPool.Close()
-	slog.Info("PostgreSQL DB Connection Established")
+	logger.Info(logging.Startup, "main", "Postgres connection established")
 
-	server, err := app.InitServer(cfg, dbPool)
+	server, err := app.InitServer(cfg, logger, dbPool)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(logging.Startup, "main.InitServer", err.Error())
 	}
 
 	server.Start()

@@ -32,6 +32,7 @@ type AppConfig struct {
 	Version     string
 	Port        int
 	Environment AppEnv
+	LogPath     string
 }
 
 type DBConfig struct {

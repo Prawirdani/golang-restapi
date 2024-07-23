@@ -8,17 +8,20 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/entity"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/repository"
+	"github.com/prawirdani/golang-restapi/pkg/logging"
 )
 
 type AuthService struct {
 	userRepo *repository.UserRepository
 	cfg      *config.Config
 	timeout  time.Duration
+	logger   logging.Logger
 }
 
-func NewAuthService(cfg *config.Config, ur *repository.UserRepository) *AuthService {
+func NewAuthService(cfg *config.Config, l logging.Logger, ur *repository.UserRepository) *AuthService {
 	return &AuthService{
 		cfg:      cfg,
+		logger:   l,
 		userRepo: ur,
 		timeout:  time.Duration(5 * int(time.Second)),
 	}
@@ -30,6 +33,7 @@ func (u *AuthService) Register(ctx context.Context, request model.RegisterReques
 
 	newUser, err := entity.NewUser(request)
 	if err != nil {
+		u.logger.Error(logging.Service, "AuthService.Register", err.Error())
 		return err
 	}
 

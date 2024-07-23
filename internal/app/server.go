@@ -3,32 +3,43 @@ package app
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	stderrs "errors"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/app/middleware"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
+	"github.com/prawirdani/golang-restapi/pkg/logging"
 	"github.com/prawirdani/golang-restapi/pkg/metrics"
 	"github.com/prawirdani/golang-restapi/pkg/response"
 )
 
 type Server struct {
+	cfg         *config.Config
+	metrics     *metrics.Metrics
+	logger      logging.Logger
 	router      *chi.Mux
 	pg          *pgxpool.Pool
-	metrics     *metrics.Metrics
-	cfg         *config.Config
 	middlewares *middleware.Collection
 }
 
 // Server Initialization function, also bootstraping dependency
-func InitServer(cfg *config.Config, pgPool *pgxpool.Pool) (*Server, error) {
+func InitServer(cfg *config.Config, logger logging.Logger, pgPool *pgxpool.Pool) (*Server, error) {
+	if cfg == nil {
+		return nil, stderrs.New("Config is required")
+	}
+
+	if pgPool == nil {
+		return nil, stderrs.New("Postgres connection pool is required")
+	}
+
 	router := chi.NewRouter()
 
 	m := metrics.Init()
@@ -37,12 +48,14 @@ func InitServer(cfg *config.Config, pgPool *pgxpool.Pool) (*Server, error) {
 	mws := middleware.NewCollection(cfg)
 
 	router.Use(mws.PanicRecoverer)
-	router.Use(mws.ReqLogger)
 	router.Use(mws.Gzip)
 	router.Use(mws.Cors)
 
 	if cfg.IsProduction() {
 		router.Use(mws.RateLimit)
+	} else {
+		// Beutify request log in development
+		router.Use(mws.ReqLogger)
 	}
 
 	// Not Found Handler
@@ -61,6 +74,7 @@ func InitServer(cfg *config.Config, pgPool *pgxpool.Pool) (*Server, error) {
 		pg:          pgPool,
 		metrics:     m,
 		middlewares: mws,
+		logger:      logger,
 	}
 
 	svr.bootstrap()
@@ -76,26 +90,31 @@ func (s *Server) Start() {
 
 	// Application Server
 	go func() {
-		log.Printf("Listening on localhost%s", svr.Addr)
+		s.logger.Info(logging.Startup, "app.Server", fmt.Sprintf("App serves on %v", s.cfg.App.Port))
 		if err := svr.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server startup failed, cause: %s", err.Error())
+			s.logger.Fatal(logging.Startup, "app.Server", err.Error())
 		}
 	}()
 
 	// Metrics Server
-	go s.metrics.RunServer(s.cfg.App.Port + 1)
+	go func() {
+		s.logger.Info(logging.Startup, "app.Server.Metrics", fmt.Sprintf("Metrics serves on %v", s.cfg.App.Port+1))
+		if err := s.metrics.RunServer(s.cfg.App.Port + 1); err != nil {
+			s.logger.Fatal(logging.Startup, "app.Server.Metrics", err.Error())
+		}
+	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutdown signal received")
+	s.logger.Info(logging.Shutdown, "app.Server.Shutdown", "Shutdown signal received")
 
 	ctx, shutdown := context.WithTimeout(context.Background(), 15*time.Second)
 	defer shutdown()
 
 	if err := svr.Shutdown(ctx); err != nil {
-		log.Fatalf("Server shutdown failed, cause: %s", err.Error())
+		s.logger.Fatal(logging.Shutdown, "app.Server.Shutdown", err.Error())
 	}
 
-	log.Println("Server gracefully stopped")
+	s.logger.Info(logging.Shutdown, "app.Server.Shutdown", "Server gracefully stopped")
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/internal/entity"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
+	"github.com/prawirdani/golang-restapi/pkg/logging"
 )
 
 var (
@@ -17,12 +18,14 @@ var (
 )
 
 type UserRepository struct {
-	db *pgxpool.Pool
+	db     *pgxpool.Pool
+	logger logging.Logger
 }
 
-func NewUserRepository(pgpool *pgxpool.Pool) *UserRepository {
+func NewUserRepository(pgpool *pgxpool.Pool, logger logging.Logger) *UserRepository {
 	return &UserRepository{
-		db: pgpool,
+		db:     pgpool,
+		logger: logger,
 	}
 }
 
@@ -35,6 +38,7 @@ func (r *UserRepository) InsertUser(ctx context.Context, u entity.User) error {
 		if strings.Contains(err.Error(), "23505") {
 			return ErrorEmailExists
 		}
+		r.logger.Error(logging.Postgres, "UserRepository.InsertUser", err.Error())
 		return err
 	}
 	return nil
@@ -57,6 +61,7 @@ func (r *UserRepository) SelectWhere(ctx context.Context, field string, searchVa
 		if err == pgx.ErrNoRows {
 			return user, ErrorUserNotFound
 		}
+		r.logger.Error(logging.Postgres, "UserRepository.SelectWhere", err.Error())
 		return user, err
 	}
 

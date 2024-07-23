@@ -10,10 +10,10 @@ import (
 // Init & Injects all dependencies.
 func (s *Server) bootstrap() {
 	// Setup Repos
-	userRepository := repository.NewUserRepository(s.pg)
+	userRepository := repository.NewUserRepository(s.pg, s.logger)
 
 	// Setup Services
-	authUC := service.NewAuthService(s.cfg, userRepository)
+	authUC := service.NewAuthService(s.cfg, s.logger, userRepository)
 
 	// Setup Handlers
 	authHandler := handler.NewAuthHandler(s.cfg, authUC)

@@ -13,9 +13,12 @@ Common Layered architecture with following layers:
 - Unique Identifier: [uuid](https://github.com/google/uuid)
 - Postgres driver & pooling: [pgx](https://github.com/jackc/pgx)
 - Config parser: [viper](https://github.com/spf13/viper)
-- Logger: [slog](https://pkg.go.dev/golang.org/x/exp/slog) go builtin logger package, this package only available for `go 1.21+`.
+- Logger: [zerolog](https://github.com/rs/zerolog) 
 - Auth: [jwt](https://github.com/golang-jwt/jwt)
 - Testing: [testify](https://github.com/stretchr/testify)
+- Metrics & Instrumentation:
+    - Prometheus: [prometheus](https://github.com/prometheus/client_golang)
+    - Grafana: [grafana](https://grafana.com)
 - CLI:
     - Database Migration Tool: [migrate](https://github.com/golang-migrate/migrate)
     - Development live reloading: [air](https://github.com/cosmtrek/air)
