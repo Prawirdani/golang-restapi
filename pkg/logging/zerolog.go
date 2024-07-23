@@ -14,7 +14,7 @@ type zeroLogger struct {
 	logger *zerolog.Logger
 }
 
-func newZeroLogger(cfg *config.Config) Logger {
+func newZeroLogger(cfg *config.Config) *zeroLogger {
 	var w io.Writer = os.Stdout
 	var level zerolog.Level = zerolog.DebugLevel
 
