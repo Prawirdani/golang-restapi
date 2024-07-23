@@ -17,6 +17,14 @@ var (
 	ErrorUserNotFound = errors.NotFound("User not found")
 )
 
+type UserField string
+
+const (
+	UserID    UserField = "id"
+	UserEmail UserField = "email"
+	UserName  UserField = "name"
+)
+
 type UserRepository struct {
 	db     *pgxpool.Pool
 	logger logging.Logger
@@ -44,7 +52,7 @@ func (r *UserRepository) InsertUser(ctx context.Context, u entity.User) error {
 	return nil
 }
 
-func (r *UserRepository) SelectWhere(ctx context.Context, field string, searchVal any) (entity.User, error) {
+func (r *UserRepository) SelectWhere(ctx context.Context, field UserField, searchVal any) (entity.User, error) {
 	var user entity.User
 	query := fmt.Sprintf("SELECT id, name, email, password, created_at, updated_at FROM users WHERE %s=$1", field)
 

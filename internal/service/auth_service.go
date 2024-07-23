@@ -47,7 +47,7 @@ func (u *AuthService) Login(ctx context.Context, request model.LoginRequest) (ac
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
-	user, _ := u.userRepo.SelectWhere(ctxWT, "email", request.Email)
+	user, _ := u.userRepo.SelectWhere(ctxWT, repository.UserEmail, request.Email)
 	if err := user.VerifyPassword(request.Password); err != nil {
 		return "", "", err
 	}
