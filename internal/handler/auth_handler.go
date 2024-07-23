@@ -48,8 +48,8 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	d := map[string]string{
-		"accessToken":  at,
-		"refreshToken": rt,
+		common.AccessToken.Label():  at,
+		common.RefreshToken.Label(): rt,
 	}
 
 	h.setTokenCookies(w, common.AccessToken, at)
@@ -79,7 +79,7 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error
 	}
 
 	d := map[string]string{
-		"accessToken": newAccessToken,
+		common.AccessToken.Label(): newAccessToken,
 	}
 
 	h.setTokenCookies(w, common.AccessToken, newAccessToken)
