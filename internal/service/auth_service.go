@@ -54,6 +54,7 @@ func (u *AuthService) Login(ctx context.Context, request model.LoginRequest) (ac
 
 	accessToken, refreshToken, err = user.GenerateTokenPair(u.cfg)
 	if err != nil {
+		u.logger.Error(logging.Service, "AuthService.Login.GenerateTokenPair", err.Error())
 		return "", "", err
 	}
 
@@ -65,5 +66,12 @@ func (u *AuthService) RefreshToken(ctx context.Context, userID string) (string, 
 	defer cancel()
 
 	user, _ := u.userRepo.SelectWhere(ctxWT, "id", userID)
-	return user.GenerateAccessToken(u.cfg)
+	accessToken, err := user.GenerateAccessToken(u.cfg)
+
+	if err != nil {
+		u.logger.Error(logging.Service, "AuthService.RefreshToken.GenerateAccessToken", err.Error())
+		return "", err
+	}
+
+	return accessToken, nil
 }
