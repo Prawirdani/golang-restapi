@@ -13,14 +13,13 @@ func (s *Server) bootstrap() {
 	userRepository := repository.NewUserRepository(s.pg, s.logger)
 
 	// Setup Services
-	authUC := service.NewAuthService(s.cfg, s.logger, userRepository)
+	authService := service.NewAuthService(s.cfg, s.logger, userRepository)
 
 	// Setup Handlers
-	authHandler := handler.NewAuthHandler(s.cfg, authUC)
+	authHandler := handler.NewAuthHandler(s.cfg, authService)
 
 	s.router.Route("/api", func(r chi.Router) {
 		r.Use(s.metrics.Instrument)
-		// route.RegisterAuthRoutes(r, authHandler, mws)
 		registerAuthRoutes(r, authHandler, s.middlewares)
 	})
 }
