@@ -11,7 +11,7 @@ func (c *Collection) Cors(next http.Handler) http.Handler {
 		cors.Options{
 			AllowedOrigins:   c.cfg.Cors.Origins,
 			AllowCredentials: c.cfg.Cors.Credentials,
-			Debug:            c.cfg.IsProduction(),
+			Debug:            !c.cfg.IsProduction(),
 		},
 	)(next)
 }
