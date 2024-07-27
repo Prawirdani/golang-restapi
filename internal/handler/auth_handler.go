@@ -88,9 +88,11 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error
 }
 
 func (h *AuthHandler) setTokenCookies(w http.ResponseWriter, tokenType common.TokenType, tokenString string) {
-	expiry := time.Now().Add(h.cfg.Token.AccessTokenExpiry)
+	currTime := time.Now()
+
+	expiry := currTime.Add(h.cfg.Token.AccessTokenExpiry)
 	if tokenType == common.RefreshToken {
-		expiry = time.Now().Add(h.cfg.Token.RefreshTokenExpiry)
+		expiry = currTime.Add(h.cfg.Token.RefreshTokenExpiry)
 	}
 
 	ck := &http.Cookie{
@@ -99,6 +101,7 @@ func (h *AuthHandler) setTokenCookies(w http.ResponseWriter, tokenType common.To
 		Expires:  expiry,
 		HttpOnly: h.cfg.IsProduction(),
 		Secure:   h.cfg.IsProduction(),
+		Path:     "/",
 	}
 	http.SetCookie(w, ck)
 }
