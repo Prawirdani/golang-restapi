@@ -23,6 +23,7 @@ func handlerFn(fn httputil.CustomHandler) http.HandlerFunc {
 func registerAuthRoutes(r chi.Router, h *handler.AuthHandler, mw *middleware.Collection) {
 	r.Post("/auth/register", handlerFn(h.HandleRegister))
 	r.Post("/auth/login", handlerFn(h.HandleLogin))
+	r.Delete("/auth/logout", handlerFn(h.HandleLogout))
 	r.With(mw.AuthAccessToken).Get("/auth/current", handlerFn(h.CurrentUser))
 	r.With(mw.AuthRefreshToken).Get("/auth/refresh", handlerFn(h.RefreshToken))
 }

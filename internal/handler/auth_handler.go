@@ -87,6 +87,25 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error
 	return response(w, data(d), message("Token refreshed."))
 }
 
+func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) error {
+	atCookie := &http.Cookie{
+		Name:     common.AccessToken.Label(),
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: h.cfg.IsProduction(),
+		Secure:   h.cfg.IsProduction(),
+		Path:     "/",
+	}
+
+	rtCookie := *atCookie
+	rtCookie.Name = common.RefreshToken.Label()
+
+	http.SetCookie(w, atCookie)
+	http.SetCookie(w, &rtCookie)
+
+	return response(w, message("Logout successful."))
+}
+
 func (h *AuthHandler) setTokenCookies(w http.ResponseWriter, tokenType common.TokenType, tokenString string) {
 	currTime := time.Now()
 
