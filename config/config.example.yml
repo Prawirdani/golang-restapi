@@ -3,7 +3,7 @@ app:
   Version: 1.0.0
   Port: 42069 
   Environment: DEV # DEV or PROD
-  LogPath: ./cmd/app/logs/
+  LogPath: ./logs/
 
 db:
   Username: postgres

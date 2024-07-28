@@ -10,10 +10,6 @@ build:
 	go build -o ./cmd/app/bin ./cmd/app/main.go
 	@echo "Build completed successfully..."
 
-# Run binary
-run:
-	./cmd/app/bin
-
 # Lint Code
 lint:	
 	golangci-lint run
@@ -24,6 +20,8 @@ tidy:
 test:
 	go test -v -count=1 ./... -cover
 
+docker\:prod:
+	DOCKERFILE=Dockerfile  docker compose up -d --build
 
 # Make sure to install migrate cli binary on the system before running this command. https://github.com/golang-migrate/migrate
 migrate\:create:

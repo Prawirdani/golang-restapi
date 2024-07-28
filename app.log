@@ -1,6 +1,0 @@
-{"level":"fatal","app":{"name":"golang-restapi","version":"1.0.0"},"category":"Postgres","caller":"main.NewPGConnection","time":"2024-07-23T16:26:43+07:00","message":"failed to connect to `host=localhost user=postgres database=go-rest`: dial error (dial tcp 127.0.0.1:5432: connect: connection refused)"}
-{"level":"info","app":{"name":"golang-restapi","version":"1.0.0"},"category":"Startup","caller":"main","time":"2024-07-23T16:27:10+07:00","message":"Postgres connection established"}
-{"level":"info","app":{"name":"golang-restapi","version":"1.0.0"},"category":"Startup","caller":"app.Server.Metrics","time":"2024-07-23T16:27:10+07:00","message":"Metrics serves on 42070"}
-{"level":"info","app":{"name":"golang-restapi","version":"1.0.0"},"category":"Startup","caller":"app.Server","time":"2024-07-23T16:27:10+07:00","message":"App serves on 42069"}
-{"level":"info","app":{"name":"golang-restapi","version":"1.0.0"},"category":"Shutdown","caller":"app.Server.Shutdown","time":"2024-07-23T16:28:56+07:00","message":"Shutdown signal received"}
-{"level":"info","app":{"name":"golang-restapi","version":"1.0.0"},"category":"Shutdown","caller":"app.Server.Shutdown","time":"2024-07-23T16:28:56+07:00","message":"Server gracefully stopped"}
