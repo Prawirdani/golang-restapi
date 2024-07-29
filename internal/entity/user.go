@@ -16,6 +16,7 @@ import (
 
 var (
 	ErrorWrongCredentials = errors.Unauthorized("Check your credentials")
+	ErrorEmailExists      = errors.Conflict("Email already exists")
 )
 
 type User struct {
@@ -51,7 +52,11 @@ func NewUser(request model.RegisterRequest) (User, error) {
 }
 
 // Verify / Decrypt user password
-func (u User) VerifyPassword(plain string) error {
+func (u *User) VerifyPassword(plain string) error {
+	if u == nil || u.Password == "" {
+		return ErrorWrongCredentials
+	}
+
 	err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(plain))
 	if err != nil {
 		return ErrorWrongCredentials

@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,7 +12,6 @@ import (
 )
 
 var (
-	ErrorEmailExists  = errors.Conflict("Email already exists")
 	ErrorUserNotFound = errors.NotFound("User not found")
 )
 
@@ -42,17 +40,13 @@ func (r *UserRepository) InsertUser(ctx context.Context, u entity.User) error {
 	_, err := r.db.Exec(ctx, query, u.ID, u.Name, u.Email, u.Password)
 
 	if err != nil {
-		// Unique constraint duplicate err by PG error code.
-		if strings.Contains(err.Error(), "23505") {
-			return ErrorEmailExists
-		}
 		r.logger.Error(logging.Postgres, "UserRepository.InsertUser", err.Error())
 		return err
 	}
 	return nil
 }
 
-func (r *UserRepository) SelectWhere(ctx context.Context, field UserField, searchVal any) (entity.User, error) {
+func (r *UserRepository) SelectWhere(ctx context.Context, field UserField, searchVal any) (*entity.User, error) {
 	var user entity.User
 	query := fmt.Sprintf("SELECT id, name, email, password, created_at, updated_at FROM users WHERE %s=$1", field)
 
@@ -67,11 +61,11 @@ func (r *UserRepository) SelectWhere(ctx context.Context, field UserField, searc
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return user, ErrorUserNotFound
+			return nil, ErrorUserNotFound
 		}
 		r.logger.Error(logging.Postgres, "UserRepository.SelectWhere", err.Error())
-		return user, err
+		return nil, err
 	}
 
-	return user, nil
+	return &user, nil
 }

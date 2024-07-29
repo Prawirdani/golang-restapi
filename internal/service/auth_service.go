@@ -31,6 +31,11 @@ func (u *AuthService) Register(ctx context.Context, request model.RegisterReques
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
+	user, err := u.userRepo.SelectWhere(ctxWT, repository.UserEmail, request.Email)
+	if user != nil {
+		return entity.ErrorEmailExists
+	}
+
 	newUser, err := entity.NewUser(request)
 	if err != nil {
 		u.logger.Error(logging.Service, "AuthService.Register", err.Error())
@@ -65,7 +70,11 @@ func (u *AuthService) RefreshToken(ctx context.Context, userID string) (string, 
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
-	user, _ := u.userRepo.SelectWhere(ctxWT, "id", userID)
+	user, err := u.userRepo.SelectWhere(ctxWT, "id", userID)
+	if err != nil {
+		return "", err
+	}
+
 	accessToken, err := user.GenerateAccessToken(u.cfg)
 
 	if err != nil {
