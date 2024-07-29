@@ -45,7 +45,7 @@ func InitServer(cfg *config.Config, logger logging.Logger, pgPool *pgxpool.Pool)
 	m := metrics.Init()
 	m.SetAppInfo(cfg.App.Version, string(cfg.App.Environment))
 
-	mws := middleware.NewCollection(cfg)
+	mws := middleware.NewCollection(cfg, logger)
 
 	router.Use(mws.PanicRecoverer)
 	router.Use(mws.Gzip)

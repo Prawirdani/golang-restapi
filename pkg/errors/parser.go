@@ -2,9 +2,7 @@ package errors
 
 import (
 	"encoding/json"
-	"log/slog"
 	"net/http"
-	"reflect"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
@@ -35,9 +33,6 @@ func Parse(err error) *ApiError {
 	case *json.SyntaxError:
 		return parseJsonSyntaxError(e)
 	default:
-		// Log the unknown error
-		errReflectType := reflect.TypeOf(err) // Determine the reflect type of the error for easier examination
-		slog.Error("Unknown ERROR", slog.Any("cause", err), slog.String("reflectType", errReflectType.String()))
 		return &ApiError{
 			Status:  500,
 			Message: "An unexpected error occurred, try again latter",
