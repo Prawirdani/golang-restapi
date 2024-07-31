@@ -42,3 +42,7 @@ migrate -path database/migrations -database "postgresql://<username>:<password>@
 ```
 Please refer to [migrate](https://github.com/golang-migrate/migrate) for detail documentation & instruction.
 
+
+### Docker
+The metrics and instrumentation are configured to run in Docker, while the main application service runs on the host machine.
+To build and run the Metrics service using Docker Compose, refer to the commands in the Makefile.
