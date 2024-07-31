@@ -12,8 +12,6 @@ test:
 	go test -race -v -count=1 ./... -cover
 
 build:
-	@echo "Linting codebase..."
-	golangci-lint run
 	@echo "Building binary..."
 	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ./cmd/app/main ./cmd/app/main.go
 	@echo "Build completed successfully..."
@@ -22,10 +20,20 @@ run:
 	./cmd/app/main
 
 # Metrics service docker compose
-metrics\:up:
-	docker compose -f ./docker/compose.yml up -d
+metrics\:start:
+	@echo "Starting metrics service..."
+	@if ! docker compose -f ./docker/compose.yml start; then \
+		echo "Make sure you already build the metrics service"; \
+		exit 1; \
+	fi
 
-metrics\:down:
+metrics\:stop:
+	docker compose -f ./docker/compose.yml stop
+
+metrics\:build:
+	docker compose -f ./docker/compose.yml up -d --build
+
+metrics\:delete:
 	docker compose -f ./docker/compose.yml down
 
 # Make sure to install migrate cli binary on the system before running this command. https://github.com/golang-migrate/migrate
