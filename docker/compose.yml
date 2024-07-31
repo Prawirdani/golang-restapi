@@ -1,0 +1,29 @@
+# This compose only build metrics services without including the application services.
+name: go-restapi
+services:
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    # Allow host bridging, because the application is running on the host,
+    extra_hosts: 
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - 3000:3000
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=grafana1337
+    depends_on:
+      - prometheus
+    volumes:
+      - ./grafana/datasources/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - grafana:/var/lib/grafana
+
+volumes:
+  grafana:

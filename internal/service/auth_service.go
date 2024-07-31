@@ -31,7 +31,7 @@ func (u *AuthService) Register(ctx context.Context, request model.RegisterReques
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
-	user, err := u.userRepo.SelectWhere(ctxWT, repository.UserEmail, request.Email)
+	user, _ := u.userRepo.SelectWhere(ctxWT, repository.UserEmail, request.Email)
 	if user != nil {
 		return entity.ErrorEmailExists
 	}

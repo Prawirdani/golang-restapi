@@ -2,26 +2,31 @@
 dev:
 	air -c .air.toml
 
-# Build binary
+tidy:
+	go mod tidy
+
+lint:	
+	golangci-lint run
+
+test:
+	go test -race -v -count=1 ./... -cover
+
 build:
 	@echo "Linting codebase..."
 	golangci-lint run
 	@echo "Building binary..."
-	go build -o ./cmd/app/bin ./cmd/app/main.go
+	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ./cmd/app/main ./cmd/app/main.go
 	@echo "Build completed successfully..."
 
-# Lint Code
-lint:	
-	golangci-lint run
+run:
+	./cmd/app/main
 
-tidy:
-	go mod tidy
+# Metrics service docker compose
+metrics\:up:
+	docker compose -f ./docker/compose.yml up -d
 
-test:
-	go test -v -count=1 ./... -cover
-
-docker\:prod:
-	DOCKERFILE=Dockerfile  docker compose up -d --build
+metrics\:down:
+	docker compose -f ./docker/compose.yml down
 
 # Make sure to install migrate cli binary on the system before running this command. https://github.com/golang-migrate/migrate
 migrate\:create:

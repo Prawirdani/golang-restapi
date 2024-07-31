@@ -6,4 +6,4 @@ scrape_configs:
     scrape_interval: 5s
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['app:42070'] # host:port of the metrics server
+      - targets: ['host.docker.internal:42070'] # host:port of the metrics server, the port is +1 of the app server port
