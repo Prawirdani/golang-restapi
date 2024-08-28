@@ -4,13 +4,12 @@ import (
 	"net/http"
 
 	"github.com/prawirdani/golang-restapi/pkg/errors"
-	"github.com/prawirdani/golang-restapi/pkg/httputil"
 )
 
 // Response writer for handling error
 func HandleError(w http.ResponseWriter, err error) {
 	e := errors.Parse(err)
-	response := Base{
+	response := ResponseBody{
 		Error: &ErrorBody{
 			Code:    e.Status,
 			Message: e.Message,
@@ -18,7 +17,7 @@ func HandleError(w http.ResponseWriter, err error) {
 		},
 	}
 
-	writeErr := httputil.WriteJSON(w, e.Status, response)
+	writeErr := writeJSON(w, e.Status, response)
 	if writeErr != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

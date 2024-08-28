@@ -1,7 +1,6 @@
 package errors
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -28,17 +27,11 @@ func Parse(err error) *ApiError {
 		return e
 	case validator.ValidationErrors:
 		return parseValidationError(e)
-	case *json.UnmarshalTypeError:
-		return parseJsonUnmarshalTypeError(e)
-	case *json.SyntaxError:
-		return parseJsonSyntaxError(e)
 	default:
 		return &ApiError{
 			Status:  500,
 			Message: "An unexpected error occurred, try again latter",
 			Cause:   err.Error(),
 		}
-
 	}
-
 }

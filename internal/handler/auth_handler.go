@@ -9,6 +9,8 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/service"
 	"github.com/prawirdani/golang-restapi/pkg/common"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
+	req "github.com/prawirdani/golang-restapi/pkg/request"
+	res "github.com/prawirdani/golang-restapi/pkg/response"
 )
 
 type AuthHandler struct {
@@ -24,8 +26,8 @@ func NewAuthHandler(cfg *config.Config, us *service.AuthService) *AuthHandler {
 }
 
 func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) error {
-	reqBody, err := BindValidate[model.RegisterRequest](r)
-	if err != nil {
+	var reqBody model.RegisterRequest
+	if err := req.BindValidate(r, &reqBody); err != nil {
 		return err
 	}
 
@@ -33,12 +35,12 @@ func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) err
 		return err
 	}
 
-	return response(w, status(201), message("Registration successful."))
+	return res.Send(w, res.WithStatus(201), res.WithMessage("Registration successful."))
 }
 
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
-	reqBody, err := BindValidate[model.LoginRequest](r)
-	if err != nil {
+	var reqBody model.LoginRequest
+	if err := req.BindValidate(r, &reqBody); err != nil {
 		return err
 	}
 
@@ -55,7 +57,7 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error 
 	h.setTokenCookies(w, common.AccessToken, at)
 	h.setTokenCookies(w, common.RefreshToken, rt)
 
-	return response(w, data(d), message("Login successful."))
+	return res.Send(w, res.WithData(d), res.WithMessage("Login successful."))
 }
 
 func (h *AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error {
@@ -64,7 +66,7 @@ func (h *AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	return response(w, data(payload.User))
+	return res.Send(w, res.WithData(payload.User))
 }
 
 func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error {
@@ -84,7 +86,7 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error
 
 	h.setTokenCookies(w, common.AccessToken, newAccessToken)
 
-	return response(w, data(d), message("Token refreshed."))
+	return res.Send(w, res.WithData(d), res.WithMessage("Token refreshed."))
 }
 
 func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) error {
@@ -103,7 +105,7 @@ func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) error
 	http.SetCookie(w, atCookie)
 	http.SetCookie(w, &rtCookie)
 
-	return response(w, message("Logout successful."))
+	return res.Send(w, res.WithMessage("Logout successful."))
 }
 
 func (h *AuthHandler) setTokenCookies(w http.ResponseWriter, tokenType common.TokenType, tokenString string) {

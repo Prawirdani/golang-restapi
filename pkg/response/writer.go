@@ -1,4 +1,4 @@
-package httputil
+package response
 
 import (
 	"bytes"
@@ -6,18 +6,8 @@ import (
 	"net/http"
 )
 
-// JSON Request body binder
-func BindJSON(r *http.Request, data any) error {
-	defer r.Body.Close()
-	dec := json.NewDecoder(r.Body)
-	if err := dec.Decode(data); err != nil {
-		return err
-	}
-	return nil
-}
-
 // Utility function to help writing json to response body.
-func WriteJSON(w http.ResponseWriter, status int, response interface{}) error {
+func writeJSON(w http.ResponseWriter, status int, response interface{}) error {
 	buf := new(bytes.Buffer)
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(true)
