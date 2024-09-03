@@ -20,7 +20,7 @@ Common Layered architecture with following layers:
     - Prometheus: [prometheus](https://github.com/prometheus/client_golang)
     - Grafana: [grafana](https://grafana.com)
 - CLI:
-    - Database Migration Tool: [migrate](https://github.com/golang-migrate/migrate)
+    - Database Migration Tool: [goose](https://github.com/pressly/goose)
     - Development live reloading: [air](https://github.com/cosmtrek/air)
     - Linters: [golangci-lint](https://github.com/golangci/golangci-lint)
 
@@ -29,18 +29,18 @@ Common Layered architecture with following layers:
 Application configuration is in `config/config.example.yml`, rename it to `config.yml` before you proceed.
 
 ### Database Migration
-All migrations file is in `database/migrations` directory.
+Migration is handled by `goose` cli tool. make sure you have installed goose binary in your system. All migrations file is in `database/migrations` directory. 
 ##### Create Migration
 ```bash
 # To Create new db migration.
-migrate create -ext sql -dir database/migrations <migration_name>
+make migrate:create
 ```
 ##### Run Migration
 ```bash
 # To Execute/Run the migration file.
-migrate -path database/migrations -database "postgresql://<username>:<password>@localhost:5432/<db-name>?sslmode=disable" -verbose up
+goose -dir database/migrations postgres "host=localhost port=5432 user=<your_username> password=<your_password> dbname=<your_db_name> sslmode=disable" up
 ```
-Please refer to [migrate](https://github.com/golang-migrate/migrate) for detail documentation & instruction.
+Please refer to [goose](https://github.com/pressly/goose) for more detail documentation & instruction.
 
 
 ### Docker

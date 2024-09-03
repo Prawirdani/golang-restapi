@@ -36,9 +36,9 @@ metrics\:build:
 metrics\:delete:
 	docker compose -f ./docker/compose.yml down
 
-# Make sure to install migrate cli binary on the system before running this command. https://github.com/golang-migrate/migrate
+# Makesure you have goose binary installed
 migrate\:create:
 	@echo "Create Migration"
 	@read -p "Enter migration name: " migration_name; \
-	migrate create -ext sql -dir database/migrations -seq $$migration_name
+	goose -dir database/migrations create $$migration_name sql
 	@echo "Migration created successfully, fill in the schema in the generated file."
