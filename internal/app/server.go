@@ -50,12 +50,10 @@ func InitServer(cfg *config.Config, logger logging.Logger, pgPool *pgxpool.Pool)
 	router.Use(mws.PanicRecoverer)
 	router.Use(mws.Gzip)
 	router.Use(mws.Cors)
+	router.Use(mws.ReqLogger)
 
 	if cfg.IsProduction() {
 		router.Use(mws.RateLimit)
-	} else {
-		// Beutify request log in development
-		router.Use(mws.ReqLogger)
 	}
 
 	// Not Found Handler

@@ -28,10 +28,10 @@ func Parse(err error) *ApiError {
 	case validator.ValidationErrors:
 		return parseValidationError(e)
 	default:
+		// It's recommended to log this error, so it can give better insight about the unknown error.
 		return &ApiError{
 			Status:  500,
 			Message: "An unexpected error occurred, try again latter",
-			Cause:   err.Error(),
 		}
 	}
 }
