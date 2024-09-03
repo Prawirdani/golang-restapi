@@ -1,11 +1,13 @@
 package entity
 
 import (
+	"log"
 	"sync"
 	"time"
 
+	stderrors "errors"
+
 	"github.com/google/uuid"
-	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/auth"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
@@ -60,68 +62,81 @@ func (u *User) VerifyPassword(plain string) error {
 	return nil
 }
 
-// Generate access token for user
-func (u User) GenerateAccessToken(cfg *config.Config) (string, error) {
-	// If you change the map structure, you must adjust the AccessTokenPayload struct from auth package
-	p := map[string]interface{}{
-		"user": map[string]interface{}{
-			"id":   u.ID.String(),
-			"name": u.Name,
-		},
-		"type": auth.AccessToken,
+// GenerateToken generates jwt token for user authentication
+// Returns the token string and error if any
+func (u User) GenerateToken(tokenType auth.TokenType, secretKey string, expiry time.Duration) (string, error) {
+	var payload map[string]interface{}
+
+	// If you change one of the map structure, you must adjust the TokenPayload struct from auth package
+	switch tokenType {
+	case auth.AccessToken:
+		payload = map[string]interface{}{
+			"user": map[string]interface{}{
+				"id":   u.ID.String(),
+				"name": u.Name,
+			},
+			"type": tokenType,
+		}
+	case auth.RefreshToken:
+		payload = map[string]interface{}{
+			"user": map[string]interface{}{
+				"id": u.ID.String(),
+			},
+			"type": tokenType,
+		}
+	default:
+		return "", stderrors.New("Invalid token type")
 	}
 
-	return auth.TokenEncode(cfg.Token.SecretKey, p, cfg.Token.AccessTokenExpiry)
-}
-
-// Generate refresh token for user
-func (u User) GenerateRefreshToken(cfg *config.Config) (string, error) {
-	// Same as GenerateAccessToken, if you change the map structure, you must adjust the RefreshTokenPayload struct from auth package
-	p := map[string]interface{}{
-		"user": map[string]interface{}{
-			"id": u.ID.String(),
-		},
-		"type": auth.RefreshToken,
-	}
-
-	return auth.TokenEncode(cfg.Token.SecretKey, p, cfg.Token.RefreshTokenExpiry)
+	return auth.TokenEncode(secretKey, payload, expiry)
 }
 
 // GenerateTokenPair generates access token and refresh token using goroutines
-func (u User) GenerateTokenPair(cfg *config.Config) (at string, rf string, err error) {
+func (u User) GenerateTokenPair(
+	secretKey string,
+	accessExpiry time.Duration,
+	refreshExpiry time.Duration,
+) (
+	accessToken string,
+	refreshToken string,
+	err error,
+) {
+
 	var wg sync.WaitGroup
 	errCh := make(chan error, 2)
 
-	wg.Add(2)
-
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		token, e := u.GenerateAccessToken(cfg)
+		token, e := u.GenerateToken(auth.AccessToken, secretKey, accessExpiry)
 		if e != nil {
 			errCh <- e
 		}
-		at = token
+		accessToken = token
+		log.Println("Access token generated")
 	}()
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		token, e := u.GenerateRefreshToken(cfg)
+		token, e := u.GenerateToken(auth.RefreshToken, secretKey, refreshExpiry)
 		if e != nil {
 			errCh <- e
 		}
-		rf = token
+		refreshToken = token
+		log.Println("Refresh token generated")
 	}()
 
-	go func() {
-		wg.Wait()
-		close(errCh)
-	}()
+	wg.Wait()
+	close(errCh)
 
+	// Check if any errors occurred
 	for e := range errCh {
 		if e != nil {
-			return "", "", e
+			err = e
+			return
 		}
 	}
 
-	return at, rf, nil
+	return accessToken, refreshToken, nil
 }

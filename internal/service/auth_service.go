@@ -37,7 +37,6 @@ func (u *AuthService) Register(ctx context.Context, request model.RegisterReques
 		u.logger.Error(logging.Service, "AuthService.Register", err.Error())
 		return err
 	}
-
 	if err := u.userRepo.InsertUser(ctxWT, newUser); err != nil {
 		return err
 	}
@@ -53,7 +52,11 @@ func (u *AuthService) Login(ctx context.Context, request model.LoginRequest) (ac
 		return "", "", err
 	}
 
-	accessToken, refreshToken, err = user.GenerateTokenPair(u.cfg)
+	accessToken, refreshToken, err = user.GenerateTokenPair(
+		u.cfg.Token.SecretKey,
+		u.cfg.Token.AccessTokenExpiry,
+		u.cfg.Token.RefreshTokenExpiry,
+	)
 	if err != nil {
 		u.logger.Error(logging.Service, "AuthService.Login.GenerateTokenPair", err.Error())
 		return "", "", err
@@ -70,14 +73,15 @@ func (u *AuthService) RefreshToken(ctx context.Context, userID string) (string, 
 	if err != nil {
 		return "", err
 	}
-
-	accessToken, err := user.GenerateAccessToken(u.cfg)
-
+	accessToken, err := user.GenerateToken(
+		auth.AccessToken,
+		u.cfg.Token.SecretKey,
+		u.cfg.Token.AccessTokenExpiry,
+	)
 	if err != nil {
 		u.logger.Error(logging.Service, "AuthService.RefreshToken.GenerateAccessToken", err.Error())
 		return "", err
 	}
-
 	return accessToken, nil
 }
 
@@ -89,11 +93,9 @@ func (u *AuthService) IdentifyUser(ctx context.Context) (entity.User, error) {
 	if err != nil {
 		return entity.User{}, err
 	}
-
 	user, err := u.userRepo.SelectWhere(ctxWT, "id", payload.User.ID)
 	if err != nil {
 		return entity.User{}, err
 	}
-
 	return user, nil
 }

@@ -1,25 +1,15 @@
 package entity
 
 import (
-	"log"
 	"testing"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"github.com/prawirdani/golang-restapi/config"
+	"github.com/prawirdani/golang-restapi/internal/auth"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/stretchr/testify/require"
 )
-
-var cfg *config.Config
-
-func init() {
-	config, err := config.LoadConfig("../../config")
-	if err != nil {
-		log.Fatal(err)
-	}
-	cfg = config
-}
 
 var registerPayload = model.RegisterRequest{
 	Name:     "doe",
@@ -115,21 +105,20 @@ func TestGenerateToken(t *testing.T) {
 	require.NotNil(t, user)
 
 	t.Run("AccessToken", func(t *testing.T) {
-		tk, err := user.GenerateAccessToken(cfg)
+		accessToken, err := user.GenerateToken(auth.AccessToken, "secret", 5*time.Minute)
 		require.Nil(t, err)
-		require.NotEmpty(t, tk)
+		require.NotEmpty(t, accessToken)
 	})
 
 	t.Run("RefreshToken", func(t *testing.T) {
-		tk, err := user.GenerateRefreshToken(cfg)
+		refreshToken, err := user.GenerateToken(auth.RefreshToken, "secret", 15*time.Minute)
 		require.Nil(t, err)
-		require.NotEmpty(t, tk)
+		require.NotEmpty(t, refreshToken)
 	})
 
 	t.Run("TokenPair", func(t *testing.T) {
-		at, rt, err := user.GenerateTokenPair(cfg)
+		accessToken, refreshToken, err := user.GenerateTokenPair("secret", 5*time.Minute, 15*time.Minute)
 		require.Nil(t, err)
-		require.NotEmpty(t, at)
-		require.NotEmpty(t, rt)
+		require.NotEmpty(t, accessToken, refreshToken)
 	})
 }
