@@ -105,7 +105,7 @@ func TestVerifyPassword(t *testing.T) {
 	t.Run("wrong-password", func(t *testing.T) {
 		err := user.VerifyPassword("wrong-pass")
 		require.NotNil(t, err)
-		require.Equal(t, err, ErrorWrongCredentials)
+		require.Equal(t, err, ErrWrongCredentials)
 	})
 }
 

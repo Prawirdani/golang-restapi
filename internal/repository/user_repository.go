@@ -2,25 +2,13 @@ package repository
 
 import (
 	"context"
-	"fmt"
+	"strings"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/internal/entity"
-	"github.com/prawirdani/golang-restapi/pkg/errors"
+	"github.com/prawirdani/golang-restapi/pkg/common"
 	"github.com/prawirdani/golang-restapi/pkg/logging"
-)
-
-var (
-	ErrorUserNotFound = errors.NotFound("User not found")
-)
-
-type UserField string
-
-const (
-	UserID    UserField = "id"
-	UserEmail UserField = "email"
-	UserName  UserField = "name"
 )
 
 type UserRepository struct {
@@ -41,31 +29,25 @@ func (r *UserRepository) InsertUser(ctx context.Context, u entity.User) error {
 
 	if err != nil {
 		r.logger.Error(logging.Postgres, "UserRepository.InsertUser", err.Error())
+		if strings.Contains(err.Error(), "users_email_key") {
+			return entity.ErrEmailExist
+		}
 		return err
 	}
 	return nil
 }
 
-func (r *UserRepository) SelectWhere(ctx context.Context, field UserField, searchVal any) (*entity.User, error) {
+func (r *UserRepository) SelectWhere(ctx context.Context, field string, searchVal any) (entity.User, error) {
 	var user entity.User
-	query := fmt.Sprintf("SELECT id, name, email, password, created_at, updated_at FROM users WHERE %s=$1", field)
+	query := common.ConcatStrings("SELECT id, name, email, password, created_at, updated_at FROM users WHERE ", field, "=$1")
 
-	err := r.db.QueryRow(ctx, query, searchVal).Scan(
-		&user.ID,
-		&user.Name,
-		&user.Email,
-		&user.Password,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, ErrorUserNotFound
+	if err := pgxscan.Get(ctx, r.db, &user, query, searchVal); err != nil {
+		if pgxscan.NotFound(err) {
+			return entity.User{}, entity.ErrUserNotFound
 		}
 		r.logger.Error(logging.Postgres, "UserRepository.SelectWhere", err.Error())
-		return nil, err
+		return entity.User{}, err
 	}
 
-	return &user, nil
+	return user, nil
 }

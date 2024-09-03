@@ -12,6 +12,7 @@ Common Layered architecture with following layers:
 - Struct validator: [validator](https://github.com/go-playground/validator)
 - Unique Identifier: [uuid](https://github.com/google/uuid)
 - Postgres driver & pooling: [pgx](https://github.com/jackc/pgx)
+- Postgres struct scanner: [scanny](https://github.com/georgysavva/scany)
 - Config parser: [viper](https://github.com/spf13/viper)
 - Logger: [zerolog](https://github.com/rs/zerolog) 
 - Auth: [jwt](https://github.com/golang-jwt/jwt)
@@ -41,7 +42,6 @@ make migrate:create
 goose -dir database/migrations postgres "host=localhost port=5432 user=<your_username> password=<your_password> dbname=<your_db_name> sslmode=disable" up
 ```
 Please refer to [goose](https://github.com/pressly/goose) for more detail documentation & instruction.
-
 
 ### Docker
 The metrics and instrumentation are configured to run in Docker, while the main application service runs on the host machine.

@@ -8,6 +8,7 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/entity"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/repository"
+	"github.com/prawirdani/golang-restapi/pkg/httputil"
 	"github.com/prawirdani/golang-restapi/pkg/logging"
 )
 
@@ -31,11 +32,6 @@ func (u *AuthService) Register(ctx context.Context, request model.RegisterReques
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
-	user, _ := u.userRepo.SelectWhere(ctxWT, repository.UserEmail, request.Email)
-	if user != nil {
-		return entity.ErrorEmailExists
-	}
-
 	newUser, err := entity.NewUser(request)
 	if err != nil {
 		u.logger.Error(logging.Service, "AuthService.Register", err.Error())
@@ -52,7 +48,7 @@ func (u *AuthService) Login(ctx context.Context, request model.LoginRequest) (ac
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
-	user, _ := u.userRepo.SelectWhere(ctxWT, repository.UserEmail, request.Email)
+	user, _ := u.userRepo.SelectWhere(ctxWT, "email", request.Email)
 	if err := user.VerifyPassword(request.Password); err != nil {
 		return "", "", err
 	}
@@ -83,4 +79,21 @@ func (u *AuthService) RefreshToken(ctx context.Context, userID string) (string, 
 	}
 
 	return accessToken, nil
+}
+
+func (u *AuthService) IdentifyUser(ctx context.Context) (entity.User, error) {
+	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
+	defer cancel()
+
+	payload, err := httputil.GetAuthCtx[model.AccessTokenPayload](ctx)
+	if err != nil {
+		return entity.User{}, err
+	}
+
+	user, err := u.userRepo.SelectWhere(ctxWT, "id", payload.User.ID)
+	if err != nil {
+		return entity.User{}, err
+	}
+
+	return user, nil
 }

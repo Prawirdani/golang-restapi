@@ -15,17 +15,18 @@ import (
 )
 
 var (
-	ErrorWrongCredentials = errors.Unauthorized("Check your credentials")
-	ErrorEmailExists      = errors.Conflict("Email already exists")
+	ErrWrongCredentials = errors.Unauthorized("Check your credentials")
+	ErrEmailExist       = errors.Conflict("Email already exists")
+	ErrUserNotFound     = errors.NotFound("User not found")
 )
 
 type User struct {
-	ID        uuid.UUID `validate:"required,uuid"`
-	Name      string    `validate:"required"`
-	Email     string    `validate:"required,email"`
-	Password  string    `validate:"required,min=6"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        uuid.UUID `db:"id" json:"id" validate:"required,uuid"`
+	Name      string    `db:"name" json:"name" validate:"required"`
+	Email     string    `db:"email" json:"email" validate:"required,email"`
+	Password  string    `db:"password" json:"-" validate:"required,min=6"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 }
 
 // Create new user from request payload
@@ -53,13 +54,9 @@ func NewUser(request model.RegisterRequest) (User, error) {
 
 // Verify / Decrypt user password
 func (u *User) VerifyPassword(plain string) error {
-	if u == nil || u.Password == "" {
-		return ErrorWrongCredentials
-	}
-
 	err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(plain))
 	if err != nil {
-		return ErrorWrongCredentials
+		return ErrWrongCredentials
 	}
 	return nil
 }

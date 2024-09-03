@@ -61,12 +61,12 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error 
 }
 
 func (h *AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error {
-	payload, err := httputil.GetAuthCtx[model.AccessTokenPayload](r.Context())
+	user, err := h.authUC.IdentifyUser(r.Context())
 	if err != nil {
 		return err
 	}
 
-	return res.Send(w, res.WithData(payload.User))
+	return res.Send(w, res.WithData(user))
 }
 
 func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error {
