@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"log"
-	"sync"
 	"time"
 
 	stderrors "errors"
@@ -22,10 +20,10 @@ var (
 )
 
 type User struct {
-	ID        uuid.UUID `db:"id" json:"id" validate:"required,uuid"`
-	Name      string    `db:"name" json:"name" validate:"required"`
-	Email     string    `db:"email" json:"email" validate:"required,email"`
-	Password  string    `db:"password" json:"-" validate:"required,min=6"`
+	ID        uuid.UUID `db:"id"         json:"id"         validate:"required,uuid"`
+	Name      string    `db:"name"       json:"name"       validate:"required"`
+	Email     string    `db:"email"      json:"email"      validate:"required,email"`
+	Password  string    `db:"password"   json:"-"          validate:"required,min=6"`
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 }
@@ -64,7 +62,11 @@ func (u *User) VerifyPassword(plain string) error {
 
 // GenerateToken generates jwt token for user authentication
 // Returns the token string and error if any
-func (u User) GenerateToken(tokenType auth.TokenType, secretKey string, expiry time.Duration) (string, error) {
+func (u User) GenerateToken(
+	tokenType auth.TokenType,
+	secretKey string,
+	expiry time.Duration,
+) (string, error) {
 	var payload map[string]interface{}
 
 	// If you change one of the map structure, you must adjust the TokenPayload struct from auth package
@@ -101,42 +103,15 @@ func (u User) GenerateTokenPair(
 	refreshToken string,
 	err error,
 ) {
-
-	var wg sync.WaitGroup
-	errCh := make(chan error, 2)
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		token, e := u.GenerateToken(auth.AccessToken, secretKey, accessExpiry)
-		if e != nil {
-			errCh <- e
-		}
-		accessToken = token
-		log.Println("Access token generated")
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		token, e := u.GenerateToken(auth.RefreshToken, secretKey, refreshExpiry)
-		if e != nil {
-			errCh <- e
-		}
-		refreshToken = token
-		log.Println("Refresh token generated")
-	}()
-
-	wg.Wait()
-	close(errCh)
-
-	// Check if any errors occurred
-	for e := range errCh {
-		if e != nil {
-			err = e
-			return
-		}
+	accessToken, err = u.GenerateToken(auth.AccessToken, secretKey, accessExpiry)
+	if err != nil {
+		return
 	}
 
-	return accessToken, refreshToken, nil
+	refreshToken, err = u.GenerateToken(auth.RefreshToken, secretKey, refreshExpiry)
+	if err != nil {
+		return
+	}
+
+	return
 }

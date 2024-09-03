@@ -19,7 +19,11 @@ type AuthService struct {
 	logger   logging.Logger
 }
 
-func NewAuthService(cfg *config.Config, l logging.Logger, ur *repository.UserRepository) *AuthService {
+func NewAuthService(
+	cfg *config.Config,
+	l logging.Logger,
+	ur *repository.UserRepository,
+) *AuthService {
 	return &AuthService{
 		cfg:      cfg,
 		logger:   l,
@@ -43,13 +47,16 @@ func (u *AuthService) Register(ctx context.Context, request model.RegisterReques
 	return nil
 }
 
-func (u *AuthService) Login(ctx context.Context, request model.LoginRequest) (accessToken string, refreshToken string, err error) {
+func (u *AuthService) Login(
+	ctx context.Context,
+	request model.LoginRequest,
+) (accessToken string, refreshToken string, err error) {
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
 	user, _ := u.userRepo.SelectWhere(ctxWT, "email", request.Email)
-	if err := user.VerifyPassword(request.Password); err != nil {
-		return "", "", err
+	if err = user.VerifyPassword(request.Password); err != nil {
+		return
 	}
 
 	accessToken, refreshToken, err = user.GenerateTokenPair(
@@ -59,10 +66,10 @@ func (u *AuthService) Login(ctx context.Context, request model.LoginRequest) (ac
 	)
 	if err != nil {
 		u.logger.Error(logging.Service, "AuthService.Login.GenerateTokenPair", err.Error())
-		return "", "", err
+		return
 	}
 
-	return accessToken, refreshToken, nil
+	return
 }
 
 func (u *AuthService) RefreshToken(ctx context.Context, userID string) (string, error) {
