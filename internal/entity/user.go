@@ -6,10 +6,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/prawirdani/golang-restapi/config"
+	"github.com/prawirdani/golang-restapi/internal/auth"
 	"github.com/prawirdani/golang-restapi/internal/model"
-	"github.com/prawirdani/golang-restapi/pkg/common"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
-	"github.com/prawirdani/golang-restapi/pkg/token"
 	"github.com/prawirdani/golang-restapi/pkg/validator"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -61,27 +60,31 @@ func (u *User) VerifyPassword(plain string) error {
 	return nil
 }
 
+// Generate access token for user
 func (u User) GenerateAccessToken(cfg *config.Config) (string, error) {
+	// If you change the map structure, you must adjust the AccessTokenPayload struct from auth package
 	p := map[string]interface{}{
 		"user": map[string]interface{}{
 			"id":   u.ID.String(),
 			"name": u.Name,
 		},
-		"type": common.AccessToken,
+		"type": auth.AccessToken,
 	}
 
-	return token.Encode(cfg.Token.SecretKey, p, cfg.Token.AccessTokenExpiry)
+	return auth.TokenEncode(cfg.Token.SecretKey, p, cfg.Token.AccessTokenExpiry)
 }
 
+// Generate refresh token for user
 func (u User) GenerateRefreshToken(cfg *config.Config) (string, error) {
+	// Same as GenerateAccessToken, if you change the map structure, you must adjust the RefreshTokenPayload struct from auth package
 	p := map[string]interface{}{
 		"user": map[string]interface{}{
 			"id": u.ID.String(),
 		},
-		"type": common.RefreshToken,
+		"type": auth.RefreshToken,
 	}
 
-	return token.Encode(cfg.Token.SecretKey, p, cfg.Token.RefreshTokenExpiry)
+	return auth.TokenEncode(cfg.Token.SecretKey, p, cfg.Token.RefreshTokenExpiry)
 }
 
 // GenerateTokenPair generates access token and refresh token using goroutines

@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/prawirdani/golang-restapi/config"
+	"github.com/prawirdani/golang-restapi/internal/auth"
 	"github.com/prawirdani/golang-restapi/internal/entity"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/repository"
-	"github.com/prawirdani/golang-restapi/pkg/httputil"
 	"github.com/prawirdani/golang-restapi/pkg/logging"
 )
 
@@ -85,7 +85,7 @@ func (u *AuthService) IdentifyUser(ctx context.Context) (entity.User, error) {
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
-	payload, err := httputil.GetAuthCtx[model.AccessTokenPayload](ctx)
+	payload, err := auth.GetContext[auth.AccessTokenPayload](ctx)
 	if err != nil {
 		return entity.User{}, err
 	}

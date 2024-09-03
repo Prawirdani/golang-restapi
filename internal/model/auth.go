@@ -1,7 +1,6 @@
 package model
 
 import (
-	"github.com/prawirdani/golang-restapi/pkg/common"
 	"github.com/prawirdani/golang-restapi/pkg/sanitizer"
 	"github.com/prawirdani/golang-restapi/pkg/validator"
 )
@@ -34,19 +33,4 @@ func (l *LoginRequest) Validate() error {
 
 func (l *LoginRequest) Sanitize() error {
 	return nil
-}
-
-type AccessTokenPayload struct {
-	User struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	} `json:"user"`
-	Type common.TokenType `json:"type"`
-}
-
-type RefreshTokenPayload struct {
-	User struct {
-		ID string `json:"id"`
-	} `json:"user"`
-	Type common.TokenType `json:"type"`
 }

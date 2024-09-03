@@ -4,25 +4,24 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/prawirdani/golang-restapi/pkg/common"
+	"github.com/prawirdani/golang-restapi/internal/auth"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/httputil"
 	"github.com/prawirdani/golang-restapi/pkg/response"
-	"github.com/prawirdani/golang-restapi/pkg/token"
 )
 
 func (mw *Collection) AuthAccessToken(next http.Handler) http.Handler {
-	return mw.authorize(common.AccessToken)(next)
+	return mw.authorize(auth.AccessToken)(next)
 }
 
 func (mw *Collection) AuthRefreshToken(next http.Handler) http.Handler {
-	return mw.authorize(common.RefreshToken)(next)
+	return mw.authorize(auth.RefreshToken)(next)
 }
 
 var ErrMissingToken = errors.Unauthorized("Missing auth token from cookie or Authorization bearer token")
 
 // Token Authoriziation Middleware
-func (mw *Collection) authorize(tt common.TokenType) func(http.Handler) http.Handler {
+func (mw *Collection) authorize(tt auth.TokenType) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Retrieve the token string from the request cookie
@@ -41,7 +40,7 @@ func (mw *Collection) authorize(tt common.TokenType) func(http.Handler) http.Han
 				return
 			}
 
-			payload, err := token.Decode(tokenStr, mw.cfg.Token.SecretKey)
+			payload, err := auth.TokenDecode(tokenStr, mw.cfg.Token.SecretKey)
 			if err != nil {
 				response.HandleError(w, err)
 				return
@@ -54,13 +53,13 @@ func (mw *Collection) authorize(tt common.TokenType) func(http.Handler) http.Han
 			}
 
 			// Passing the map claims / payload to the next handler via Context.
-			ctx := httputil.SetAuthCtx(r.Context(), payload)
+			ctx := auth.SetContext(r.Context(), payload)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-func getTokenType(payload map[string]interface{}) common.TokenType {
-	v := common.TokenType(payload["type"].(float64))
+func getTokenType(payload map[string]interface{}) auth.TokenType {
+	v := auth.TokenType(payload["type"].(float64))
 	return v
 }

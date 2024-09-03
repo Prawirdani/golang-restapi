@@ -5,10 +5,9 @@ import (
 	"time"
 
 	"github.com/prawirdani/golang-restapi/config"
+	"github.com/prawirdani/golang-restapi/internal/auth"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/internal/service"
-	"github.com/prawirdani/golang-restapi/pkg/common"
-	"github.com/prawirdani/golang-restapi/pkg/httputil"
 	req "github.com/prawirdani/golang-restapi/pkg/request"
 	res "github.com/prawirdani/golang-restapi/pkg/response"
 )
@@ -50,12 +49,12 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	d := map[string]string{
-		common.AccessToken.Label():  at,
-		common.RefreshToken.Label(): rt,
+		auth.AccessToken.Label():  at,
+		auth.RefreshToken.Label(): rt,
 	}
 
-	h.setTokenCookies(w, common.AccessToken, at)
-	h.setTokenCookies(w, common.RefreshToken, rt)
+	h.setTokenCookies(w, auth.AccessToken, at)
+	h.setTokenCookies(w, auth.RefreshToken, rt)
 
 	return res.Send(w, res.WithData(d), res.WithMessage("Login successful."))
 }
@@ -70,7 +69,7 @@ func (h *AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error 
 }
 
 func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error {
-	payload, err := httputil.GetAuthCtx[model.RefreshTokenPayload](r.Context())
+	payload, err := auth.GetContext[auth.RefreshTokenPayload](r.Context())
 	if err != nil {
 		return err
 	}
@@ -81,17 +80,17 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error
 	}
 
 	d := map[string]string{
-		common.AccessToken.Label(): newAccessToken,
+		auth.AccessToken.Label(): newAccessToken,
 	}
 
-	h.setTokenCookies(w, common.AccessToken, newAccessToken)
+	h.setTokenCookies(w, auth.AccessToken, newAccessToken)
 
 	return res.Send(w, res.WithData(d), res.WithMessage("Token refreshed."))
 }
 
 func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) error {
 	atCookie := &http.Cookie{
-		Name:     common.AccessToken.Label(),
+		Name:     auth.AccessToken.Label(),
 		Value:    "",
 		Expires:  time.Unix(0, 0),
 		HttpOnly: h.cfg.IsProduction(),
@@ -100,7 +99,7 @@ func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) error
 	}
 
 	rtCookie := *atCookie
-	rtCookie.Name = common.RefreshToken.Label()
+	rtCookie.Name = auth.RefreshToken.Label()
 
 	http.SetCookie(w, atCookie)
 	http.SetCookie(w, &rtCookie)
@@ -108,11 +107,11 @@ func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) error
 	return res.Send(w, res.WithMessage("Logout successful."))
 }
 
-func (h *AuthHandler) setTokenCookies(w http.ResponseWriter, tokenType common.TokenType, tokenString string) {
+func (h *AuthHandler) setTokenCookies(w http.ResponseWriter, tokenType auth.TokenType, tokenString string) {
 	currTime := time.Now()
 
 	expiry := currTime.Add(h.cfg.Token.AccessTokenExpiry)
-	if tokenType == common.RefreshToken {
+	if tokenType == auth.RefreshToken {
 		expiry = currTime.Add(h.cfg.Token.RefreshTokenExpiry)
 	}
 

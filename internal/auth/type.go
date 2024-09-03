@@ -1,4 +1,4 @@
-package common
+package auth
 
 type TokenType uint8
 

@@ -1,4 +1,4 @@
-package token
+package auth
 
 import (
 	"time"
@@ -20,8 +20,8 @@ type claims struct {
 	jwt.RegisteredClaims
 }
 
-// Encode generates a new JWT token containing the given payload.
-func Encode(secretKey string, payload map[string]interface{}, expiresIn time.Duration) (string, error) {
+// TokenEncode generates a new JWT token containing the given payload.
+func TokenEncode(secretKey string, payload map[string]interface{}, expiresIn time.Duration) (string, error) {
 	currentTime := time.Now()
 	claims := claims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -38,8 +38,8 @@ func Encode(secretKey string, payload map[string]interface{}, expiresIn time.Dur
 	return token.SignedString([]byte(secretKey))
 }
 
-// Decode parses the given token string and returns the payload if the token is valid.
-func Decode(tokenStr, secretKey string) (map[string]interface{}, error) {
+// TokenDecode parses the given token string and returns the payload if the token is valid.
+func TokenDecode(tokenStr, secretKey string) (map[string]interface{}, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &claims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(secretKey), nil
 	})
