@@ -2,9 +2,10 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 )
+
+var ErrTokenPayloadNotFound = errors.New("token payload not found in context")
 
 type CtxKey string
 
@@ -16,18 +17,10 @@ func SetContext(ctx context.Context, tokenPayload map[string]interface{}) contex
 }
 
 // GetContext retrieves the token payload from the context.
-func GetContext[T TokenPayload](ctx context.Context) (T, error) {
-	var payload T
-
-	mapPayload, ok := ctx.Value(AUTH_CTX_KEY).(map[string]interface{})
+func GetContext(ctx context.Context) (map[string]interface{}, error) {
+	payload, ok := ctx.Value(AUTH_CTX_KEY).(map[string]interface{})
 	if !ok {
-		return payload, errors.New("auth context not found")
+		return nil, ErrTokenPayloadNotFound
 	}
-
-	jsonPayload, _ := json.Marshal(mapPayload)
-	if err := json.Unmarshal(jsonPayload, &payload); err != nil {
-		return payload, err
-	}
-
 	return payload, nil
 }

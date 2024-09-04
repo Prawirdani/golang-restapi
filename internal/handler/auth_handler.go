@@ -69,12 +69,7 @@ func (h *AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error 
 }
 
 func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error {
-	payload, err := auth.GetContext[auth.RefreshTokenPayload](r.Context())
-	if err != nil {
-		return err
-	}
-
-	newAccessToken, err := h.authUC.RefreshToken(r.Context(), payload.User.ID)
+	newAccessToken, err := h.authUC.RefreshToken(r.Context())
 	if err != nil {
 		return err
 	}
@@ -107,7 +102,11 @@ func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) error
 	return res.Send(w, res.WithMessage("Logout successful."))
 }
 
-func (h *AuthHandler) setTokenCookies(w http.ResponseWriter, tokenType auth.TokenType, tokenString string) {
+func (h *AuthHandler) setTokenCookies(
+	w http.ResponseWriter,
+	tokenType auth.TokenType,
+	tokenString string,
+) {
 	currTime := time.Now()
 
 	expiry := currTime.Add(h.cfg.Token.AccessTokenExpiry)

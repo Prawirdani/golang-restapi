@@ -72,11 +72,17 @@ func (u *AuthService) Login(
 	return
 }
 
-func (u *AuthService) RefreshToken(ctx context.Context, userID string) (string, error) {
+// TODO: Should also refreshing the refresh token, maybe by checking the exp time, if its nearly N to expire, then refresh it.
+func (u *AuthService) RefreshToken(ctx context.Context) (string, error) {
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
-	user, err := u.userRepo.SelectWhere(ctxWT, "id", userID)
+	tokenPayload, err := auth.GetContext(ctxWT)
+	if err != nil {
+		return "", err
+	}
+
+	user, err := u.userRepo.SelectWhere(ctxWT, "id", tokenPayload["id"])
 	if err != nil {
 		return "", err
 	}
@@ -96,11 +102,12 @@ func (u *AuthService) IdentifyUser(ctx context.Context) (entity.User, error) {
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
-	payload, err := auth.GetContext[auth.AccessTokenPayload](ctx)
+	tokenPayload, err := auth.GetContext(ctxWT)
 	if err != nil {
 		return entity.User{}, err
 	}
-	user, err := u.userRepo.SelectWhere(ctxWT, "id", payload.User.ID)
+
+	user, err := u.userRepo.SelectWhere(ctxWT, "id", tokenPayload["id"])
 	if err != nil {
 		return entity.User{}, err
 	}

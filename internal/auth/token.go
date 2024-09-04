@@ -1,62 +1,67 @@
 package auth
 
 import (
-	"time"
-
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	apiErr "github.com/prawirdani/golang-restapi/pkg/errors"
 )
 
 var (
-	ErrTokenExpired = apiErr.Unauthorized("Authentication token has expired.")
+	ErrTokenExpired = apiErr.Unauthorized("Token has expired.")
 	ErrInvalidToken = apiErr.Unauthorized("Invalid or malformed token.")
 )
 
-// claims represents the payload of a JWT token.
-type claims struct {
-	Payload map[string]interface{} `json:"payload"`
-	jwt.RegisteredClaims
-}
-
 // TokenEncode generates a new JWT token containing the given payload.
-func TokenEncode(secretKey string, payload map[string]interface{}, expiresIn time.Duration) (string, error) {
-	currentTime := time.Now()
-	claims := claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			IssuedAt:  jwt.NewNumericDate(currentTime),
-			ExpiresAt: jwt.NewNumericDate(currentTime.Add(expiresIn)),
-		},
-		Payload: make(map[string]interface{}),
-	}
-	for k, v := range payload {
-		claims.Payload[k] = v
+func TokenEncode(
+	secretKey string,
+	expiry time.Duration,
+	tokenType TokenType,
+	payload map[string]interface{},
+) (string, error) {
+	if err := tokenType.Validate(); err != nil {
+		return "", err
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	currentTime := time.Now()
+
+	mapClaims := jwt.MapClaims{
+		"iat": jwt.NewNumericDate(currentTime),
+		"exp": jwt.NewNumericDate(currentTime.Add(expiry)),
+		"typ": tokenType,
+	}
+
+	for k, v := range payload {
+		mapClaims[k] = v
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, mapClaims)
 	return token.SignedString([]byte(secretKey))
 }
 
-// TokenDecode parses the given token string and returns the payload if the token is valid.
+// TokenDecode decodes the given JWT token string and returns the map payload.
 func TokenDecode(tokenStr, secretKey string) (map[string]interface{}, error) {
-	token, err := jwt.ParseWithClaims(tokenStr, &claims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, apiErr.BadRequest(
+				fmt.Sprintf("unexpected signing method: %v", token.Header["alg"]),
+			)
+		}
 		return []byte(secretKey), nil
 	})
-
-	switch {
-	case token != nil && token.Valid:
-		break
-	case errors.Is(err, jwt.ErrTokenExpired):
-		return nil, ErrTokenExpired
-	default:
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, ErrTokenExpired
+		}
 		return nil, ErrInvalidToken
 	}
 
-	claims, ok := token.Claims.(*claims)
-	if !ok {
-		return nil, jwt.ErrInvalidKeyType
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return nil, ErrInvalidToken
 	}
 
-	return claims.Payload, nil
+	return claims, nil
 }

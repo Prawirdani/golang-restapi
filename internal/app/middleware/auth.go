@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -18,7 +19,9 @@ func (mw *Collection) AuthRefreshToken(next http.Handler) http.Handler {
 	return mw.authorize(auth.RefreshToken)(next)
 }
 
-var ErrMissingToken = errors.Unauthorized("Missing auth token from cookie or Authorization bearer token")
+var ErrMissingToken = errors.Unauthorized(
+	"Missing auth token from cookie or Authorization bearer token",
+)
 
 // Token Authoriziation Middleware
 func (mw *Collection) authorize(tt auth.TokenType) func(http.Handler) http.Handler {
@@ -47,8 +50,18 @@ func (mw *Collection) authorize(tt auth.TokenType) func(http.Handler) http.Handl
 			}
 
 			// Check if the token type is the same as the expected token type
-			if getTokenType(payload) != tt {
-				response.HandleError(w, errors.Unauthorized("Invalid token type"))
+			payloadTt, error := auth.GetTokenType(payload)
+			if error != nil {
+				response.HandleError(w, error)
+				return
+			}
+			if *payloadTt != tt {
+				response.HandleError(
+					w,
+					errors.Unauthorized(
+						fmt.Sprintf("Mismatched token type, expected %s", tt.Label()),
+					),
+				)
 				return
 			}
 
@@ -57,9 +70,4 @@ func (mw *Collection) authorize(tt auth.TokenType) func(http.Handler) http.Handl
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
-}
-
-func getTokenType(payload map[string]interface{}) auth.TokenType {
-	v := auth.TokenType(payload["type"].(float64))
-	return v
 }

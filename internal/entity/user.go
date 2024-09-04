@@ -3,8 +3,6 @@ package entity
 import (
 	"time"
 
-	stderrors "errors"
-
 	"github.com/google/uuid"
 	"github.com/prawirdani/golang-restapi/internal/auth"
 	"github.com/prawirdani/golang-restapi/internal/model"
@@ -67,30 +65,15 @@ func (u User) GenerateToken(
 	secretKey string,
 	expiry time.Duration,
 ) (string, error) {
-	var payload map[string]interface{}
-
-	// If you change one of the map structure, you must adjust the TokenPayload struct from auth package
-	switch tokenType {
-	case auth.AccessToken:
-		payload = map[string]interface{}{
-			"user": map[string]interface{}{
-				"id":   u.ID.String(),
-				"name": u.Name,
-			},
-			"type": tokenType,
-		}
-	case auth.RefreshToken:
-		payload = map[string]interface{}{
-			"user": map[string]interface{}{
-				"id": u.ID.String(),
-			},
-			"type": tokenType,
-		}
-	default:
-		return "", stderrors.New("Invalid token type")
+	payload := map[string]interface{}{
+		"id": u.ID.String(),
 	}
 
-	return auth.TokenEncode(secretKey, payload, expiry)
+	if tokenType == auth.AccessToken {
+		payload["name"] = u.Name
+	}
+
+	return auth.TokenEncode(secretKey, expiry, tokenType, payload)
 }
 
 // GenerateTokenPair generates access token and refresh token using goroutines
