@@ -7,7 +7,6 @@ import (
 
 	"github.com/prawirdani/golang-restapi/internal/auth"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
-	"github.com/prawirdani/golang-restapi/pkg/httputil"
 	"github.com/prawirdani/golang-restapi/pkg/response"
 )
 
@@ -28,7 +27,12 @@ func (mw *Collection) authorize(tt auth.TokenType) func(http.Handler) http.Handl
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Retrieve the token string from the request cookie
-			tokenStr := httputil.GetCookie(r, tt.Label())
+
+			var tokenStr string
+
+			if cookie, err := r.Cookie(tt.Label()); err == nil {
+				tokenStr = cookie.Value
+			}
 
 			// If token doesn't exist in cookie, retrieve from Authorization header
 			if tokenStr == "" {
@@ -37,6 +41,7 @@ func (mw *Collection) authorize(tt auth.TokenType) func(http.Handler) http.Handl
 					tokenStr = authHeader[len("Bearer "):]
 				}
 			}
+
 			// If token is still empty, return an error
 			if tokenStr == "" {
 				response.HandleError(w, ErrMissingToken)

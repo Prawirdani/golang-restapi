@@ -6,12 +6,17 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/prawirdani/golang-restapi/internal/app/middleware"
 	"github.com/prawirdani/golang-restapi/internal/handler"
-	"github.com/prawirdani/golang-restapi/pkg/httputil"
 	"github.com/prawirdani/golang-restapi/pkg/response"
 )
 
+// HandlerFn is a custom handler wrapper function type.
+// It is used to wrap handler function to make it easier handling errors from handler function.
+// Also help handler code to be more readable without to many early return statement.
+// Every handler function should use this function signature.
+type HandlerFn func(w http.ResponseWriter, r *http.Request) error
+
 // handlerFn is a helper function to handle error in CustomHandler function
-func handlerFn(fn httputil.CustomHandler) http.HandlerFunc {
+func handlerFn(fn HandlerFn) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := fn(w, r); err != nil {
 			response.HandleError(w, err)
