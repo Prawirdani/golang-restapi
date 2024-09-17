@@ -76,7 +76,7 @@ func (u User) GenerateToken(
 	return auth.TokenEncode(secretKey, expiry, tokenType, payload)
 }
 
-// GenerateTokenPair generates access token and refresh token using goroutines
+// GenerateTokenPair generates access token and refresh token
 func (u User) GenerateTokenPair(
 	secretKey string,
 	accessExpiry time.Duration,
