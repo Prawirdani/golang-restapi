@@ -16,7 +16,7 @@ func BindValidate(r *http.Request, reqBody RequestBody) error {
 	defer r.Body.Close()
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(reqBody); err != nil {
-		return err
+		return parseBodyErr(err)
 	}
 
 	if err := reqBody.Sanitize(); err != nil {
