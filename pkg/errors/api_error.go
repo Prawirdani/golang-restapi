@@ -12,6 +12,7 @@ var (
 	NotFound         = build(http.StatusNotFound)
 	Unauthorized     = build(http.StatusUnauthorized)
 	MethodNotAllowed = build(http.StatusMethodNotAllowed)
+	Forbidden        = build(http.StatusForbidden)
 	InternalServer   = build(http.StatusInternalServerError)
 )
 
