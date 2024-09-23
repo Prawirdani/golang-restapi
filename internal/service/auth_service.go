@@ -47,55 +47,86 @@ func (u *AuthService) Register(ctx context.Context, request model.RegisterReques
 	return nil
 }
 
+// Login is a method to authenticate the user, returning access token, refresh token, and error if any.
 func (u *AuthService) Login(
 	ctx context.Context,
 	request model.LoginRequest,
-) (accessToken string, refreshToken string, err error) {
+) (string, string, error) {
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
 	user, _ := u.userRepo.SelectWhere(ctxWT, "email", request.Email)
-	if err = user.VerifyPassword(request.Password); err != nil {
-		return
+	if err := user.VerifyPassword(request.Password); err != nil {
+		return "", "", err
 	}
 
-	accessToken, refreshToken, err = user.GenerateTokenPair(
+	accessToken, err := user.GenerateAccessToken(
 		u.cfg.Token.SecretKey,
 		u.cfg.Token.AccessTokenExpiry,
+	)
+	if err != nil {
+		u.logger.Error(logging.Service, "AuthService.Login.GenerateAccessToken", err.Error())
+		return "", "", err
+	}
+
+	sess, err := auth.NewSession(
+		user.ID,
+		request.UserAgent,
 		u.cfg.Token.RefreshTokenExpiry,
 	)
 	if err != nil {
-		u.logger.Error(logging.Service, "AuthService.Login.GenerateTokenPair", err.Error())
-		return
+		u.logger.Error(logging.Service, "AuthService.Login.NewSession", err.Error())
+		return "", "", err
 	}
 
-	return
+	if err = u.userRepo.InsertSession(ctxWT, sess); err != nil {
+		return "", "", err
+	}
+
+	return accessToken, sess.RefreshToken, nil
 }
 
 // TODO: Should also refreshing the refresh token, maybe by checking the exp time, if its nearly N to expire, then refresh it.
-func (u *AuthService) RefreshToken(ctx context.Context) (string, error) {
+func (u *AuthService) RefreshAccessToken(ctx context.Context, refreshToken string) (string, error) {
 	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
-	tokenPayload, err := auth.GetContext(ctxWT)
+	sess, err := u.userRepo.SelectSession(ctxWT, "refresh_token", refreshToken)
 	if err != nil {
 		return "", err
 	}
 
-	user, err := u.userRepo.SelectWhere(ctxWT, "id", tokenPayload["id"])
+	if sess.IsExpired() {
+		_ = u.userRepo.DeleteSession(ctxWT, "id", sess.ID)
+		return "", auth.ErrSessionExpired
+	}
+
+	user, err := u.userRepo.SelectWhere(ctxWT, "id", sess.UserID)
 	if err != nil {
 		return "", err
 	}
-	accessToken, err := user.GenerateToken(
-		auth.AccessToken,
+
+	accessToken, err := user.GenerateAccessToken(
 		u.cfg.Token.SecretKey,
 		u.cfg.Token.AccessTokenExpiry,
 	)
 	if err != nil {
-		u.logger.Error(logging.Service, "AuthService.RefreshToken.GenerateAccessToken", err.Error())
+		u.logger.Error(
+			logging.Service,
+			"AuthService.RefreshAccessToken.GenerateAccessToken",
+			err.Error(),
+		)
 		return "", err
 	}
+
 	return accessToken, nil
+}
+
+func (u *AuthService) Logout(ctx context.Context, refreshToken string) error {
+	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
+	defer cancel()
+
+	return u.userRepo.DeleteSession(ctxWT, "refresh_token", refreshToken)
 }
 
 func (u *AuthService) IdentifyUser(ctx context.Context) (entity.User, error) {

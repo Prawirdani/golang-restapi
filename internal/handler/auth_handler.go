@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -43,18 +44,26 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	at, rt, err := h.authUC.Login(r.Context(), reqBody)
+	uAgent := r.Header.Get("User-Agent")
+	reqBody.UserAgent = uAgent
+
+	accessToken, refreshToken, err := h.authUC.Login(r.Context(), reqBody)
 	if err != nil {
 		return err
 	}
 
 	d := map[string]string{
-		auth.AccessToken.Label():  at,
-		auth.RefreshToken.Label(): rt,
+		auth.ACCESS_TOKEN:  accessToken,
+		auth.REFRESH_TOKEN: refreshToken,
 	}
 
-	h.setTokenCookies(w, auth.AccessToken, at)
-	h.setTokenCookies(w, auth.RefreshToken, rt)
+	if err := h.setTokenCookie(w, accessToken, auth.ACCESS_TOKEN); err != nil {
+		return err
+	}
+
+	if err := h.setTokenCookie(w, refreshToken, auth.REFRESH_TOKEN); err != nil {
+		return err
+	}
 
 	return res.Send(w, res.WithData(d), res.WithMessage("Login successful."))
 }
@@ -69,23 +78,69 @@ func (h *AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error 
 }
 
 func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error {
-	newAccessToken, err := h.authUC.RefreshToken(r.Context())
+	// Retrieve the refresh token from the request cookie
+	var refreshToken string
+	if cookie, err := r.Cookie(auth.REFRESH_TOKEN); err == nil {
+		refreshToken = cookie.Value
+	}
+
+	newAccessToken, err := h.authUC.RefreshAccessToken(r.Context(), refreshToken)
 	if err != nil {
 		return err
 	}
 
 	d := map[string]string{
-		auth.AccessToken.Label(): newAccessToken,
+		auth.ACCESS_TOKEN: newAccessToken,
 	}
 
-	h.setTokenCookies(w, auth.AccessToken, newAccessToken)
+	if err := h.setTokenCookie(w, newAccessToken, auth.ACCESS_TOKEN); err != nil {
+		return err
+	}
 
 	return res.Send(w, res.WithData(d), res.WithMessage("Token refreshed."))
 }
 
 func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) error {
+	// Retrieve the refresh token from the request cookie
+	var refreshToken string
+	if cookie, err := r.Cookie(auth.REFRESH_TOKEN); err == nil {
+		refreshToken = cookie.Value
+	}
+
+	_ = h.authUC.Logout(r.Context(), refreshToken)
+	h.removeTokenCookies(w)
+
+	return res.Send(w, res.WithMessage("Logout successful."))
+}
+
+func (h *AuthHandler) setTokenCookie(w http.ResponseWriter, token string, label string) error {
+	if label != auth.ACCESS_TOKEN && label != auth.REFRESH_TOKEN {
+		return errors.New("invalid token label")
+	}
+
+	expiry := h.cfg.Token.AccessTokenExpiry
+	if label == auth.REFRESH_TOKEN {
+		expiry = h.cfg.Token.RefreshTokenExpiry
+	}
+
+	currTime := time.Now()
+
+	ck := &http.Cookie{
+		Name:     label,
+		Value:    token,
+		Expires:  currTime.Add(expiry),
+		HttpOnly: h.cfg.IsProduction(),
+		Secure:   h.cfg.IsProduction(),
+		Path:     "/",
+	}
+
+	http.SetCookie(w, ck)
+	return nil
+}
+
+func (h *AuthHandler) removeTokenCookies(w http.ResponseWriter) {
 	atCookie := &http.Cookie{
-		Name:     auth.AccessToken.Label(),
+		Name:     auth.ACCESS_TOKEN,
 		Value:    "",
 		Expires:  time.Unix(0, 0),
 		HttpOnly: h.cfg.IsProduction(),
@@ -94,33 +149,8 @@ func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) error
 	}
 
 	rtCookie := *atCookie
-	rtCookie.Name = auth.RefreshToken.Label()
+	rtCookie.Name = auth.REFRESH_TOKEN
 
 	http.SetCookie(w, atCookie)
 	http.SetCookie(w, &rtCookie)
-
-	return res.Send(w, res.WithMessage("Logout successful."))
-}
-
-func (h *AuthHandler) setTokenCookies(
-	w http.ResponseWriter,
-	tokenType auth.TokenType,
-	tokenString string,
-) {
-	currTime := time.Now()
-
-	expiry := currTime.Add(h.cfg.Token.AccessTokenExpiry)
-	if tokenType == auth.RefreshToken {
-		expiry = currTime.Add(h.cfg.Token.RefreshTokenExpiry)
-	}
-
-	ck := &http.Cookie{
-		Name:     tokenType.Label(),
-		Value:    tokenString,
-		Expires:  expiry,
-		HttpOnly: h.cfg.IsProduction(),
-		Secure:   h.cfg.IsProduction(),
-		Path:     "/",
-	}
-	http.SetCookie(w, ck)
 }

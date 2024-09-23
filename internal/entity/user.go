@@ -58,43 +58,11 @@ func (u *User) VerifyPassword(plain string) error {
 	return nil
 }
 
-// GenerateToken generates jwt token for user authentication
-// Returns the token string and error if any
-func (u User) GenerateToken(
-	tokenType auth.TokenType,
-	secretKey string,
-	expiry time.Duration,
-) (string, error) {
+func (u *User) GenerateAccessToken(secret string, exp time.Duration) (string, error) {
 	payload := map[string]interface{}{
-		"id": u.ID.String(),
+		"id":   u.ID.String(),
+		"name": u.Name,
 	}
 
-	if tokenType == auth.AccessToken {
-		payload["name"] = u.Name
-	}
-
-	return auth.TokenEncode(secretKey, expiry, tokenType, payload)
-}
-
-// GenerateTokenPair generates access token and refresh token
-func (u User) GenerateTokenPair(
-	secretKey string,
-	accessExpiry time.Duration,
-	refreshExpiry time.Duration,
-) (
-	accessToken string,
-	refreshToken string,
-	err error,
-) {
-	accessToken, err = u.GenerateToken(auth.AccessToken, secretKey, accessExpiry)
-	if err != nil {
-		return
-	}
-
-	refreshToken, err = u.GenerateToken(auth.RefreshToken, secretKey, refreshExpiry)
-	if err != nil {
-		return
-	}
-
-	return
+	return auth.GenerateJWT(secret, exp, payload)
 }

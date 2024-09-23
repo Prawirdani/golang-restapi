@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -9,20 +11,29 @@ import (
 	apiErr "github.com/prawirdani/golang-restapi/pkg/errors"
 )
 
-var (
-	ErrTokenExpired = apiErr.Unauthorized("Token has expired.")
-	ErrInvalidToken = apiErr.Unauthorized("Invalid or malformed token.")
+const (
+	// Used as token cookie name and response body key.
+	ACCESS_TOKEN  = "accessToken"
+	REFRESH_TOKEN = "refreshToken"
 )
 
-// TokenEncode generates a new JWT token containing the given payload.
-func TokenEncode(
+var (
+	ErrTokenExpired       = apiErr.Unauthorized("Token has expired.")
+	ErrTokenInvalid       = apiErr.Unauthorized("Invalid or malformed token.")
+	ErrMissingAccessToken = apiErr.Unauthorized(
+		"Missing auth token from cookie or Authorization bearer token",
+	)
+	ErrEmptyTokenSecret = errors.New("Secret key must not be empty")
+)
+
+// GenerateJWT generates a new Json Web Token containing the given payload. JWT is used as access token.
+func GenerateJWT(
 	secretKey string,
 	expiry time.Duration,
-	tokenType TokenType,
 	payload map[string]interface{},
 ) (string, error) {
-	if err := tokenType.Validate(); err != nil {
-		return "", err
+	if secretKey == "" {
+		return "", ErrEmptyTokenSecret
 	}
 
 	currentTime := time.Now()
@@ -30,7 +41,6 @@ func TokenEncode(
 	mapClaims := jwt.MapClaims{
 		"iat": jwt.NewNumericDate(currentTime),
 		"exp": jwt.NewNumericDate(currentTime.Add(expiry)),
-		"typ": tokenType,
 	}
 
 	for k, v := range payload {
@@ -41,8 +51,8 @@ func TokenEncode(
 	return token.SignedString([]byte(secretKey))
 }
 
-// TokenDecode decodes the given JWT token string and returns the map payload.
-func TokenDecode(tokenStr, secretKey string) (map[string]interface{}, error) {
+// ValidateJWT decodes the given JWT string and returns the map payload.
+func ValidateJWT(tokenStr, secretKey string) (map[string]interface{}, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, apiErr.BadRequest(
@@ -55,13 +65,23 @@ func TokenDecode(tokenStr, secretKey string) (map[string]interface{}, error) {
 		if errors.Is(err, jwt.ErrTokenExpired) {
 			return nil, ErrTokenExpired
 		}
-		return nil, ErrInvalidToken
+		return nil, ErrTokenInvalid
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
-		return nil, ErrInvalidToken
+		return nil, ErrTokenInvalid
 	}
 
 	return claims, nil
+}
+
+// GenerateRefreshToken generates a random 32 bytes for refresh token.
+func GenerateRefreshToken() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(bytes), nil
 }

@@ -4,12 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 var mockTokenPayload = map[string]interface{}{
-	"id":   uuid.New().String(),
+	"id":   "id-123",
 	"name": "John Doe",
 }
 
