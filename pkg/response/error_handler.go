@@ -10,11 +10,8 @@ import (
 func HandleError(w http.ResponseWriter, err error) {
 	e := errors.Parse(err)
 	response := ResponseBody{
-		Error: &ErrorBody{
-			Code:    e.Status,
-			Message: e.Message,
-			Details: e.Cause,
-		},
+		Message: e.Message,
+		Errors:  e.Cause,
 	}
 
 	writeErr := writeJSON(w, e.Status, response)

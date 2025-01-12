@@ -35,7 +35,7 @@ func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) err
 		return err
 	}
 
-	return res.Send(w, res.WithStatus(201), res.WithMessage("Registration successful."))
+	return res.Send(w, r, res.WithStatus(201), res.WithMessage("Registration successful."))
 }
 
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
@@ -65,7 +65,7 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	return res.Send(w, res.WithData(d), res.WithMessage("Login successful."))
+	return res.Send(w, r, res.WithData(d), res.WithMessage("Login successful."))
 }
 
 func (h *AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error {
@@ -74,7 +74,7 @@ func (h *AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	return res.Send(w, res.WithData(user))
+	return res.Send(w, r, res.WithData(user))
 }
 
 func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error {
@@ -97,7 +97,7 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 
-	return res.Send(w, res.WithData(d), res.WithMessage("Token refreshed."))
+	return res.Send(w, r, res.WithData(d), res.WithMessage("Token refreshed."))
 }
 
 func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) error {
@@ -110,7 +110,7 @@ func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) error
 	_ = h.authUC.Logout(r.Context(), refreshToken)
 	h.removeTokenCookies(w)
 
-	return res.Send(w, res.WithMessage("Logout successful."))
+	return res.Send(w, r, res.WithMessage("Logout successful."))
 }
 
 func (h *AuthHandler) setTokenCookie(w http.ResponseWriter, token string, label string) error {
