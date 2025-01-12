@@ -53,7 +53,7 @@ func InitServer(cfg *config.Config, logger logging.Logger, pgPool *pgxpool.Pool)
 	router.Use(mws.ReqLogger)
 
 	if cfg.IsProduction() {
-		router.Use(mws.RateLimit)
+		router.Use(mws.RateLimit(50, 1*time.Minute))
 	}
 
 	// Not Found Handler
@@ -63,7 +63,10 @@ func InitServer(cfg *config.Config, logger logging.Logger, pgPool *pgxpool.Pool)
 
 	// Request Method Not Allowed Handler
 	router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		response.HandleError(w, errors.MethodNotAllowed("The method is not allowed for the requested URL"))
+		response.HandleError(
+			w,
+			errors.MethodNotAllowed("The method is not allowed for the requested URL"),
+		)
 	})
 
 	svr := &Server{
@@ -88,7 +91,11 @@ func (s *Server) Start() {
 
 	// Application Server
 	go func() {
-		s.logger.Info(logging.Startup, "app.Server", fmt.Sprintf("App serves on %v", s.cfg.App.Port))
+		s.logger.Info(
+			logging.Startup,
+			"app.Server",
+			fmt.Sprintf("App serves on %v", s.cfg.App.Port),
+		)
 		if err := svr.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			s.logger.Fatal(logging.Startup, "app.Server", err.Error())
 		}
@@ -96,7 +103,11 @@ func (s *Server) Start() {
 
 	// Metrics Server
 	go func() {
-		s.logger.Info(logging.Startup, "app.Server.Metrics", fmt.Sprintf("Metrics serves on %v", s.cfg.App.Port+1))
+		s.logger.Info(
+			logging.Startup,
+			"app.Server.Metrics",
+			fmt.Sprintf("Metrics serves on %v", s.cfg.App.Port+1),
+		)
 		if err := s.metrics.RunServer(s.cfg.App.Port + 1); err != nil {
 			s.logger.Fatal(logging.Startup, "app.Server.Metrics", err.Error())
 		}
