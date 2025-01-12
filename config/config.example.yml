@@ -15,8 +15,12 @@ db:
   MaxConns: 5
   MaxConnLifetime: 60 # In Minute
 
+metrics:
+  Enable: false
+  PrometheusPort: 42070
+
 cors:
-  Origins: localhost:3000 # Comma separated list of origins
+  Origins: http://localhost:3000 # Comma separated list of origins
   Credentials: true
 
 token:

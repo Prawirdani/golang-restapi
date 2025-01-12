@@ -17,10 +17,11 @@ const (
 )
 
 type Config struct {
-	App   AppConfig
-	DB    DBConfig
-	Cors  CorsConfig
-	Token TokenConfig
+	App     AppConfig
+	DB      DBConfig
+	Cors    CorsConfig
+	Metrics MetricsConfig
+	Token   TokenConfig
 }
 
 func (c Config) IsProduction() bool {
@@ -44,6 +45,11 @@ type DBConfig struct {
 	MinConns        int // PG Pool minimum connections
 	MaxConns        int // PG Pool maximum connections
 	MaxConnLifetime int // PG Pool maximun connection lifetime, In Minute
+}
+
+type MetricsConfig struct {
+	Enable         bool
+	PrometheusPort int
 }
 
 type CorsConfig struct {
