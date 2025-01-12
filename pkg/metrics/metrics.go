@@ -9,6 +9,7 @@ import (
 )
 
 type Metrics struct {
+	Port        int
 	Info        *prometheus.GaugeVec
 	ReqDuration *prometheus.HistogramVec
 	ReqCounter  *prometheus.CounterVec

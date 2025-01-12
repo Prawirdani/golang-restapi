@@ -23,7 +23,6 @@ import (
 
 type Server struct {
 	cfg         *config.Config
-	metrics     *metrics.Metrics
 	logger      logging.Logger
 	router      *chi.Mux
 	pg          *pgxpool.Pool
@@ -41,9 +40,6 @@ func InitServer(cfg *config.Config, logger logging.Logger, pgPool *pgxpool.Pool)
 	}
 
 	router := chi.NewRouter()
-
-	m := metrics.Init()
-	m.SetAppInfo(cfg.App.Version, string(cfg.App.Environment))
 
 	mws := middleware.NewCollection(cfg, logger)
 
@@ -69,11 +65,29 @@ func InitServer(cfg *config.Config, logger logging.Logger, pgPool *pgxpool.Pool)
 		)
 	})
 
+	if cfg.Metrics.Enable {
+		m := metrics.Init()
+		m.SetAppInfo(cfg.App.Version, string(cfg.App.Environment))
+		router.Use(m.Instrument)
+
+		// Metrics Server
+		port := cfg.Metrics.PrometheusPort
+		go func() {
+			logger.Info(
+				logging.Startup,
+				"Server.Init",
+				fmt.Sprintf("Metrics serves on localhost:%v", port),
+			)
+			if err := m.RunServer(port); err != nil {
+				logger.Fatal(logging.Startup, "Server.Init.Metrics", err.Error())
+			}
+		}()
+	}
+
 	svr := &Server{
 		router:      router,
 		cfg:         cfg,
 		pg:          pgPool,
-		metrics:     m,
 		middlewares: mws,
 		logger:      logger,
 	}
@@ -84,12 +98,14 @@ func InitServer(cfg *config.Config, logger logging.Logger, pgPool *pgxpool.Pool)
 }
 
 func (s *Server) Start() {
+	fmt.Println("ENV\t:", s.cfg.App.Environment)
+	fmt.Println("Metrics\t:", s.cfg.Metrics.Enable)
+
 	svr := http.Server{
 		Addr:    fmt.Sprintf(":%v", s.cfg.App.Port),
 		Handler: s.router,
 	}
 
-	// Application Server
 	go func() {
 		s.logger.Info(
 			logging.Startup,
@@ -98,18 +114,6 @@ func (s *Server) Start() {
 		)
 		if err := svr.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			s.logger.Fatal(logging.Startup, "app.Server", err.Error())
-		}
-	}()
-
-	// Metrics Server
-	go func() {
-		s.logger.Info(
-			logging.Startup,
-			"app.Server.Metrics",
-			fmt.Sprintf("Metrics serves on %v", s.cfg.App.Port+1),
-		)
-		if err := s.metrics.RunServer(s.cfg.App.Port + 1); err != nil {
-			s.logger.Fatal(logging.Startup, "app.Server.Metrics", err.Error())
 		}
 	}()
 

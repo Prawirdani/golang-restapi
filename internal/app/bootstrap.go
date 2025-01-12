@@ -19,7 +19,6 @@ func (s *Server) bootstrap() {
 	authHandler := handler.NewAuthHandler(s.cfg, authService)
 
 	s.router.Route("/api", func(r chi.Router) {
-		r.Use(s.metrics.Instrument)
 		registerAuthRoutes(r, authHandler, s.middlewares)
 	})
 }
