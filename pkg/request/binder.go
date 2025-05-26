@@ -8,7 +8,7 @@ import (
 )
 
 // BindValidate is a helper function to bind and validate json request body, requires a struct that implements RequestBody interface
-func BindValidate(r *http.Request, reqBody RequestBody) error {
+func BindValidate(r *http.Request, reqBody Body) error {
 	if r.Header.Get("Content-Type") != "application/json" {
 		return apiErr.BadRequest("Content-Type must be application/json")
 	}
