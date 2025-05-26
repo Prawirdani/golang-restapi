@@ -16,6 +16,7 @@ func main() {
 	}
 
 	logger := logging.NewLogger(cfg)
+	defer logger.Close()
 
 	dbPool, err := database.NewPGConnection(cfg)
 	if err != nil {

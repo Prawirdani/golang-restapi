@@ -10,6 +10,7 @@ type Logger interface {
 	Debug(cat Category, caller string, message string)
 	Error(cat Category, caller string, message string)
 	Fatal(cat Category, caller string, message string)
+	Close()
 }
 
 func NewLogger(cfg *config.Config) Logger {

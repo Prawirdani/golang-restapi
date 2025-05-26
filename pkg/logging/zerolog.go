@@ -11,12 +11,14 @@ import (
 )
 
 type zeroLogger struct {
-	logger *zerolog.Logger
+	logger  *zerolog.Logger
+	logFile *os.File
 }
 
 func newZeroLogger(cfg *config.Config) *zeroLogger {
 	var w io.Writer = os.Stdout
 	var level zerolog.Level = zerolog.DebugLevel
+	var logFile *os.File
 
 	// Write logs into file if in production mode
 	if cfg.IsProduction() {
@@ -29,9 +31,14 @@ func newZeroLogger(cfg *config.Config) *zeroLogger {
 		}
 
 		// Create log file
-		filename := fmt.Sprintf("%s%v.%s", cfg.App.LogPath, time.Now().Format("2006-01-02 15:04:05"), "log")
+		filename := fmt.Sprintf(
+			"%s%v.%s",
+			cfg.App.LogPath,
+			time.Now().Format("2006-01-02 15:04:05"),
+			"log",
+		)
 
-		logFile, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		logFile, err = os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			panic("Failed to open log file")
 		}
@@ -78,4 +85,10 @@ func (zl *zeroLogger) Fatal(cat Category, caller string, message string) {
 		Str("category", cat.String()).
 		Str("caller", caller).
 		Msg(message)
+}
+
+func (l *zeroLogger) Close() {
+	if l.logFile != nil {
+		l.logFile.Close()
+	}
 }
