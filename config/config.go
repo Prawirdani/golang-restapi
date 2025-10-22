@@ -17,11 +17,13 @@ const (
 )
 
 type Config struct {
-	App     AppConfig
-	DB      DBConfig
-	Cors    CorsConfig
-	Metrics MetricsConfig
-	Token   TokenConfig
+	App      AppConfig     `mapstructure:",squash"`
+	Postgres PGConfig      `mapstructure:",squash"`
+	Cors     CorsConfig    `mapstructure:",squash"`
+	Token    TokenConfig   `mapstructure:",squash"`
+	Metrics  MetricsConfig `mapstructure:",squash"`
+	SMTP     SMTPConfig    `mapstructure:",squash"`
+	R2       R2Config      `mapstructure:",squash"`
 }
 
 func (c Config) IsProduction() bool {
@@ -29,69 +31,86 @@ func (c Config) IsProduction() bool {
 }
 
 type AppConfig struct {
-	Name        string
-	Version     string
-	Port        int
-	Environment AppEnv
-	LogPath     string
+	Name        string `mapstructure:"APP_NAME"`
+	Version     string `mapstructure:"APP_VERSION"`
+	Port        int    `mapstructure:"APP_PORT"`
+	Environment AppEnv `mapstructure:"APP_ENV"`
 }
 
-type DBConfig struct {
-	Username        string
-	Password        string
-	Host            string
-	Port            int
-	Name            string
-	MinConns        int // PG Pool minimum connections
-	MaxConns        int // PG Pool maximum connections
-	MaxConnLifetime int // PG Pool maximun connection lifetime, In Minute
+type PGConfig struct {
+	User            string        `mapstructure:"DB_USER"`
+	Password        string        `mapstructure:"DB_PASSWORD"`
+	Host            string        `mapstructure:"DB_HOST"`
+	Port            int           `mapstructure:"DB_PORT"`
+	Name            string        `mapstructure:"DB_NAME"`
+	MinConns        int           `mapstructure:"DB_MINCONNS"`         // PG Pool minimum connections
+	MaxConns        int           `mapstructure:"DB_MAXCONNS"`         // PG Pool maximum connections
+	MaxConnLifetime time.Duration `mapstructure:"DB_MAXCONN_LIFETIME"` // PG Pool maximun connection lifetime
 }
 
 type MetricsConfig struct {
-	Enable         bool
-	PrometheusPort int
+	Enable         bool `mapstructure:"METRICS_ENABLE"`
+	PrometheusPort int  `mapstructure:"METRICS_PROMETHEUS_PORT"`
 }
 
 type CorsConfig struct {
-	Origins     []string
-	Credentials bool
+	Origins     []string `mapstructure:"CORS_ORIGINS"`
+	Credentials bool     `mapstructure:"CORS_CREDENTIALS"`
 }
 
 type TokenConfig struct {
-	SecretKey          string
-	AccessTokenExpiry  time.Duration
-	RefreshTokenExpiry time.Duration
+	SecretKey                 string        `mapstructure:"TOKEN_SECRETKEY"`
+	AccessTokenExpiry         time.Duration `mapstructure:"TOKEN_ACCESS_TOKEN_EXPIRY"`
+	RefreshTokenExpiry        time.Duration `mapstructure:"TOKEN_REFRESH_TOKEN_EXPIRY"`
+	ResetPasswordTokenExpiry  time.Duration `mapstructure:"RESET_PASSWORD_TOKEN_EXPIRY"`
+	ResetPasswordFormEndpoint string        `mapstructure:"RESET_PASSWORD_FORM_ENDPOINT"`
+}
+
+type SMTPConfig struct {
+	Host         string `mapstructure:"SMTP_HOST"`
+	Port         int    `mapstructure:"SMTP_PORT"`
+	SenderName   string `mapstructure:"SMTP_SENDER_NAME"`
+	AuthEmail    string `mapstructure:"SMTP_AUTH_EMAIL"`
+	AuthPassword string `mapstructure:"SMTP_AUTH_PASSWORD"`
+}
+
+type R2Config struct {
+	Bucket          string `mapstructure:"R2_BUCKET"`
+	AccountID       string `mapstructure:"R2_ACCOUNT_ID"`
+	AccessKeyID     string `mapstructure:"R2_ACCESS_KEY_ID"`
+	AccessKeySecret string `mapstructure:"R2_ACCESS_KEY_SECRET"`
 }
 
 // Load and Parse Config, pass the path of the config file relatively from the root dir
-func LoadConfig(path string) (*Config, error) {
-	var c Config
-	v := viper.New()
-	v.SetConfigName("config")
-	v.SetConfigType("yml")
-	v.AddConfigPath(path)
+func LoadConfig(filepath string) (*Config, error) {
+	// Set the file name and path for the .env file
+	viper.SetConfigFile(filepath)
+	viper.SetConfigType("env")
 
-	if err := v.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("fail load config: %v", err.Error())
+	viper.AutomaticEnv()
+
+	// Read the config file
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return nil, fmt.Errorf("error reading config file: %w", err)
+		}
 	}
 
-	if err := v.Unmarshal(&c); err != nil {
+	var c Config
+	if err := viper.Unmarshal(&c); err != nil {
 		return nil, fmt.Errorf("fail parse config: %v", err.Error())
 	}
 
 	if c.App.Environment != ENV_PRODUCTION && c.App.Environment != ENV_DEVELOPMENT {
-		return nil, errors.New("Invalid app.Environtment value, expecting DEV or PROD")
+		return nil, errors.New("invalid app.Environtment value, expecting 'DEV' or 'PROD'")
 	}
 
 	// Validate origins URL
 	for _, origin := range c.Cors.Origins {
 		if _, err := url.ParseRequestURI(origin); err != nil {
-			return nil, fmt.Errorf("Invalid cors.Origins URL: %s", origin)
+			return nil, fmt.Errorf("invalid cors origins url: %s", origin)
 		}
 	}
-
-	c.Token.AccessTokenExpiry = c.Token.AccessTokenExpiry * time.Minute
-	c.Token.RefreshTokenExpiry = c.Token.RefreshTokenExpiry * time.Hour * 24
 
 	return &c, nil
 }

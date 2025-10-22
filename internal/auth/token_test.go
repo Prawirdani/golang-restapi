@@ -16,12 +16,12 @@ var accessTokenPayload = map[string]any{
 }
 
 func TestTokenEncode(t *testing.T) {
-	token, err := GenerateJWT(SECRET, time.Minute*5, accessTokenPayload)
+	token, err := GenerateJWT(SECRET, time.Minute*5, &accessTokenPayload)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 
 	t.Run("EmptySecret", func(t *testing.T) {
-		token, err := GenerateJWT("", time.Minute*1, accessTokenPayload)
+		token, err := GenerateJWT("", time.Minute*1, &accessTokenPayload)
 		assert.Error(t, err)
 		assert.Empty(t, token)
 		assert.Equal(t, ErrEmptyTokenSecret, err)
@@ -29,7 +29,7 @@ func TestTokenEncode(t *testing.T) {
 }
 
 func TestTokenDecode(t *testing.T) {
-	token, err := GenerateJWT(SECRET, time.Minute*5, accessTokenPayload)
+	token, err := GenerateJWT(SECRET, time.Minute*5, &accessTokenPayload)
 	require.NoError(t, err)
 
 	payload, err := ValidateJWT(token, SECRET)
@@ -38,7 +38,7 @@ func TestTokenDecode(t *testing.T) {
 	assert.Equal(t, accessTokenPayload["username"], payload["username"])
 
 	t.Run("Expired", func(t *testing.T) {
-		token, err := GenerateJWT(SECRET, -time.Minute*1, accessTokenPayload)
+		token, err := GenerateJWT(SECRET, -time.Minute*1, &accessTokenPayload)
 		require.NoError(t, err)
 
 		_, err = ValidateJWT(token, SECRET)

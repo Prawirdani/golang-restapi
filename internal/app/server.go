@@ -14,11 +14,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/config"
-	"github.com/prawirdani/golang-restapi/internal/app/middleware"
+	"github.com/prawirdani/golang-restapi/internal/transport/http/middleware"
+	"github.com/prawirdani/golang-restapi/internal/transport/http/response"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/logging"
 	"github.com/prawirdani/golang-restapi/pkg/metrics"
-	"github.com/prawirdani/golang-restapi/pkg/response"
 )
 
 type Server struct {
@@ -30,13 +30,17 @@ type Server struct {
 }
 
 // Server Initialization function, also bootstraping dependency
-func InitServer(cfg *config.Config, logger logging.Logger, pgPool *pgxpool.Pool) (*Server, error) {
+func InitServer(
+	cfg *config.Config,
+	logger logging.Logger,
+	pgPool *pgxpool.Pool,
+) (*Server, error) {
 	if cfg == nil {
-		return nil, stderrs.New("Config is required")
+		return nil, stderrs.New("config is required")
 	}
 
 	if pgPool == nil {
-		return nil, stderrs.New("Postgres connection pool is required")
+		return nil, stderrs.New("postgres connection pool is required")
 	}
 
 	router := chi.NewRouter()

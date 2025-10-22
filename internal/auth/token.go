@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -13,24 +11,24 @@ import (
 
 const (
 	// Used as token cookie name and response body key.
-	ACCESS_TOKEN  = "accessToken"
-	REFRESH_TOKEN = "refreshToken"
+	ACCESS_TOKEN  = "access_token"
+	REFRESH_TOKEN = "refresh_token"
 )
 
 var (
-	ErrTokenExpired       = apiErr.Unauthorized("Token has expired.")
-	ErrTokenInvalid       = apiErr.Unauthorized("Invalid or malformed token.")
-	ErrMissingAccessToken = apiErr.Unauthorized(
+	ErrTokenExpired = apiErr.Unauthorized("Token has expired.")
+	ErrTokenInvalid = apiErr.Unauthorized("Invalid or malformed token.")
+	ErrMissingToken = apiErr.Unauthorized(
 		"Missing auth token from cookie or Authorization bearer token",
 	)
-	ErrEmptyTokenSecret = errors.New("Secret key must not be empty")
+	ErrEmptyTokenSecret = errors.New("secret key must not be empty")
 )
 
 // GenerateJWT generates a new Json Web Token containing the given payload. JWT is used as access token.
 func GenerateJWT(
 	secretKey string,
 	expiry time.Duration,
-	payload map[string]interface{},
+	payload *map[string]any,
 ) (string, error) {
 	if secretKey == "" {
 		return "", ErrEmptyTokenSecret
@@ -43,8 +41,10 @@ func GenerateJWT(
 		"exp": jwt.NewNumericDate(currentTime.Add(expiry)),
 	}
 
-	for k, v := range payload {
-		mapClaims[k] = v
+	if payload != nil {
+		for k, v := range *payload {
+			mapClaims[k] = v
+		}
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, mapClaims)
@@ -52,8 +52,8 @@ func GenerateJWT(
 }
 
 // ValidateJWT decodes the given JWT string and returns the map payload.
-func ValidateJWT(tokenStr, secretKey string) (map[string]interface{}, error) {
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+func ValidateJWT(tokenStr, secretKey string) (map[string]any, error) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, apiErr.BadRequest(
 				fmt.Sprintf("unexpected signing method: %v", token.Header["alg"]),
@@ -74,14 +74,4 @@ func ValidateJWT(tokenStr, secretKey string) (map[string]interface{}, error) {
 	}
 
 	return claims, nil
-}
-
-// GenerateRefreshToken generates a random 32 bytes for refresh token.
-func GenerateRefreshToken() (string, error) {
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-
-	return hex.EncodeToString(bytes), nil
 }

@@ -1,85 +1,98 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"html/template"
 	"time"
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/auth"
-	"github.com/prawirdani/golang-restapi/internal/entity"
+	"github.com/prawirdani/golang-restapi/internal/entity/user"
+	"github.com/prawirdani/golang-restapi/internal/infra/repository"
 	"github.com/prawirdani/golang-restapi/internal/model"
-	"github.com/prawirdani/golang-restapi/internal/repository"
+	"github.com/prawirdani/golang-restapi/pkg/contextx"
+	"github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/logging"
 )
 
 type AuthService struct {
-	userRepo *repository.UserRepository
-	cfg      *config.Config
-	timeout  time.Duration
 	logger   logging.Logger
+	cfg      *config.Config
+	tx       repository.Transactor
+	mailer   MailService
+	authRepo auth.Repository
+	userRepo user.Repository
 }
 
 func NewAuthService(
 	cfg *config.Config,
 	l logging.Logger,
-	ur *repository.UserRepository,
+	transactor repository.Transactor,
+	userRepo user.Repository,
+	authRepo auth.Repository,
 ) *AuthService {
 	return &AuthService{
 		cfg:      cfg,
 		logger:   l,
-		userRepo: ur,
-		timeout:  time.Duration(5 * int(time.Second)),
+		tx:       transactor,
+		userRepo: userRepo,
+		authRepo: authRepo,
 	}
 }
 
-func (u *AuthService) Register(ctx context.Context, request model.RegisterRequest) error {
-	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
-	defer cancel()
-
-	newUser, err := entity.NewUser(request)
+func (s *AuthService) Register(ctx context.Context, i model.CreateUserInput) error {
+	hashedPassword, err := auth.HashPassword(i.Password)
 	if err != nil {
-		u.logger.Error(logging.Service, "AuthService.Register", err.Error())
 		return err
 	}
-	if err := u.userRepo.InsertUser(ctxWT, newUser); err != nil {
+
+	newUser, err := user.New(i, string(hashedPassword))
+	if err != nil {
+		s.logger.Error(logging.Service, "AuthService.Register", err.Error())
+		return err
+	}
+	if err := s.userRepo.Insert(ctx, newUser); err != nil {
 		return err
 	}
 	return nil
 }
 
 // Login is a method to authenticate the user, returning access token, refresh token, and error if any.
-func (u *AuthService) Login(
+func (s *AuthService) Login(
 	ctx context.Context,
 	request model.LoginRequest,
 ) (string, string, error) {
-	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
-	defer cancel()
+	u, _ := s.userRepo.GetUserBy(ctx, "email", request.Email)
 
-	user, _ := u.userRepo.SelectWhere(ctxWT, "email", request.Email)
-	if err := user.VerifyPassword(request.Password); err != nil {
+	if err := auth.VerifyPassword(request.Password, u.Password); err != nil {
 		return "", "", err
 	}
 
-	accessToken, err := user.GenerateAccessToken(
-		u.cfg.Token.SecretKey,
-		u.cfg.Token.AccessTokenExpiry,
-	)
+	accessToken, err := s.generateAccessToken(map[string]any{
+		"id":   u.ID.String(),
+		"name": u.Name,
+	})
 	if err != nil {
-		u.logger.Error(logging.Service, "AuthService.Login.GenerateAccessToken", err.Error())
+		s.logger.Error(
+			logging.Service,
+			"AuthService.Login.GenerateAccessToken",
+			err.Error(),
+		)
 		return "", "", err
 	}
 
 	sess, err := auth.NewSession(
-		user.ID,
+		u.ID,
 		request.UserAgent,
-		u.cfg.Token.RefreshTokenExpiry,
+		s.cfg.Token.RefreshTokenExpiry,
 	)
 	if err != nil {
-		u.logger.Error(logging.Service, "AuthService.Login.NewSession", err.Error())
+		s.logger.Error(logging.Service, "AuthService.Login.NewSession", err.Error())
 		return "", "", err
 	}
 
-	if err = u.userRepo.InsertSession(ctxWT, sess); err != nil {
+	if err = s.authRepo.InsertSession(ctx, sess); err != nil {
 		return "", "", err
 	}
 
@@ -87,31 +100,30 @@ func (u *AuthService) Login(
 }
 
 // TODO: Should also refreshing the refresh token, maybe by checking the exp time, if its nearly N to expire, then refresh it.
-func (u *AuthService) RefreshAccessToken(ctx context.Context, refreshToken string) (string, error) {
-	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
-	defer cancel()
-
-	sess, err := u.userRepo.SelectSession(ctxWT, "refresh_token", refreshToken)
+func (s *AuthService) RefreshAccessToken(
+	ctx context.Context,
+	refreshToken string,
+) (string, error) {
+	sess, err := s.authRepo.GetUserSessionBy(ctx, "refresh_token", refreshToken)
 	if err != nil {
 		return "", err
 	}
 
 	if sess.IsExpired() {
-		_ = u.userRepo.DeleteSession(ctxWT, "id", sess.ID)
+		_ = s.authRepo.DeleteSession(ctx, "id", sess.ID)
 		return "", auth.ErrSessionExpired
 	}
 
-	user, err := u.userRepo.SelectWhere(ctxWT, "id", sess.UserID)
+	user, err := s.userRepo.GetUserBy(ctx, "id", sess.UserID)
 	if err != nil {
 		return "", err
 	}
 
-	accessToken, err := user.GenerateAccessToken(
-		u.cfg.Token.SecretKey,
-		u.cfg.Token.AccessTokenExpiry,
+	newAccessToken, err := s.generateAccessToken(
+		map[string]any{"id": user.ID.String(), "name": user.Name},
 	)
 	if err != nil {
-		u.logger.Error(
+		s.logger.Error(
 			logging.Service,
 			"AuthService.RefreshAccessToken.GenerateAccessToken",
 			err.Error(),
@@ -119,28 +131,157 @@ func (u *AuthService) RefreshAccessToken(ctx context.Context, refreshToken strin
 		return "", err
 	}
 
-	return accessToken, nil
+	return newAccessToken, nil
 }
 
-func (u *AuthService) Logout(ctx context.Context, refreshToken string) error {
-	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
-	defer cancel()
-
-	return u.userRepo.DeleteSession(ctxWT, "refresh_token", refreshToken)
+func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
+	return s.authRepo.DeleteSession(ctx, "refresh_token", refreshToken)
 }
 
-func (u *AuthService) IdentifyUser(ctx context.Context) (entity.User, error) {
-	ctxWT, cancel := context.WithTimeout(ctx, u.timeout)
-	defer cancel()
-
-	tokenPayload, err := auth.GetContext(ctxWT)
+func (s *AuthService) IdentifyUser(ctx context.Context) (user.User, error) {
+	tokenPayload, err := contextx.GetAuthCtx(ctx)
 	if err != nil {
-		return entity.User{}, err
+		return user.User{}, err
 	}
 
-	user, err := u.userRepo.SelectWhere(ctxWT, "id", tokenPayload["id"])
+	u, err := s.userRepo.GetUserBy(ctx, "id", tokenPayload["id"])
 	if err != nil {
-		return entity.User{}, err
+		return user.User{}, err
 	}
-	return user, nil
+	return u, nil
+}
+
+// ForgotPassword initiates the password reset process by sending a reset link or token to the user's email.
+func (s *AuthService) ForgotPassword(ctx context.Context, i model.ForgotPasswordInput) error {
+	return s.tx.Transact(ctx, func(ctx context.Context) error {
+		u, err := s.userRepo.GetUserBy(ctx, "email", i.Email)
+		if err != nil {
+			if err == user.ErrUserNotFound {
+				return errors.Forbidden("Email is not registered or not verified")
+			}
+			return err
+		}
+
+		expiresAt := time.Now().Add(s.cfg.Token.ResetPasswordTokenExpiry)
+		token, err := auth.NewResetPasswordToken(u.ID, expiresAt)
+		if err != nil {
+			s.logger.Error(
+				logging.Service,
+				"AuthService.ForgotPassword.NewResetPasswordToken",
+				err.Error(),
+			)
+			return err
+		}
+
+		// Save token to db
+		if err := s.authRepo.InsertResetPasswordToken(ctx, *token); err != nil {
+			return err
+		}
+
+		// Parse forgot password email template
+		tmpl, err := template.ParseFiles("./templates/reset-password-mail.html")
+		if err != nil {
+			s.logger.Error(
+				logging.Service,
+				"AuthService.ForgotPassword.template.ParseFiles",
+				err.Error(),
+			)
+			return err
+		}
+
+		// Inject data to html template
+		// The reset password form ui will be provided by web client (not from this server)
+		// We send the token as query params on the web client endpoint,
+		// The token will be used on the form and send back to this server alongside new password that will be handle by SaveForgotPassword
+		var buf bytes.Buffer
+		if err := tmpl.Execute(&buf, map[string]any{
+			"Name":    u.Name,
+			"Minutes": int(s.cfg.Token.ResetPasswordTokenExpiry.Minutes()),
+			"URL":     s.cfg.Token.ResetPasswordFormEndpoint + "?token=" + token.Value,
+		}); err != nil {
+			s.logger.Error(logging.Service, "AuthService.ForgotPassword.Execute", err.Error())
+			return err
+		}
+
+		// Send Email
+		return s.mailer.Send(
+			SendEmailParams{
+				To:      []string{u.Email},
+				Subject: "Password Reset",
+			},
+			buf.String(),
+		)
+	})
+}
+
+// ResetPassword resets a user's password using a valid reset password token from email.
+func (s *AuthService) ResetPassword(ctx context.Context, i model.ResetPasswordInput) error {
+	return s.tx.Transact(ctx, func(ctx context.Context) error {
+		token, err := s.authRepo.GetResetPasswordTokenObj(ctx, i.Token)
+		if err != nil {
+			return err
+		}
+
+		if token.Expired() || token.Used() {
+			return auth.ErrResetPasswordTokenInvalid
+		}
+
+		user, err := s.userRepo.GetUserBy(ctx, "id", token.UserId)
+		if err != nil {
+			return err
+		}
+
+		newHashedPassword, err := auth.HashPassword(i.NewPassword)
+		if err != nil {
+			s.logger.Error(
+				logging.Service,
+				"AuthService.ResetPassword.NewPassword",
+				err.Error(),
+			)
+			return err
+		}
+		user.Password = string(newHashedPassword)
+
+		if err := s.authRepo.UseResetPasswordToken(ctx, token); err != nil {
+			return err
+		}
+
+		return s.userRepo.UpdateUser(ctx, user)
+	})
+}
+
+// ChangePassword updates the authenticated user's password after verifying the current password.
+func (s *AuthService) ChangePassword(ctx context.Context, i model.ChangePasswordInput) error {
+	tokenPayload, err := contextx.GetAuthCtx(ctx)
+	if err != nil {
+		return err
+	}
+
+	u, err := s.userRepo.GetUserBy(ctx, "id", tokenPayload["id"])
+	if err != nil {
+		return err
+	}
+
+	// Verify old password
+	if err := auth.VerifyPassword(i.Password, u.Password); err != nil {
+		return err
+	}
+
+	// Hash new password
+	newHashedPassword, err := auth.HashPassword(i.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	u.Password = string(newHashedPassword)
+
+	return s.userRepo.UpdateUser(ctx, u)
+}
+
+func (s *AuthService) generateAccessToken(payload map[string]any) (string, error) {
+	return auth.GenerateJWT(
+		s.cfg.Token.SecretKey,
+		s.cfg.Token.AccessTokenExpiry,
+		&payload,
+	)
 }

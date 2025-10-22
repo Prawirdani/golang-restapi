@@ -24,7 +24,11 @@ type Session struct {
 	AccessedAt   time.Time `db:"accessed_at"`
 }
 
-func NewSession(userID uuid.UUID, userAgent string, expiry time.Duration) (Session, error) {
+func NewSession(
+	userID uuid.UUID,
+	userAgent string,
+	expiry time.Duration,
+) (Session, error) {
 	if expiry <= 0 {
 		return Session{}, errors.New("expiry must be greater than 0")
 	}

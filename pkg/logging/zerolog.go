@@ -1,51 +1,24 @@
 package logging
 
 import (
-	"fmt"
-	"io"
 	"os"
-	"time"
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/rs/zerolog"
 )
 
 type zeroLogger struct {
-	logger  *zerolog.Logger
-	logFile *os.File
+	logger *zerolog.Logger
+	// logFile *os.File
 }
 
 func newZeroLogger(cfg *config.Config) *zeroLogger {
-	var w io.Writer = os.Stdout
-	var level zerolog.Level = zerolog.DebugLevel
-	var logFile *os.File
-
-	// Write logs into file if in production mode
+	level := zerolog.DebugLevel
 	if cfg.IsProduction() {
 		level = zerolog.InfoLevel
-
-		// Create log directory if not exist
-		err := os.MkdirAll(cfg.App.LogPath, 0755)
-		if err != nil {
-			panic(err)
-		}
-
-		// Create log file
-		filename := fmt.Sprintf(
-			"%s%v.%s",
-			cfg.App.LogPath,
-			time.Now().Format("2006-01-02 15:04:05"),
-			"log",
-		)
-
-		logFile, err = os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			panic("Failed to open log file")
-		}
-		w = logFile
 	}
 
-	l := zerolog.New(w).With().
+	l := zerolog.New(os.Stdout).With().
 		Dict("app", zerolog.Dict().
 			Str("name", cfg.App.Name).
 			Str("version", cfg.App.Version),
@@ -85,10 +58,4 @@ func (zl *zeroLogger) Fatal(cat Category, caller string, message string) {
 		Str("category", cat.String()).
 		Str("caller", caller).
 		Msg(message)
-}
-
-func (l *zeroLogger) Close() {
-	if l.logFile != nil {
-		l.logFile.Close()
-	}
 }
