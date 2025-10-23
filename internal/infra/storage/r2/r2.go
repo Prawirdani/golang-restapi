@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"time"
-
-	appcfg "github.com/prawirdani/golang-restapi/config"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -14,13 +13,23 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-// Cloudflare R2 Storage, using AWS S3 Sdk
-type R2 struct {
-	bucket string
-	client *s3.Client
+type Config struct {
+	BucketURL       string // optional; required for public bucket
+	BucketName      string
+	AccountID       string
+	AccessKeyID     string
+	AccessKeySecret string
 }
 
-func NewR2Storage(cfg appcfg.R2Config) (*R2, error) {
+// Cloudflare R2 Storage using AWS S3 Sdk, Implements storage.Storage interface
+type R2 struct {
+	bucket    string
+	publicURL *url.URL
+	client    *s3.Client
+	isPublic  bool
+}
+
+func New(cfg Config) (*R2, error) {
 	r2Cfg, err := config.LoadDefaultConfig(
 		context.TODO(),
 		config.WithCredentialsProvider(
@@ -37,9 +46,21 @@ func NewR2Storage(cfg appcfg.R2Config) (*R2, error) {
 			fmt.Sprintf("https://%s.r2.cloudflarestorage.com", cfg.AccountID),
 		)
 	})
+
+	var publicURL *url.URL
+	if cfg.BucketURL != "" {
+		u, err := url.Parse(cfg.BucketURL)
+		if err != nil {
+			return nil, fmt.Errorf("invalid bucket url: %w", err)
+		}
+		publicURL = u
+	}
+
 	return &R2{
-		bucket: cfg.Bucket,
-		client: client,
+		publicURL: publicURL,
+		bucket:    cfg.BucketName,
+		isPublic:  publicURL != nil,
+		client:    client,
 	}, nil
 }
 
@@ -94,8 +115,18 @@ func (r *R2) Exists(ctx context.Context, path string) (bool, error) {
 	return true, nil
 }
 
-// GetURL implements storage.Storage.
+// GetURL returns either:
+//   - a direct public URL if the bucket is public
+//   - a presigned URL if the bucket is private
 func (r *R2) GetURL(ctx context.Context, path string, expiry time.Duration) (string, error) {
+	// Case 1: public bucket — just return direct URL
+	if r.isPublic && r.publicURL != nil {
+		u := *r.publicURL
+		u.Path = path
+		return u.String(), nil
+	}
+
+	// Case 2: private bucket — generate presigned URL
 	presignClient := s3.NewPresignClient(r.client)
 	presignResult, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(r.bucket),
@@ -108,4 +139,12 @@ func (r *R2) GetURL(ctx context.Context, path string, expiry time.Duration) (str
 	}
 
 	return presignResult.URL, nil
+}
+
+// Dir returns the base URL for a public bucket, or empty for private.
+func (r *R2) Dir() string {
+	if r.isPublic && r.publicURL != nil {
+		return r.publicURL.String()
+	}
+	return ""
 }

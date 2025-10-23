@@ -75,7 +75,9 @@ type SMTPConfig struct {
 }
 
 type R2Config struct {
-	Bucket          string `mapstructure:"R2_BUCKET"`
+	PublicBucketURL string `mapstructure:"R2_PUBLIC_BUCKET_URL"`
+	PublicBucket    string `mapstructure:"R2_PUBLIC_BUCKET"`
+	PrivateBucket   string `mapstructure:"R2_PRIVATE_BUCKET"`
 	AccountID       string `mapstructure:"R2_ACCOUNT_ID"`
 	AccessKeyID     string `mapstructure:"R2_ACCESS_KEY_ID"`
 	AccessKeySecret string `mapstructure:"R2_ACCESS_KEY_SECRET"`
