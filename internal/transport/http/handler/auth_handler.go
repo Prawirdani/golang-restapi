@@ -16,14 +16,14 @@ import (
 )
 
 type AuthHandler struct {
-	authUC *service.AuthService
-	cfg    *config.Config
+	authService *service.AuthService
+	cfg         *config.Config
 }
 
 func NewAuthHandler(cfg *config.Config, us *service.AuthService) *AuthHandler {
 	return &AuthHandler{
-		authUC: us,
-		cfg:    cfg,
+		authService: us,
+		cfg:         cfg,
 	}
 }
 
@@ -33,7 +33,7 @@ func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) err
 		return err
 	}
 
-	if err := h.authUC.Register(r.Context(), reqBody); err != nil {
+	if err := h.authService.Register(r.Context(), reqBody); err != nil {
 		return err
 	}
 
@@ -54,7 +54,7 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error 
 	uAgent := r.Header.Get("User-Agent")
 	reqBody.UserAgent = uAgent
 
-	accessToken, refreshToken, err := h.authUC.Login(r.Context(), reqBody)
+	accessToken, refreshToken, err := h.authService.Login(r.Context(), reqBody)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error 
 }
 
 func (h *AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error {
-	user, err := h.authUC.IdentifyUser(r.Context())
+	user, err := h.authService.IdentifyUser(r.Context())
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error
 		return auth.ErrMissingToken
 	}
 
-	newAccessToken, err := h.authUC.RefreshAccessToken(r.Context(), refreshToken)
+	newAccessToken, err := h.authService.RefreshAccessToken(r.Context(), refreshToken)
 	if err != nil {
 		return err
 	}
@@ -132,10 +132,23 @@ func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) error
 		refreshToken = cookie.Value
 	}
 
-	_ = h.authUC.Logout(r.Context(), refreshToken)
+	_ = h.authService.Logout(r.Context(), refreshToken)
 	h.removeTokenCookies(w)
 
 	return res.Send(w, r, res.WithMessage("Logout successful."))
+}
+
+func (h *AuthHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) error {
+	var reqBody model.ForgotPasswordInput
+	if err := req.BindValidate(r, &reqBody); err != nil {
+		return err
+	}
+
+	if err := h.authService.ForgotPassword(r.Context(), reqBody); err != nil {
+		return err
+	}
+
+	return res.Send(w, r, res.WithMessage("Password recovery email have been sent!"))
 }
 
 func (h *AuthHandler) setTokenCookie(

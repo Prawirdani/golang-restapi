@@ -29,10 +29,10 @@ func NewUserRepository(
 
 // Implements user.Repository
 func (r *userRepository) Insert(ctx context.Context, u user.User) error {
-	query := "INSERT INTO users(id, name, email, phone, password) VALUES($1, $2, $3, $4, $5)"
+	query := "INSERT INTO users(id, name, email, phone, password, profile_image) VALUES($1, $2, $3, $4, $5, $6)"
 	conn := r.db.GetConn(ctx)
 
-	_, err := conn.Exec(ctx, query, u.ID, u.Name, u.Email, u.Phone, u.Password)
+	_, err := conn.Exec(ctx, query, u.ID, u.Name, u.Email, u.Phone, u.Password, u.ProfileImage)
 	if err != nil {
 		if strings.Contains(err.Error(), "users_email_key") {
 			return user.ErrEmailExist
@@ -51,7 +51,7 @@ func (r *userRepository) GetUserBy(
 ) (user.User, error) {
 	var u user.User
 	query := strs.Concatenate(
-		"SELECT id, name, email, phone, password, created_at, updated_at, deleted_at FROM users WHERE ",
+		"SELECT id, name, email, phone, password, profile_image, created_at, updated_at, deleted_at FROM users WHERE ",
 		field,
 		"=$1",
 	)
@@ -75,7 +75,7 @@ func (r *userRepository) GetUserBy(
 
 // Implements user.Repository.
 func (r *userRepository) UpdateUser(ctx context.Context, u user.User) error {
-	query := "UPDATE users SET name=$1, email=$2, phone=$3, password=$4, updated_at=$5 WHERE id=$6"
+	query := "UPDATE users SET name=$1, email=$2, phone=$3, password=$4, profile_image=$5, updated_at=$6 WHERE id=$7"
 	updateTime := time.Now()
 
 	conn := r.db.GetConn(ctx)
@@ -84,6 +84,7 @@ func (r *userRepository) UpdateUser(ctx context.Context, u user.User) error {
 		u.Email,
 		u.Phone,
 		u.Password,
+		u.ProfileImage,
 		updateTime,
 		u.ID,
 	)

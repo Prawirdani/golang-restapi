@@ -10,6 +10,7 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/auth"
 	"github.com/prawirdani/golang-restapi/internal/entity/user"
 	"github.com/prawirdani/golang-restapi/internal/infra/repository"
+	"github.com/prawirdani/golang-restapi/internal/mail"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/pkg/contextx"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
@@ -17,12 +18,13 @@ import (
 )
 
 type AuthService struct {
-	logger   logging.Logger
-	cfg      *config.Config
-	tx       repository.Transactor
-	mailer   MailService
-	authRepo auth.Repository
-	userRepo user.Repository
+	logger      logging.Logger
+	cfg         *config.Config
+	tx          repository.Transactor
+	mailer      *mail.Mailer
+	authRepo    auth.Repository
+	userRepo    user.Repository
+	userService *UserService
 }
 
 func NewAuthService(
@@ -31,13 +33,17 @@ func NewAuthService(
 	transactor repository.Transactor,
 	userRepo user.Repository,
 	authRepo auth.Repository,
+	userService *UserService,
+	mailer *mail.Mailer,
 ) *AuthService {
 	return &AuthService{
-		cfg:      cfg,
-		logger:   l,
-		tx:       transactor,
-		userRepo: userRepo,
-		authRepo: authRepo,
+		cfg:         cfg,
+		logger:      l,
+		tx:          transactor,
+		userRepo:    userRepo,
+		authRepo:    authRepo,
+		userService: userService,
+		mailer:      mailer,
 	}
 }
 
@@ -144,10 +150,11 @@ func (s *AuthService) IdentifyUser(ctx context.Context) (user.User, error) {
 		return user.User{}, err
 	}
 
-	u, err := s.userRepo.GetUserBy(ctx, "id", tokenPayload["id"])
+	u, err := s.userService.GetUserByID(ctx, tokenPayload["id"].(string))
 	if err != nil {
 		return user.User{}, err
 	}
+
 	return u, nil
 }
 
@@ -205,11 +212,11 @@ func (s *AuthService) ForgotPassword(ctx context.Context, i model.ForgotPassword
 
 		// Send Email
 		return s.mailer.Send(
-			SendEmailParams{
+			mail.HeaderParams{
 				To:      []string{u.Email},
 				Subject: "Password Reset",
 			},
-			buf.String(),
+			buf,
 		)
 	})
 }

@@ -31,4 +31,11 @@ func RegisterAuthRoutes(r chi.Router, h *handler.AuthHandler, mw *middleware.Col
 	r.Delete("/auth/logout", handlerFn(h.HandleLogout))
 	r.With(mw.Auth).Get("/auth/current", handlerFn(h.CurrentUser))
 	r.Get("/auth/refresh", handlerFn(h.RefreshToken))
+	r.Post("/auth/password/forgot", handlerFn(h.ForgotPasswordHandler))
+}
+
+func RegisterUserROutes(r chi.Router, h *handler.UserHandler, mw *middleware.Collection) {
+	r.With(mw.Auth).Group(func(r chi.Router) {
+		r.Post("/users/{userID}/profile/upload", handlerFn(h.ChangeProfilePictureHandler))
+	})
 }
