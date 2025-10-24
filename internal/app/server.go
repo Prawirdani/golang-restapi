@@ -20,6 +20,8 @@ import (
 	httptransport "github.com/prawirdani/golang-restapi/internal/transport/http"
 )
 
+const MAX_BODY_SIZE = 10 << 20 // 10MB
+
 type Server struct {
 	container   *Container
 	router      *chi.Mux
@@ -35,6 +37,7 @@ func NewServer(container *Container) (*Server, error) {
 	mws := middleware.NewCollection(container.Config, container.Logger)
 
 	// Apply global middlewares
+	router.Use(mws.MaxBodySizeMiddleware(MAX_BODY_SIZE))
 	router.Use(mws.PanicRecoverer)
 	router.Use(mws.Gzip)
 	router.Use(mws.Cors)
