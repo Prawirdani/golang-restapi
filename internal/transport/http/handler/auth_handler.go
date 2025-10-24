@@ -8,6 +8,7 @@ import (
 
 	req "github.com/prawirdani/golang-restapi/internal/transport/http/request"
 	res "github.com/prawirdani/golang-restapi/internal/transport/http/response"
+	"github.com/prawirdani/golang-restapi/pkg/logging"
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/auth"
@@ -16,12 +17,18 @@ import (
 )
 
 type AuthHandler struct {
+	logger      logging.Logger
 	authService *service.AuthService
 	cfg         *config.Config
 }
 
-func NewAuthHandler(cfg *config.Config, us *service.AuthService) *AuthHandler {
+func NewAuthHandler(
+	logger logging.Logger,
+	cfg *config.Config,
+	us *service.AuthService,
+) *AuthHandler {
 	return &AuthHandler{
+		logger:      logger,
 		authService: us,
 		cfg:         cfg,
 	}

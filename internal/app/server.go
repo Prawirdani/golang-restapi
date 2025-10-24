@@ -9,59 +9,46 @@ import (
 	"syscall"
 	"time"
 
-	stderrs "errors"
-
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/prawirdani/golang-restapi/config"
+	"github.com/prawirdani/golang-restapi/internal/transport/http/handler"
 	"github.com/prawirdani/golang-restapi/internal/transport/http/middleware"
 	"github.com/prawirdani/golang-restapi/internal/transport/http/response"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/logging"
 	"github.com/prawirdani/golang-restapi/pkg/metrics"
+
+	httptransport "github.com/prawirdani/golang-restapi/internal/transport/http"
 )
 
 type Server struct {
-	cfg         *config.Config
-	logger      logging.Logger
+	container   *Container
 	router      *chi.Mux
-	pg          *pgxpool.Pool
 	middlewares *middleware.Collection
 }
 
-// Server Initialization function, also bootstraping dependency
-func InitServer(
-	cfg *config.Config,
-	logger logging.Logger,
-	pgPool *pgxpool.Pool,
-) (*Server, error) {
-	if cfg == nil {
-		return nil, stderrs.New("config is required")
-	}
-
-	if pgPool == nil {
-		return nil, stderrs.New("postgres connection pool is required")
+func NewServer(container *Container) (*Server, error) {
+	if container == nil {
+		return nil, fmt.Errorf("container is required")
 	}
 
 	router := chi.NewRouter()
+	mws := middleware.NewCollection(container.Config, container.Logger)
 
-	mws := middleware.NewCollection(cfg, logger)
-
+	// Apply global middlewares
 	router.Use(mws.PanicRecoverer)
 	router.Use(mws.Gzip)
 	router.Use(mws.Cors)
 	router.Use(mws.ReqLogger)
 
-	if cfg.IsProduction() {
+	if container.Config.IsProduction() {
 		router.Use(mws.RateLimit(50, 1*time.Minute))
 	}
 
-	// Not Found Handler
+	// Error handlers
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		response.HandleError(w, errors.NotFound("The requested resource could not be found"))
 	})
 
-	// Request Method Not Allowed Handler
 	router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		response.HandleError(
 			w,
@@ -69,69 +56,101 @@ func InitServer(
 		)
 	})
 
-	if cfg.Metrics.Enable {
-		m := metrics.Init()
-		m.SetAppInfo(cfg.App.Version, string(cfg.App.Environment))
-		router.Use(m.Instrument)
-
-		// Metrics Server
-		port := cfg.Metrics.PrometheusPort
-		go func() {
-			logger.Info(
-				logging.Startup,
-				"Server.Init",
-				fmt.Sprintf("Metrics serves on localhost:%v", port),
-			)
-			if err := m.RunServer(port); err != nil {
-				logger.Fatal(logging.Startup, "Server.Init.Metrics", err.Error())
-			}
-		}()
-	}
-
 	svr := &Server{
+		container:   container,
 		router:      router,
-		cfg:         cfg,
-		pg:          pgPool,
 		middlewares: mws,
-		logger:      logger,
 	}
 
-	svr.bootstrap()
+	// Setup metrics if enabled
+	if container.Config.Metrics.Enable {
+		svr.setupMetrics()
+	}
+
+	// Setup routes
+	svr.setupHandlers()
 
 	return svr, nil
 }
 
 func (s *Server) Start() {
-	fmt.Println("ENV\t:", s.cfg.App.Environment)
-	fmt.Println("Metrics\t:", s.cfg.Metrics.Enable)
+	cfg := s.container.Config
+	logger := s.container.Logger
 
-	svr := http.Server{
-		Addr:    fmt.Sprintf(":%v", s.cfg.App.Port),
-		Handler: s.router,
+	fmt.Println("ENV\t:", cfg.App.Environment)
+	fmt.Println("Metrics\t:", cfg.Metrics.Enable)
+
+	httpServer := &http.Server{
+		Addr:         fmt.Sprintf(":%v", cfg.App.Port),
+		Handler:      s.router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
+	// Start server
 	go func() {
-		s.logger.Info(
+		logger.Info(
 			logging.Startup,
-			"app.Server",
-			fmt.Sprintf("App serves on %v", s.cfg.App.Port),
+			"Server.Start",
+			fmt.Sprintf("App serves on %v", cfg.App.Port),
 		)
-		if err := svr.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			s.logger.Fatal(logging.Startup, "app.Server", err.Error())
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatal(logging.Startup, "Server.Start", err.Error())
 		}
 	}()
 
+	// Wait for interrupt signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
-	s.logger.Info(logging.Shutdown, "app.Server.Shutdown", "Shutdown signal received")
 
-	ctx, shutdown := context.WithTimeout(context.Background(), 15*time.Second)
-	defer shutdown()
+	logger.Info(logging.Shutdown, "Server.Shutdown", "Shutdown signal received")
 
-	if err := svr.Shutdown(ctx); err != nil {
-		s.logger.Fatal(logging.Shutdown, "app.Server.Shutdown", err.Error())
+	// Graceful shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	if err := httpServer.Shutdown(ctx); err != nil {
+		logger.Fatal(logging.Shutdown, "Server.Shutdown", err.Error())
 	}
 
-	s.logger.Info(logging.Shutdown, "app.Server.Shutdown", "Server gracefully stopped")
+	// Cleanup resources
+	s.container.Cleanup()
+
+	logger.Info(logging.Shutdown, "Server.Shutdown", "Server gracefully stopped")
+}
+
+func (s *Server) setupMetrics() {
+	m := metrics.Init()
+	m.SetAppInfo(
+		s.container.Config.App.Version,
+		string(s.container.Config.App.Environment),
+	)
+	s.router.Use(m.Instrument)
+
+	// Metrics server
+	port := s.container.Config.Metrics.PrometheusPort
+	go func() {
+		s.container.Logger.Info(
+			logging.Startup,
+			"Server.setupMetrics",
+			fmt.Sprintf("Metrics serves on localhost:%v", port),
+		)
+		if err := m.RunServer(port); err != nil {
+			s.container.Logger.Fatal(logging.Startup, "Server.setupMetrics", err.Error())
+		}
+	}()
+}
+
+func (s *Server) setupHandlers() {
+	svcs := s.container.Services
+	// Setup Handlers
+	userHandler := handler.NewUserHandler(s.container.Logger, svcs.UserService)
+	authHandler := handler.NewAuthHandler(s.container.Logger, s.container.Config, svcs.AuthService)
+
+	s.router.Route("/api", func(r chi.Router) {
+		httptransport.RegisterUserRoutes(r, userHandler, s.middlewares)
+		httptransport.RegisterAuthRoutes(r, authHandler, s.middlewares)
+	})
 }
