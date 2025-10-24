@@ -4,9 +4,14 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-# Run the app with air for live reload support
+
+# Run the api server
 dev:
 	@air -c .air.toml
+
+# Run the mqworker
+dev\:mqworker:
+	@air -c .air.mqworker.toml
 
 tidy:
 	@go mod tidy
