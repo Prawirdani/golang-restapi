@@ -22,7 +22,7 @@ type AuthService struct {
 	authRepo    auth.Repository
 	userRepo    user.Repository
 	userService *UserService
-	mqProducer  mq.MessageProducer
+	producer    mq.MessageProducer
 }
 
 func NewAuthService(
@@ -41,7 +41,7 @@ func NewAuthService(
 		userRepo:    userRepo,
 		authRepo:    authRepo,
 		userService: userService,
-		mqProducer:  mqProducer,
+		producer:    mqProducer,
 	}
 }
 
@@ -193,7 +193,7 @@ func (s *AuthService) ForgotPassword(ctx context.Context, i model.ForgotPassword
 		}
 
 		// Non-blocking - just queue the job
-		return s.mqProducer.Publish(ctx, mq.EmailResetPasswordeJobKey, emailJob)
+		return s.producer.Publish(ctx, mq.EmailResetPasswordJobKey, emailJob)
 	})
 }
 

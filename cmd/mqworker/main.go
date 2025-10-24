@@ -32,7 +32,7 @@ func main() {
 	}
 	defer rmqConsumer.Close()
 
-	rmqConsumer.RegisterHandler(mq.EmailResetPasswordeJobKey, emailWorker.HandlePasswordReset)
+	rmqConsumer.RegisterHandler(mq.EmailResetPasswordJobKey, emailWorker.HandlePasswordReset)
 
 	// Start consuming
 	ctx := context.Background()

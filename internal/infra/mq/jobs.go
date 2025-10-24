@@ -1,6 +1,6 @@
 package mq
 
-const EmailResetPasswordeJobKey = "email:reset-password"
+const EmailResetPasswordJobKey = "email:reset-password"
 
 type EmailResetPasswordJob struct {
 	Type      string `json:"type"` // "password_reset", "verification", "welcome"
