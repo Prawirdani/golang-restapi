@@ -1,6 +1,6 @@
 package model
 
-type LoginRequest struct {
+type LoginInput struct {
 	Email     string `json:"email"    validate:"required,email"`
 	Password  string `json:"password" validate:"required"`
 	UserAgent string

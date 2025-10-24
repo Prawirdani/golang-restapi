@@ -65,7 +65,7 @@ func (s *AuthService) Register(ctx context.Context, i model.CreateUserInput) err
 // Login is a method to authenticate the user, returning access token, refresh token, and error if any.
 func (s *AuthService) Login(
 	ctx context.Context,
-	request model.LoginRequest,
+	request model.LoginInput,
 ) (string, string, error) {
 	u, _ := s.userRepo.GetUserBy(ctx, "email", request.Email)
 

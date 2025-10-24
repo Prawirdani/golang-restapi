@@ -53,7 +53,7 @@ func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) err
 }
 
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
-	var reqBody model.LoginRequest
+	var reqBody model.LoginInput
 	if err := req.BindValidate(r, &reqBody); err != nil {
 		return err
 	}
