@@ -17,13 +17,14 @@ const (
 )
 
 type Config struct {
-	App      AppConfig     `mapstructure:",squash"`
-	Postgres PGConfig      `mapstructure:",squash"`
-	Cors     CorsConfig    `mapstructure:",squash"`
-	Token    TokenConfig   `mapstructure:",squash"`
-	Metrics  MetricsConfig `mapstructure:",squash"`
-	SMTP     SMTPConfig    `mapstructure:",squash"`
-	R2       R2Config      `mapstructure:",squash"`
+	App         AppConfig     `mapstructure:",squash"`
+	Postgres    PGConfig      `mapstructure:",squash"`
+	Cors        CorsConfig    `mapstructure:",squash"`
+	Token       TokenConfig   `mapstructure:",squash"`
+	Metrics     MetricsConfig `mapstructure:",squash"`
+	SMTP        SMTPConfig    `mapstructure:",squash"`
+	R2          R2Config      `mapstructure:",squash"`
+	RabbitMqURL string        `mapstructure:"RABBITMQ_URL"`
 }
 
 func (c Config) IsProduction() bool {

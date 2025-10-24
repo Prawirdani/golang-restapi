@@ -2,9 +2,9 @@ package app
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/prawirdani/golang-restapi/internal/infra/mq/rabbitmq"
 	"github.com/prawirdani/golang-restapi/internal/infra/repository/postgres"
 	"github.com/prawirdani/golang-restapi/internal/infra/storage/r2"
-	"github.com/prawirdani/golang-restapi/internal/mail"
 	"github.com/prawirdani/golang-restapi/internal/service"
 	"github.com/prawirdani/golang-restapi/internal/transport/http"
 	"github.com/prawirdani/golang-restapi/internal/transport/http/handler"
@@ -30,7 +30,11 @@ func (s *Server) bootstrap() {
 		s.logger.Fatal(logging.Startup, "Server.bootstrap", err.Error())
 	}
 
-	mailer := mail.NewMailer(s.cfg, s.logger)
+	rmqProducer, err := rabbitmq.NewPublisher(s.cfg.RabbitMqURL)
+	if err != nil {
+		rmqProducer.Close()
+		s.logger.Fatal(logging.Startup, "Server.bootstrap", err.Error())
+	}
 
 	// Setup Services
 	userService := service.NewUserService(
@@ -47,7 +51,7 @@ func (s *Server) bootstrap() {
 		repoFactory.User(),
 		repoFactory.Auth(),
 		userService,
-		mailer,
+		rmqProducer,
 	)
 
 	// Setup Handlers

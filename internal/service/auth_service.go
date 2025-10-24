@@ -1,16 +1,14 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"html/template"
 	"time"
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/auth"
 	"github.com/prawirdani/golang-restapi/internal/entity/user"
+	"github.com/prawirdani/golang-restapi/internal/infra/mq"
 	"github.com/prawirdani/golang-restapi/internal/infra/repository"
-	"github.com/prawirdani/golang-restapi/internal/mail"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/pkg/contextx"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
@@ -21,10 +19,10 @@ type AuthService struct {
 	logger      logging.Logger
 	cfg         *config.Config
 	tx          repository.Transactor
-	mailer      *mail.Mailer
 	authRepo    auth.Repository
 	userRepo    user.Repository
 	userService *UserService
+	mqProducer  mq.MessageProducer
 }
 
 func NewAuthService(
@@ -34,7 +32,7 @@ func NewAuthService(
 	userRepo user.Repository,
 	authRepo auth.Repository,
 	userService *UserService,
-	mailer *mail.Mailer,
+	mqProducer mq.MessageProducer,
 ) *AuthService {
 	return &AuthService{
 		cfg:         cfg,
@@ -43,7 +41,7 @@ func NewAuthService(
 		userRepo:    userRepo,
 		authRepo:    authRepo,
 		userService: userService,
-		mailer:      mailer,
+		mqProducer:  mqProducer,
 	}
 }
 
@@ -185,39 +183,17 @@ func (s *AuthService) ForgotPassword(ctx context.Context, i model.ForgotPassword
 			return err
 		}
 
-		// Parse forgot password email template
-		tmpl, err := template.ParseFiles("./templates/reset-password-mail.html")
-		if err != nil {
-			s.logger.Error(
-				logging.Service,
-				"AuthService.ForgotPassword.template.ParseFiles",
-				err.Error(),
-			)
-			return err
+		// Publish email job to message queue
+		emailJob := mq.EmailResetPasswordJob{
+			Type:      "password_reset",
+			To:        u.Email,
+			Name:      u.Name,
+			ResetURL:  s.cfg.Token.ResetPasswordFormEndpoint + "?token=" + token.Value,
+			ExpiryMin: int(s.cfg.Token.ResetPasswordTokenExpiry.Minutes()),
 		}
 
-		// Inject data to html template
-		// The reset password form ui will be provided by web client (not from this server)
-		// We send the token as query params on the web client endpoint,
-		// The token will be used on the form and send back to this server alongside new password that will be handle by SaveForgotPassword
-		var buf bytes.Buffer
-		if err := tmpl.Execute(&buf, map[string]any{
-			"Name":    u.Name,
-			"Minutes": int(s.cfg.Token.ResetPasswordTokenExpiry.Minutes()),
-			"URL":     s.cfg.Token.ResetPasswordFormEndpoint + "?token=" + token.Value,
-		}); err != nil {
-			s.logger.Error(logging.Service, "AuthService.ForgotPassword.Execute", err.Error())
-			return err
-		}
-
-		// Send Email
-		return s.mailer.Send(
-			mail.HeaderParams{
-				To:      []string{u.Email},
-				Subject: "Password Reset",
-			},
-			buf,
-		)
+		// Non-blocking - just queue the job
+		return s.mqProducer.Publish(ctx, mq.EmailResetPasswordeJobKey, emailJob)
 	})
 }
 
