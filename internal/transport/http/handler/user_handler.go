@@ -24,7 +24,7 @@ func NewUserHandler(logger logging.Logger, userService *service.UserService) *Us
 }
 
 func (h *UserHandler) ChangeProfilePictureHandler(w http.ResponseWriter, r *http.Request) error {
-	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
 
 	file, err := h.imageFileParser.ParseSingleFile(r, "image")
 	if err != nil {
