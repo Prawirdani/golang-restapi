@@ -6,8 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	req "github.com/prawirdani/golang-restapi/internal/transport/http/request"
 	res "github.com/prawirdani/golang-restapi/internal/transport/http/response"
+	httpErr "github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/logging"
 
 	"github.com/prawirdani/golang-restapi/config"
@@ -34,7 +36,7 @@ func NewAuthHandler(
 	}
 }
 
-func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) error {
+func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) error {
 	var reqBody model.CreateUserInput
 	if err := req.BindValidate(r, &reqBody); err != nil {
 		return err
@@ -52,7 +54,7 @@ func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) err
 	)
 }
 
-func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error {
+func (h *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) error {
 	var reqBody model.LoginInput
 	if err := req.BindValidate(r, &reqBody); err != nil {
 		return err
@@ -82,7 +84,7 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) error 
 	return res.Send(w, r, res.WithData(d), res.WithMessage("Login successful."))
 }
 
-func (h *AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error {
+func (h *AuthHandler) CurrentUserHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := h.authService.IdentifyUser(r.Context())
 	if err != nil {
 		return err
@@ -91,7 +93,7 @@ func (h *AuthHandler) CurrentUser(w http.ResponseWriter, r *http.Request) error 
 	return res.Send(w, r, res.WithData(&user))
 }
 
-func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error {
+func (h *AuthHandler) RefreshTokenHandler(w http.ResponseWriter, r *http.Request) error {
 	var refreshToken string
 
 	if cookie, err := r.Cookie(auth.REFRESH_TOKEN); err == nil {
@@ -132,7 +134,7 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) error
 	)
 }
 
-func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) error {
+func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) error {
 	// Retrieve the refresh token from the request cookie
 	var refreshToken string
 	if cookie, err := r.Cookie(auth.REFRESH_TOKEN); err == nil {
@@ -156,6 +158,46 @@ func (h *AuthHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	return res.Send(w, r, res.WithMessage("Password recovery email have been sent!"))
+}
+
+func (h *AuthHandler) GetResetPasswordTokenHandler(w http.ResponseWriter, r *http.Request) error {
+	token := chi.URLParam(r, "token")
+	if token == "" {
+		return httpErr.BadRequest("Invalid token")
+	}
+
+	tokenObj, err := h.authService.GetResetPasswordToken(r.Context(), token)
+	if err != nil {
+		return err
+	}
+
+	return res.Send(w, r, res.WithData(&tokenObj))
+}
+
+func (h *AuthHandler) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) error {
+	var reqBody model.ResetPasswordInput
+	if err := req.BindValidate(r, &reqBody); err != nil {
+		return err
+	}
+
+	if err := h.authService.ResetPassword(r.Context(), reqBody); err != nil {
+		return err
+	}
+
+	return res.Send(w, r, res.WithMessage("Password has been reset successfuly!"))
+}
+
+func (h *AuthHandler) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) error {
+	var reqBody model.ChangePasswordInput
+	if err := req.BindValidate(r, &reqBody); err != nil {
+		return err
+	}
+
+	if err := h.authService.ChangePassword(r.Context(), reqBody); err != nil {
+		return err
+	}
+
+	return res.Send(w, r, res.WithMessage("Password has been reset successfuly!"))
 }
 
 func (h *AuthHandler) setTokenCookie(

@@ -15,8 +15,8 @@ import (
 // Every handler function should use this function signature.
 type HandlerFn func(w http.ResponseWriter, r *http.Request) error
 
-// handlerFn is a helper function to handle error in CustomHandler function
-func handlerFn(fn HandlerFn) http.HandlerFunc {
+// fn is an adapter to use custom HandlerFn with std http.Handler
+func fn(fn HandlerFn) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := fn(w, r); err != nil {
 			res.HandleError(w, err)
@@ -26,16 +26,24 @@ func handlerFn(fn HandlerFn) http.HandlerFunc {
 }
 
 func RegisterAuthRoutes(r chi.Router, h *handler.AuthHandler, mw *middleware.Collection) {
-	r.Post("/auth/register", handlerFn(h.HandleRegister))
-	r.Post("/auth/login", handlerFn(h.HandleLogin))
-	r.Delete("/auth/logout", handlerFn(h.HandleLogout))
-	r.With(mw.Auth).Get("/auth/current", handlerFn(h.CurrentUser))
-	r.Get("/auth/refresh", handlerFn(h.RefreshToken))
-	r.Post("/auth/password/forgot", handlerFn(h.ForgotPasswordHandler))
+	r.Route("/auth", func(r chi.Router) {
+		r.Post("/login", fn(h.LoginHandler))
+		r.Post("/register", fn(h.RegisterHandler))
+		r.Delete("/logout", fn(h.LogoutHandler))
+		r.Post("/password/forgot", fn(h.ForgotPasswordHandler))
+		r.Get("/password/reset/{token}", fn(h.GetResetPasswordTokenHandler))
+		r.Post("/password/reset", fn(h.ResetPasswordHandler))
+
+		r.With(mw.Auth).Group(func(r chi.Router) {
+			r.Get("/refresh", fn(h.RefreshTokenHandler))
+			r.Get("/current", fn(h.CurrentUserHandler))
+			r.Post("/password/change", fn(h.ChangePasswordHandler))
+		})
+	})
 }
 
 func RegisterUserRoutes(r chi.Router, h *handler.UserHandler, mw *middleware.Collection) {
-	r.With(mw.Auth).Group(func(r chi.Router) {
-		r.Post("/users/{userID}/profile/upload", handlerFn(h.ChangeProfilePictureHandler))
+	r.With(mw.Auth).Route("/users", func(r chi.Router) {
+		r.Post("/{userID}/profile/upload", fn(h.ChangeProfilePictureHandler))
 	})
 }

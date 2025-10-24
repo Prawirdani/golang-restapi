@@ -197,6 +197,13 @@ func (s *AuthService) ForgotPassword(ctx context.Context, i model.ForgotPassword
 	})
 }
 
+func (s *AuthService) GetResetPasswordToken(
+	ctx context.Context,
+	token string,
+) (auth.ResetPasswordToken, error) {
+	return s.authRepo.GetResetPasswordTokenObj(ctx, token)
+}
+
 // ResetPassword resets a user's password using a valid reset password token from email.
 func (s *AuthService) ResetPassword(ctx context.Context, i model.ResetPasswordInput) error {
 	return s.tx.Transact(ctx, func(ctx context.Context) error {
