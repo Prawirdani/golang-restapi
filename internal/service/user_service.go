@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/prawirdani/golang-restapi/config"
@@ -45,15 +44,9 @@ func (s *UserService) GetUserByID(ctx context.Context, userID string) (user.User
 		return user.User{}, err
 	}
 
-	profileURL, err := s.imageStorage.GetURL(
-		ctx,
-		s.buildProfileImagePath(u.ProfileImage),
-		1*time.Hour,
-	)
-	if err != nil {
+	if err := s.assignProfileImageURL(ctx, &u); err != nil {
 		return user.User{}, err
 	}
-	u.ProfileImageURL = profileURL
 
 	return u, nil
 }
@@ -79,8 +72,8 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File
 			return err
 		}
 
-		newImage := file.Name()
-		newImagePath := s.buildProfileImagePath(newImage)
+		newImageName := file.Name()
+		newImagePath := s.buildProfileImagePath(newImageName)
 
 		// 4. Store new image to storage
 		if err := s.imageStorage.Put(ctx, newImagePath, file, file.ContentType()); err != nil {
@@ -89,7 +82,7 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File
 		}
 
 		// 5. Update user image_profile field and save to db
-		u.ProfileImage = newImage
+		u.ProfileImage = newImageName
 		if err := s.userRepo.UpdateUser(ctx, u); err != nil {
 			// If Fail, Rollback & Delete Latest Image from storage
 			if err := s.imageStorage.Delete(ctx, newImagePath); err != nil {
@@ -119,4 +112,15 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File
 // imageName + ext
 func (s *UserService) buildProfileImagePath(imageName string) string {
 	return fmt.Sprintf("profiles/%s", imageName)
+}
+
+// WARNING: Do not use inside for loop if using private bucket / presigned url
+func (s *UserService) assignProfileImageURL(ctx context.Context, u *user.User) error {
+	profileURL, err := s.imageStorage.GetURL(ctx, s.buildProfileImagePath(u.ProfileImage), 0)
+	if err != nil {
+		return err
+	}
+	u.ProfileImageURL = profileURL
+
+	return nil
 }
