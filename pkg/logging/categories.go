@@ -9,6 +9,8 @@ const (
 	Storage       Category = "Storage"
 	Service       Category = "Service"
 	TransportHTTP Category = "Transport/HTTP"
+	MQ            Category = "MQ" // Message Queue
+	MQWorker      Category = "MQWorker"
 	RuntimePanic  Category = "RuntimePanic"
 )
 
