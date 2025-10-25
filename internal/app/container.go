@@ -32,7 +32,7 @@ func NewContainer(cfg *config.Config) *Container {
 
 	pgpool, err := database.NewPGConnection(cfg)
 	if err != nil {
-		logger.Fatal(logging.Postgres, "main.NewPGConnection", err.Error())
+		logger.Fatal(logging.Postgres, "App.NewContainer.NewPGConnection", err.Error())
 	}
 
 	// Postgres Repo Factory
@@ -41,7 +41,7 @@ func NewContainer(cfg *config.Config) *Container {
 
 	rmqproducer, err := rabbitmq.NewPublisher(cfg.RabbitMqURL)
 	if err != nil {
-		logger.Fatal(logging.Startup, "Server.bootstrap", err.Error())
+		logger.Fatal(logging.Startup, "App.NewContainer.NewPublisher", err.Error())
 	}
 
 	r2PublicStorage, err := r2.New(r2.Config{
@@ -52,7 +52,7 @@ func NewContainer(cfg *config.Config) *Container {
 		AccessKeySecret: cfg.R2.AccessKeySecret,
 	})
 	if err != nil {
-		logger.Fatal(logging.Startup, "Server.bootstrap", err.Error())
+		logger.Fatal(logging.Startup, "App.NewContainer.NewR2", err.Error())
 	}
 
 	// Setup Services
