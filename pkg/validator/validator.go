@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 
@@ -20,6 +21,14 @@ func init() {
 	})
 }
 
-func Struct(s interface{}) error {
-	return v.Struct(s)
+func Struct(s any) error {
+	if err := v.Struct(s); err != nil {
+		var vErrs validator.ValidationErrors
+		if errors.As(err, &vErrs) {
+			return convertError(vErrs)
+		}
+		return err
+	}
+
+	return nil
 }

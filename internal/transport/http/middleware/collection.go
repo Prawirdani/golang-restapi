@@ -2,19 +2,14 @@ package middleware
 
 import (
 	"github.com/prawirdani/golang-restapi/config"
-	"github.com/prawirdani/golang-restapi/pkg/logging"
 )
 
 type Collection struct {
-	cfg    *config.Config
-	logger logging.Logger
+	cfg *config.Config
 }
 
-func NewCollection(cfg *config.Config, logger logging.Logger) *Collection {
-	mw := Collection{
-		cfg:    cfg,
-		logger: logger,
-	}
+func Setup(cfg *config.Config) *Collection {
+	mw := Collection{cfg: cfg}
 
 	return &mw
 }

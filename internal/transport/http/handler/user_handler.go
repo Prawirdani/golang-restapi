@@ -5,19 +5,17 @@ import (
 
 	"github.com/prawirdani/golang-restapi/internal/service"
 	"github.com/prawirdani/golang-restapi/internal/transport/http/response"
-	"github.com/prawirdani/golang-restapi/pkg/logging"
+	"github.com/prawirdani/golang-restapi/pkg/log"
 	"github.com/prawirdani/golang-restapi/pkg/uploader"
 )
 
 type UserHandler struct {
-	logger          logging.Logger
 	userService     *service.UserService
 	imageFileParser *uploader.Parser
 }
 
-func NewUserHandler(logger logging.Logger, userService *service.UserService) *UserHandler {
+func NewUserHandler(userService *service.UserService) *UserHandler {
 	return &UserHandler{
-		logger:          logger,
 		userService:     userService,
 		imageFileParser: uploader.New(uploader.ImageConfig),
 	}
@@ -28,11 +26,7 @@ func (h *UserHandler) ChangeProfilePictureHandler(w http.ResponseWriter, r *http
 
 	file, err := h.imageFileParser.ParseSingleFile(r, "image")
 	if err != nil {
-		h.logger.Error(
-			logging.TransportHTTP,
-			"UserHandler.ChangeProfilePictureHandler",
-			err.Error(),
-		)
+		log.Warn("failed to parse profile image file", "error", err.Error())
 		return err
 	}
 

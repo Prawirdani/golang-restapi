@@ -12,11 +12,10 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/pkg/contextx"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
-	"github.com/prawirdani/golang-restapi/pkg/logging"
+	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
 type AuthService struct {
-	logger      logging.Logger
 	cfg         *config.Config
 	tx          repository.Transactor
 	authRepo    auth.Repository
@@ -27,7 +26,6 @@ type AuthService struct {
 
 func NewAuthService(
 	cfg *config.Config,
-	l logging.Logger,
 	transactor repository.Transactor,
 	userRepo user.Repository,
 	authRepo auth.Repository,
@@ -36,7 +34,6 @@ func NewAuthService(
 ) *AuthService {
 	return &AuthService{
 		cfg:         cfg,
-		logger:      l,
 		tx:          transactor,
 		userRepo:    userRepo,
 		authRepo:    authRepo,
@@ -53,7 +50,7 @@ func (s *AuthService) Register(ctx context.Context, i model.CreateUserInput) err
 
 	newUser, err := user.New(i, string(hashedPassword))
 	if err != nil {
-		s.logger.Error(logging.Service, "AuthService.Register", err.Error())
+		log.Error("failed to create new user", "error", err.Error())
 		return err
 	}
 	if err := s.userRepo.Insert(ctx, newUser); err != nil {
@@ -78,11 +75,7 @@ func (s *AuthService) Login(
 		"name": u.Name,
 	})
 	if err != nil {
-		s.logger.Error(
-			logging.Service,
-			"AuthService.Login.GenerateAccessToken",
-			err.Error(),
-		)
+		log.Error("failed to generate access token", "error", err.Error())
 		return "", "", err
 	}
 
@@ -92,7 +85,7 @@ func (s *AuthService) Login(
 		s.cfg.Token.RefreshTokenExpiry,
 	)
 	if err != nil {
-		s.logger.Error(logging.Service, "AuthService.Login.NewSession", err.Error())
+		log.Error("failed to create new session", "error", err.Error())
 		return "", "", err
 	}
 
@@ -127,11 +120,7 @@ func (s *AuthService) RefreshAccessToken(
 		map[string]any{"id": user.ID.String(), "name": user.Name},
 	)
 	if err != nil {
-		s.logger.Error(
-			logging.Service,
-			"AuthService.RefreshAccessToken.GenerateAccessToken",
-			err.Error(),
-		)
+		log.Error("failed to generate new access token", "error", err.Error())
 		return "", err
 	}
 
@@ -170,11 +159,7 @@ func (s *AuthService) ForgotPassword(ctx context.Context, i model.ForgotPassword
 		expiresAt := time.Now().Add(s.cfg.Token.ResetPasswordTokenExpiry)
 		token, err := auth.NewResetPasswordToken(u.ID, expiresAt)
 		if err != nil {
-			s.logger.Error(
-				logging.Service,
-				"AuthService.ForgotPassword.NewResetPasswordToken",
-				err.Error(),
-			)
+			log.Error("failed to create reset password token", "error", err.Error())
 			return err
 		}
 
@@ -223,11 +208,8 @@ func (s *AuthService) ResetPassword(ctx context.Context, i model.ResetPasswordIn
 
 		newHashedPassword, err := auth.HashPassword(i.NewPassword)
 		if err != nil {
-			s.logger.Error(
-				logging.Service,
-				"AuthService.ResetPassword.NewPassword",
-				err.Error(),
-			)
+
+			log.Error("failed to hash new password", "error", err.Error())
 			return err
 		}
 		user.Password = string(newHashedPassword)

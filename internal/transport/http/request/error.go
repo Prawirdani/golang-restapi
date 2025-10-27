@@ -10,7 +10,7 @@ import (
 	apiErr "github.com/prawirdani/golang-restapi/pkg/errors"
 )
 
-func parseBodyErr(err error) error {
+func parseJsonBodyErr(err error) error {
 	var syntaxError *json.SyntaxError
 	var unmarshalTypeError *json.UnmarshalTypeError
 

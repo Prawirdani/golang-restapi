@@ -8,22 +8,17 @@ import (
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/internal/entity/user"
-	"github.com/prawirdani/golang-restapi/pkg/logging"
+	"github.com/prawirdani/golang-restapi/pkg/log"
 	strs "github.com/prawirdani/golang-restapi/pkg/strings"
 )
 
 type userRepository struct {
-	db     *db
-	logger logging.Logger
+	db *db
 }
 
-func NewUserRepository(
-	connPool *pgxpool.Pool,
-	logger logging.Logger,
-) *userRepository {
+func NewUserRepository(connPool *pgxpool.Pool) *userRepository {
 	return &userRepository{
-		db:     &db{pool: connPool},
-		logger: logger,
+		db: &db{pool: connPool},
 	}
 }
 
@@ -37,7 +32,7 @@ func (r *userRepository) Insert(ctx context.Context, u user.User) error {
 		if strings.Contains(err.Error(), "users_email_key") {
 			return user.ErrEmailExist
 		}
-		r.logger.Error(logging.Postgres, "UserRepository.Insert", err.Error())
+		log.Error("failed to insert user", "error", err.Error())
 		return err
 	}
 	return nil
@@ -66,7 +61,7 @@ func (r *userRepository) GetUserBy(
 		if pgxscan.NotFound(err) {
 			return user.User{}, user.ErrUserNotFound
 		}
-		r.logger.Error(logging.Postgres, "UserRepository.GetUserBy", err.Error())
+		log.Error("failed to get user", "field", field, "error", err.Error())
 		return user.User{}, err
 	}
 
@@ -92,7 +87,7 @@ func (r *userRepository) UpdateUser(ctx context.Context, u user.User) error {
 		if strings.Contains(err.Error(), "users_email_key") {
 			return user.ErrEmailExist
 		}
-		r.logger.Error(logging.Postgres, "UserRepository.UpdateUser", err.Error())
+		log.Error("failed to update user", "error", err.Error())
 		return err
 	}
 
@@ -108,7 +103,7 @@ func (r *userRepository) DeleteUser(ctx context.Context, userId string) error {
 
 	_, err := conn.Exec(ctx, query, deleteTime, userId)
 	if err != nil {
-		r.logger.Error(logging.Postgres, "UserRepository.DeleteUser", err.Error())
+		log.Error("failed to delete user", "error", err.Error())
 		return err
 	}
 

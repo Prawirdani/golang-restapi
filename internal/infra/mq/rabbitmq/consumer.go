@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/prawirdani/golang-restapi/internal/infra/mq"
+	"github.com/prawirdani/golang-restapi/pkg/log"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -35,11 +35,11 @@ func (c *Consumer) RegisterHandler(queueName string, handler mq.MessageHandler) 
 	c.handlers[queueName] = handler
 	c.mu.Unlock()
 
-	log.Printf("Registered handler for: %s", queueName)
+	log.Info("message consumer handler registered", "queue", queueName)
 }
 
 // Start begins consuming from all registered queues
-func (c *Consumer) Start(ctx context.Context) error {
+func (c *Consumer) Start(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	// Each message type gets its own queue + goroutine
@@ -52,7 +52,6 @@ func (c *Consumer) Start(ctx context.Context) error {
 	}
 
 	wg.Wait()
-	return nil
 }
 
 func (c *Consumer) consumeQueue(ctx context.Context, queueName string) error {
@@ -79,7 +78,7 @@ func (c *Consumer) consumeQueue(ctx context.Context, queueName string) error {
 		return fmt.Errorf("failed to consume: %w", err)
 	}
 
-	log.Printf("Consumer started for queue: %s", queueName)
+	log.Debug("consumer started", "queue", queueName)
 
 	for {
 		select {
@@ -100,12 +99,12 @@ func (c *Consumer) handleMessage(ctx context.Context, queueName string, delivery
 	var msg mq.Message
 	err := json.Unmarshal(delivery.Body, &msg)
 	if err != nil {
-		log.Printf("Failed to unmarshal message: %v", err)
+		log.Error("failed to unmarshal message", "error", err.Error())
 		delivery.Nack(false, false)
 		return
 	}
 
-	log.Printf("Received [Queue: %s, ID: %s]", queueName, msg.ID)
+	log.Debug("message received", "queue", queueName, "message", msg)
 
 	// Find handler
 	c.mu.RLock()
@@ -113,7 +112,7 @@ func (c *Consumer) handleMessage(ctx context.Context, queueName string, delivery
 	c.mu.RUnlock()
 
 	if !exists {
-		log.Printf("No handler for queue: %s", queueName)
+		log.Warn("message handler not exists", "queue", queueName)
 		delivery.Nack(false, false) // Don't requeue unknown types
 		return
 	}
@@ -121,11 +120,11 @@ func (c *Consumer) handleMessage(ctx context.Context, queueName string, delivery
 	// Execute handler
 	err = handler(ctx, msg.Payload)
 	if err != nil {
-		log.Printf("Handler error: %v", err)
+		log.Error("failed to handle message", "queue", queueName, "error", err.Error())
 		delivery.Nack(false, true) // Requeue on error
 	} else {
 		delivery.Ack(false)
-		log.Printf("Message processed [Queue: %s, ID: %s]", queueName, msg.ID)
+		log.Debug("message handled", "queue", queueName, "error", err.Error())
 	}
 }
 

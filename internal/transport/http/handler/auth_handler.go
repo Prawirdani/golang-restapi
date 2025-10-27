@@ -10,7 +10,7 @@ import (
 	req "github.com/prawirdani/golang-restapi/internal/transport/http/request"
 	res "github.com/prawirdani/golang-restapi/internal/transport/http/response"
 	httpErr "github.com/prawirdani/golang-restapi/pkg/errors"
-	"github.com/prawirdani/golang-restapi/pkg/logging"
+	"github.com/prawirdani/golang-restapi/pkg/log"
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/auth"
@@ -19,18 +19,12 @@ import (
 )
 
 type AuthHandler struct {
-	logger      logging.Logger
 	authService *service.AuthService
 	cfg         *config.Config
 }
 
-func NewAuthHandler(
-	logger logging.Logger,
-	cfg *config.Config,
-	us *service.AuthService,
-) *AuthHandler {
+func NewAuthHandler(cfg *config.Config, us *service.AuthService) *AuthHandler {
 	return &AuthHandler{
-		logger:      logger,
 		authService: us,
 		cfg:         cfg,
 	}
@@ -39,6 +33,7 @@ func NewAuthHandler(
 func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) error {
 	var reqBody model.CreateUserInput
 	if err := req.BindValidate(r, &reqBody); err != nil {
+		log.Warn("validation error", "error", err.Error())
 		return err
 	}
 
@@ -46,17 +41,13 @@ func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	return res.Send(
-		w,
-		r,
-		res.WithStatus(201),
-		res.WithMessage("Registration successful."),
-	)
+	return res.Send(w, r, res.WithStatus(201), res.WithMessage("Registration successful."))
 }
 
 func (h *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) error {
 	var reqBody model.LoginInput
 	if err := req.BindValidate(r, &reqBody); err != nil {
+		log.Warn("validation error", "error", err.Error())
 		return err
 	}
 
@@ -81,12 +72,13 @@ func (h *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 
-	return res.Send(w, r, res.WithData(d), res.WithMessage("Login successful."))
+	return res.Send(w, r, res.WithData(&d))
 }
 
 func (h *AuthHandler) CurrentUserHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := h.authService.IdentifyUser(r.Context())
 	if err != nil {
+		log.Warn("validation error", "error", err.Error())
 		return err
 	}
 
@@ -150,6 +142,7 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) erro
 func (h *AuthHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) error {
 	var reqBody model.ForgotPasswordInput
 	if err := req.BindValidate(r, &reqBody); err != nil {
+		log.Warn("validation error", "error", err.Error())
 		return err
 	}
 
@@ -177,6 +170,7 @@ func (h *AuthHandler) GetResetPasswordTokenHandler(w http.ResponseWriter, r *htt
 func (h *AuthHandler) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) error {
 	var reqBody model.ResetPasswordInput
 	if err := req.BindValidate(r, &reqBody); err != nil {
+		log.Warn("validation error", "error", err.Error())
 		return err
 	}
 
@@ -190,6 +184,7 @@ func (h *AuthHandler) ResetPasswordHandler(w http.ResponseWriter, r *http.Reques
 func (h *AuthHandler) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) error {
 	var reqBody model.ChangePasswordInput
 	if err := req.BindValidate(r, &reqBody); err != nil {
+		log.Warn("validation error", "error", err.Error())
 		return err
 	}
 

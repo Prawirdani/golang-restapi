@@ -7,6 +7,8 @@ import (
 	"net/http"
 
 	"github.com/prawirdani/golang-restapi/pkg/errors"
+	"github.com/prawirdani/golang-restapi/pkg/log"
+	"github.com/prawirdani/golang-restapi/pkg/validator"
 )
 
 type Body struct {
@@ -36,18 +38,29 @@ func Send(w http.ResponseWriter, r *http.Request, opts ...Option) error {
 	return writeJSON(w, res.Status, res)
 }
 
-// Response writer for handling error
 func HandleError(w http.ResponseWriter, err error) {
-	e := errors.Parse(err)
-	response := Body{
-		Message: e.Message,
-		Errors:  e.Cause,
+	var body Body
+	switch e := err.(type) {
+	case *errors.HttpError:
+		body = Body{
+			Message: e.Message,
+			Status:  e.Status,
+			Errors:  e.Cause,
+		}
+	case *validator.ValidationError:
+		body = Body{
+			Status:  http.StatusUnprocessableEntity,
+			Message: "Invalid request, the provided data does not meet the required format or rules",
+			Errors:  e.Details,
+		}
+	default:
+		log.Error("unknown error", "error", err.Error())
+		body = Body{
+			Status:  500,
+			Message: "An unexpected error occurred, try again latter",
+		}
 	}
-
-	writeErr := writeJSON(w, e.Status, response)
-	if writeErr != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	writeJSON(w, body.Status, &body)
 }
 
 func eTag(data any) string {

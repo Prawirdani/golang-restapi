@@ -2,33 +2,36 @@ package main
 
 import (
 	"context"
-	"log"
+	stdlog "log"
+	"os"
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/infra/mq"
 	"github.com/prawirdani/golang-restapi/internal/infra/mq/rabbitmq"
 	"github.com/prawirdani/golang-restapi/internal/infra/mq/worker"
 	"github.com/prawirdani/golang-restapi/internal/mail"
-	"github.com/prawirdani/golang-restapi/pkg/logging"
+	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
 func main() {
 	cfg, err := config.LoadConfig(".env")
 	if err != nil {
-		log.Fatal(err)
+		stdlog.Fatal("failed to load config", err)
 	}
+	log.InitLogger(*cfg)
 
-	logger := logging.NewLogger(cfg)
-	mailer := mail.NewMailer(cfg, logger)
+	mailer := mail.NewMailer(cfg)
 
-	emailWorker, err := worker.NewEmailWorker(mailer, logger)
+	emailWorker, err := worker.NewEmailWorker(mailer)
 	if err != nil {
-		logger.Fatal(logging.MQWorker, "main.NewEmailWorker", err.Error())
+		log.Error("failed to init email worker", "err", err.Error())
+		os.Exit(1)
 	}
 
 	rmqConsumer, err := rabbitmq.NewConsumer(cfg.RabbitMqURL)
 	if err != nil {
-		logger.Fatal(logging.MQWorker, "main.NewConsumer", err.Error())
+		log.Error("failed to init rabbitmq consumer", "err", err.Error())
+		os.Exit(1)
 	}
 	defer rmqConsumer.Close()
 
@@ -36,8 +39,6 @@ func main() {
 
 	// Start consuming
 	ctx := context.Background()
-	logger.Info(logging.MQWorker, "main.Start", "MQ Consumer Started")
-	if err := rmqConsumer.Start(ctx); err != nil {
-		logger.Fatal(logging.MQWorker, "main.Start", err.Error())
-	}
+	log.Info("rabbitmq consumer started")
+	rmqConsumer.Start(ctx)
 }

@@ -11,11 +11,10 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/infra/storage"
 	"github.com/prawirdani/golang-restapi/pkg/common"
 	"github.com/prawirdani/golang-restapi/pkg/contextx"
-	"github.com/prawirdani/golang-restapi/pkg/logging"
+	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
 type UserService struct {
-	logger       logging.Logger
 	cfg          *config.Config
 	tx           repository.Transactor
 	userRepo     user.Repository
@@ -24,13 +23,11 @@ type UserService struct {
 
 func NewUserService(
 	cfg *config.Config,
-	logger logging.Logger,
 	transactor repository.Transactor,
 	userRepo user.Repository,
 	imageStorage storage.Storage,
 ) *UserService {
 	return &UserService{
-		logger:       logger,
 		cfg:          cfg,
 		tx:           transactor,
 		userRepo:     userRepo,
@@ -68,7 +65,7 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File
 
 		// 3. Set New Image name using UUID
 		if err := file.SetName(uuid.NewString()); err != nil {
-			s.logger.Error(logging.Service, "UserService.file.SetName", err.Error())
+			log.Error("failed to set file name", "error", err.Error())
 			return err
 		}
 
@@ -77,7 +74,7 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File
 
 		// 4. Store new image to storage
 		if err := s.imageStorage.Put(ctx, newImagePath, file, file.ContentType()); err != nil {
-			s.logger.Error(logging.Service, "UserService.ImageStorage.Put", err.Error())
+			log.Error("failed store new profile image", "error", err.Error())
 			return err
 		}
 
@@ -87,7 +84,7 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File
 			// If Fail, Rollback & Delete Latest Image from storage
 			if err := s.imageStorage.Delete(ctx, newImagePath); err != nil {
 				// Non-Fatal
-				s.logger.Error(logging.Service, "UserService.ChangeProfilePicture", err.Error())
+				log.Warn("failed cleanup new profile image", "error", err.Error())
 			}
 			return err
 		}
@@ -96,11 +93,7 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File
 		go func(prevImage string) {
 			if prevImage != s.buildProfileImagePath(user.DEFAULT_PROFILE_IMG) {
 				if err := s.imageStorage.Delete(context.Background(), prevImage); err != nil {
-					s.logger.Error(
-						logging.Service,
-						"UserService.ChangeProfilePicture.CleanupOldImage",
-						err.Error(),
-					)
+					log.Warn("failed cleanup old profile image", "error", err.Error())
 				}
 			}
 		}(prevImage)

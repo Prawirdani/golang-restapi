@@ -9,7 +9,6 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/infra/repository/postgres"
 	"github.com/prawirdani/golang-restapi/internal/infra/storage/r2"
 	"github.com/prawirdani/golang-restapi/internal/service"
-	"github.com/prawirdani/golang-restapi/pkg/logging"
 )
 
 type Services struct {
@@ -20,28 +19,25 @@ type Services struct {
 // Container holds all application dependencies
 type Container struct {
 	Config     *config.Config
-	Logger     logging.Logger
 	Services   *Services
 	pgpool     *pgxpool.Pool
 	mqproducer mq.MessageProducer
 }
 
 // NewContainer initializes all dependencies
-func NewContainer(cfg *config.Config) *Container {
-	logger := logging.NewLogger(cfg)
-
+func NewContainer(cfg *config.Config) (*Container, error) {
 	pgpool, err := database.NewPGConnection(cfg)
 	if err != nil {
-		logger.Fatal(logging.Postgres, "App.NewContainer.NewPGConnection", err.Error())
+		return nil, err
 	}
 
 	// Postgres Repo Factory
-	repoFactory := postgres.NewRepositoryFactory(pgpool, logger)
+	repoFactory := postgres.NewRepositoryFactory(pgpool)
 	transactor := postgres.NewTransactor(pgpool)
 
 	rmqproducer, err := rabbitmq.NewPublisher(cfg.RabbitMqURL)
 	if err != nil {
-		logger.Fatal(logging.Startup, "App.NewContainer.NewPublisher", err.Error())
+		return nil, err
 	}
 
 	r2PublicStorage, err := r2.New(r2.Config{
@@ -52,20 +48,18 @@ func NewContainer(cfg *config.Config) *Container {
 		AccessKeySecret: cfg.R2.AccessKeySecret,
 	})
 	if err != nil {
-		logger.Fatal(logging.Startup, "App.NewContainer.NewR2", err.Error())
+		return nil, err
 	}
 
 	// Setup Services
 	userService := service.NewUserService(
 		cfg,
-		logger,
 		transactor,
 		repoFactory.User(),
 		r2PublicStorage,
 	)
 	authService := service.NewAuthService(
 		cfg,
-		logger,
 		transactor,
 		repoFactory.User(),
 		repoFactory.Auth(),
@@ -75,7 +69,6 @@ func NewContainer(cfg *config.Config) *Container {
 
 	c := &Container{
 		Config: cfg,
-		Logger: logger,
 		Services: &Services{
 			UserService: userService,
 			AuthService: authService,
@@ -84,7 +77,7 @@ func NewContainer(cfg *config.Config) *Container {
 		mqproducer: rmqproducer,
 	}
 
-	return c
+	return c, nil
 }
 
 func (c *Container) Cleanup() error {

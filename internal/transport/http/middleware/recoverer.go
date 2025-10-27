@@ -1,26 +1,27 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 
 	res "github.com/prawirdani/golang-restapi/internal/transport/http/response"
-	"github.com/prawirdani/golang-restapi/pkg/logging"
+	"github.com/prawirdani/golang-restapi/pkg/errors"
+	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
-/* Panic recoverer middleware, it keep the service alive when crashes */
-func (c *Collection) PanicRecoverer(next http.Handler) http.Handler {
+// Recovery Middleware
+func (c *Collection) PanicRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			if rvr := recover(); rvr != nil {
-				c.logger.Error(
-					logging.RuntimePanic,
-					"middleware.PanicRecoverer",
-					fmt.Sprintf("%v", rvr),
+			if rec := recover(); rec != nil {
+				log.Error("panic recovered",
+					"panic", rec,
+					"path", r.URL.Path,
+					"method", r.Method,
 				)
-				res.HandleError(w, fmt.Errorf("%v", rvr))
+				res.HandleError(w, errors.InternalServer("internal server error"))
 			}
 		}()
+
 		next.ServeHTTP(w, r)
 	})
 }

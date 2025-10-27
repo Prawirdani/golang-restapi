@@ -24,11 +24,11 @@ test:
 
 build:
 	@echo "Building binary..."
-	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ./cmd/app/main ./cmd/app/main.go
+	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ./cmd/api/api ./cmd/api/main.go
 	@echo "Build completed successfully..."
 
 run:
-	./cmd/app/main
+	./cmd/api/api
 
 # Makesure you have goose binary installed
 migration\:status:
@@ -48,18 +48,18 @@ migration\:create:
 
 # Metrics service docker compose
 metrics\:start:
-	@echo "Starting metrics service..."
-	@if ! docker compose -f ./deployment/docker/compose.yml start; then \
+	@if ! docker compose -f ./docker/compose.yml start; then \
 		echo "Make sure you already build the metrics service"; \
 		exit 1; \
 	fi
+	@echo "Metrics containers up and running"
 
 metrics\:stop:
-	docker compose -f ./deployment/docker/compose.yml stop
+	docker compose -f ./docker/compose.yml stop
 
 metrics\:build:
-	docker compose -f ./deployment/docker/compose.yml up -d --build
+	docker compose -f ./docker/compose.yml up -d --build
 
 metrics\:delete:
-	docker compose -f ./deployment/docker/compose.yml down
+	docker compose -f ./docker/compose.yml down
 

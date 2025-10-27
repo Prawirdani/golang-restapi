@@ -7,22 +7,17 @@ import (
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/internal/auth"
-	"github.com/prawirdani/golang-restapi/pkg/logging"
+	"github.com/prawirdani/golang-restapi/pkg/log"
 	strs "github.com/prawirdani/golang-restapi/pkg/strings"
 )
 
 type authRepository struct {
-	db     *db
-	logger logging.Logger
+	db *db
 }
 
-func NewAuthRepository(
-	pool *pgxpool.Pool,
-	logger logging.Logger,
-) *authRepository {
+func NewAuthRepository(pool *pgxpool.Pool) *authRepository {
 	return &authRepository{
-		db:     &db{pool: pool},
-		logger: logger,
+		db: &db{pool: pool},
 	}
 }
 
@@ -38,7 +33,7 @@ func (r *authRepository) InsertSession(ctx context.Context, sess auth.Session) e
 		sess.ExpiresAt,
 		sess.AccessedAt,
 	); err != nil {
-		r.logger.Error(logging.Postgres, "AuthRepository.InsertSession", err.Error())
+		log.Error("failed to insert session", "error", err.Error())
 		return err
 	}
 
@@ -67,7 +62,7 @@ func (r *authRepository) GetUserSessionBy(
 		if pgxscan.NotFound(err) {
 			return auth.Session{}, auth.ErrSessionNotFound
 		}
-		r.logger.Error(logging.Postgres, "AuthRepository.SelectSession", err.Error())
+		log.Error("failed to get user session", "error", err.Error())
 		return auth.Session{}, err
 	}
 
@@ -80,7 +75,7 @@ func (r *authRepository) DeleteSession(ctx context.Context, field string, val an
 	conn := r.db.GetConn(ctx)
 	_, err := conn.Exec(ctx, query, val)
 	if err != nil {
-		r.logger.Error(logging.Postgres, "AuthRepository.DeleteSession", err.Error())
+		log.Error("failed to delete session", "error", err.Error())
 		return err
 	}
 	return nil
@@ -93,11 +88,7 @@ func (r *authRepository) DeleteExpiredSessions(ctx context.Context) error {
 
 	_, err := conn.Exec(ctx, query)
 	if err != nil {
-		r.logger.Error(
-			logging.Postgres,
-			"AuthRepository.DeleteExpiredSessions",
-			err.Error(),
-		)
+		log.Error("failed to delete expired sessions", "error", err.Error())
 		return err
 	}
 
@@ -121,7 +112,7 @@ func (r *authRepository) GetResetPasswordTokenObj(
 		if pgxscan.NotFound(err) {
 			return tokenObj, auth.ErrResetPasswordTokenNotFound
 		}
-		r.logger.Error(logging.Postgres, "AuthRepository.GetResetPasswordTokenObj", err.Error())
+		log.Error("failed to get reset password token", "error", err.Error())
 		return tokenObj, err
 	}
 
@@ -137,7 +128,7 @@ func (r *authRepository) InsertResetPasswordToken(
 	conn := r.db.GetConn(ctx)
 
 	if _, err := conn.Exec(ctx, query, token.UserId, token.Value, token.ExpiresAt); err != nil {
-		r.logger.Error(logging.Postgres, "AuthRepository.InsertResetPasswordToken", err.Error())
+		log.Error("failed to insert reset password token", "error", err.Error())
 		return err
 	}
 
@@ -155,7 +146,7 @@ func (r *authRepository) UseResetPasswordToken(
 	now := time.Now()
 
 	if _, err := conn.Exec(ctx, query, now, tokenObj.Value); err != nil {
-		r.logger.Error(logging.Postgres, "AuthRepository.UseResetPasswordToken", err.Error())
+		log.Error("failed to set used_at reset password token", "error", err.Error())
 		return err
 	}
 

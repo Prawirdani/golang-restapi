@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"github.com/prawirdani/golang-restapi/config"
-	"github.com/prawirdani/golang-restapi/pkg/logging"
+	"github.com/prawirdani/golang-restapi/pkg/log"
 	"gopkg.in/gomail.v2"
 )
 
@@ -17,10 +17,9 @@ type HeaderParams struct {
 type Mailer struct {
 	dialer *gomail.Dialer
 	cfg    *config.SMTPConfig
-	logger logging.Logger
 }
 
-func NewMailer(cfg *config.Config, logger logging.Logger) *Mailer {
+func NewMailer(cfg *config.Config) *Mailer {
 	dialer := gomail.NewDialer(
 		cfg.SMTP.Host,
 		cfg.SMTP.Port,
@@ -31,7 +30,6 @@ func NewMailer(cfg *config.Config, logger logging.Logger) *Mailer {
 	return &Mailer{
 		dialer: dialer,
 		cfg:    &cfg.SMTP,
-		logger: logger,
 	}
 }
 
@@ -40,7 +38,7 @@ func (m *Mailer) Send(headerParams HeaderParams, body bytes.Buffer) error {
 	mail.SetBody("text/html", body.String())
 
 	if err := m.dialer.DialAndSend(mail); err != nil {
-		m.logger.Error(logging.Service, "MailService.Send", err.Error())
+		log.Error("failed to send mail", "err", err.Error())
 		return err
 	}
 

@@ -8,20 +8,19 @@ import (
 
 	"github.com/prawirdani/golang-restapi/internal/infra/mq"
 	"github.com/prawirdani/golang-restapi/internal/mail"
-	"github.com/prawirdani/golang-restapi/pkg/logging"
+	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
 type EmailWorker struct {
 	mailer    *mail.Mailer
 	templates *EmailTemplates
-	logger    logging.Logger
 }
 
 type EmailTemplates struct {
 	ResetPassword *template.Template
 }
 
-func NewEmailWorker(mailer *mail.Mailer, logger logging.Logger) (*EmailWorker, error) {
+func NewEmailWorker(mailer *mail.Mailer) (*EmailWorker, error) {
 	// Parse templates once at worker startup
 	templates := &EmailTemplates{
 		ResetPassword: template.Must(
@@ -32,7 +31,6 @@ func NewEmailWorker(mailer *mail.Mailer, logger logging.Logger) (*EmailWorker, e
 	return &EmailWorker{
 		mailer:    mailer,
 		templates: templates,
-		logger:    logger,
 	}, nil
 }
 
@@ -40,7 +38,7 @@ func NewEmailWorker(mailer *mail.Mailer, logger logging.Logger) (*EmailWorker, e
 func (w *EmailWorker) HandlePasswordReset(ctx context.Context, payload json.RawMessage) error {
 	var job mq.EmailResetPasswordJob
 	if err := json.Unmarshal(payload, &job); err != nil {
-		w.logger.Error(logging.MQWorker, "EmailWorker.HandlePasswordReset.Unmarshal", err.Error())
+		log.Error("failed to unmarshal email payload", "err", err.Error())
 		return err
 	}
 
@@ -51,7 +49,7 @@ func (w *EmailWorker) HandlePasswordReset(ctx context.Context, payload json.RawM
 		"Minutes": job.ExpiryMin,
 		"URL":     job.ResetURL,
 	}); err != nil {
-		w.logger.Error(logging.MQWorker, "EmailWorker.HandlePasswordReset.Execute", err.Error())
+		log.Error("failed to execute email template", "err", err.Error())
 		return err
 	}
 
@@ -64,11 +62,9 @@ func (w *EmailWorker) HandlePasswordReset(ctx context.Context, payload json.RawM
 		buf,
 	)
 	if err != nil {
-		w.logger.Error(logging.MQWorker, "EmailWorker.HandlePasswordReset.Send", err.Error())
 		return err
 	}
 
-	w.logger.Info(logging.MQWorker, "EmailWorker.HandlePasswordReset",
-		"Password reset email sent to: "+job.To)
+	log.Info("password reset mail sent", "to", job.To)
 	return nil
 }

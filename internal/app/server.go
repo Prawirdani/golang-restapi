@@ -12,9 +12,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/prawirdani/golang-restapi/internal/transport/http/handler"
 	"github.com/prawirdani/golang-restapi/internal/transport/http/middleware"
-	"github.com/prawirdani/golang-restapi/internal/transport/http/response"
+	res "github.com/prawirdani/golang-restapi/internal/transport/http/response"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
-	"github.com/prawirdani/golang-restapi/pkg/logging"
+	"github.com/prawirdani/golang-restapi/pkg/log"
 	"github.com/prawirdani/golang-restapi/pkg/metrics"
 
 	httptransport "github.com/prawirdani/golang-restapi/internal/transport/http"
@@ -34,11 +34,12 @@ func NewServer(container *Container) (*Server, error) {
 	}
 
 	router := chi.NewRouter()
-	mws := middleware.NewCollection(container.Config, container.Logger)
+
+	mws := middleware.Setup(container.Config)
 
 	// Apply global middlewares
 	router.Use(mws.MaxBodySizeMiddleware(MAX_BODY_SIZE))
-	router.Use(mws.PanicRecoverer)
+	router.Use(mws.PanicRecovery)
 	router.Use(mws.Gzip)
 	router.Use(mws.Cors)
 	router.Use(mws.ReqLogger)
@@ -49,11 +50,11 @@ func NewServer(container *Container) (*Server, error) {
 
 	// Error handlers
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		response.HandleError(w, errors.NotFound("The requested resource could not be found"))
+		res.HandleError(w, errors.NotFound("The requested resource could not be found"))
 	})
 
 	router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		response.HandleError(
+		res.HandleError(
 			w,
 			errors.MethodNotAllowed("The method is not allowed for the requested URL"),
 		)
@@ -78,7 +79,6 @@ func NewServer(container *Container) (*Server, error) {
 
 func (s *Server) Start() {
 	cfg := s.container.Config
-	logger := s.container.Logger
 
 	fmt.Println("ENV\t:", cfg.App.Environment)
 	fmt.Println("Metrics\t:", cfg.Metrics.Enable)
@@ -93,13 +93,11 @@ func (s *Server) Start() {
 
 	// Start server
 	go func() {
-		logger.Info(
-			logging.Startup,
-			"Server.Start",
-			fmt.Sprintf("App serves on %v", cfg.App.Port),
-		)
+		log.Info(fmt.Sprintf("server listening on 0.0.0.0:%v", cfg.App.Port))
+
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal(logging.Startup, "Server.Start", err.Error())
+			log.Error("failed to start server", "error", err.Error())
+			os.Exit(1)
 		}
 	}()
 
@@ -108,20 +106,18 @@ func (s *Server) Start() {
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
 
-	logger.Info(logging.Shutdown, "Server.Shutdown", "Shutdown signal received")
-
 	// Graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	if err := httpServer.Shutdown(ctx); err != nil {
-		logger.Fatal(logging.Shutdown, "Server.Shutdown", err.Error())
+		log.Error("failed to shutdown server", "error", err.Error())
 	}
 
 	// Cleanup resources
 	s.container.Cleanup()
 
-	logger.Info(logging.Shutdown, "Server.Shutdown", "Server gracefully stopped")
+	log.Info("server stopped gracefully")
 }
 
 func (s *Server) setupMetrics() {
@@ -135,22 +131,18 @@ func (s *Server) setupMetrics() {
 	// Metrics server
 	port := s.container.Config.Metrics.PrometheusPort
 	go func() {
-		s.container.Logger.Info(
-			logging.Startup,
-			"Server.setupMetrics",
-			fmt.Sprintf("Metrics serves on localhost:%v", port),
-		)
 		if err := m.RunServer(port); err != nil {
-			s.container.Logger.Fatal(logging.Startup, "Server.setupMetrics", err.Error())
+			log.Error("failed to run metrics server", "err", err.Error())
 		}
+		log.Info(fmt.Sprintf("metrics serves on 0.0.0.0:%v/metrics", port))
 	}()
 }
 
 func (s *Server) setupHandlers() {
 	svcs := s.container.Services
 	// Setup Handlers
-	userHandler := handler.NewUserHandler(s.container.Logger, svcs.UserService)
-	authHandler := handler.NewAuthHandler(s.container.Logger, s.container.Config, svcs.AuthService)
+	userHandler := handler.NewUserHandler(svcs.UserService)
+	authHandler := handler.NewAuthHandler(s.container.Config, svcs.AuthService)
 
 	s.router.Route("/api", func(r chi.Router) {
 		httptransport.RegisterUserRoutes(r, userHandler, s.middlewares)

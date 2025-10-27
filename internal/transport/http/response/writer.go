@@ -7,7 +7,7 @@ import (
 )
 
 // Utility function to help writing json to response body.
-func writeJSON(w http.ResponseWriter, status int, response interface{}) error {
+func writeJSON(w http.ResponseWriter, status int, response any) error {
 	buf := new(bytes.Buffer)
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(true)
