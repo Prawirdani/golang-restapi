@@ -18,7 +18,7 @@ func main() {
 	if err != nil {
 		stdlog.Fatal("failed to load config", err)
 	}
-	log.InitLogger(*cfg)
+	log.SetLogger(log.NewZerologAdapter(cfg))
 
 	mailer := mail.NewMailer(cfg)
 

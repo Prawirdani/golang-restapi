@@ -15,7 +15,7 @@ func main() {
 	if err != nil {
 		stdlog.Fatal("failed to load config", err)
 	}
-	log.InitLogger(*cfg)
+	log.SetLogger(log.NewZerologAdapter(cfg))
 
 	container, err := app.NewContainer(cfg)
 	if err != nil {

@@ -35,7 +35,7 @@ func Send(w http.ResponseWriter, r *http.Request, opts ...Option) error {
 	}
 
 	w.Header().Set("ETag", etag)
-	return writeJSON(w, res.Status, res)
+	return writeJSON(w, &res)
 }
 
 func HandleError(w http.ResponseWriter, err error) {
@@ -60,7 +60,7 @@ func HandleError(w http.ResponseWriter, err error) {
 			Message: "An unexpected error occurred, try again latter",
 		}
 	}
-	writeJSON(w, body.Status, &body)
+	_ = writeJSON(w, &body)
 }
 
 func eTag(data any) string {

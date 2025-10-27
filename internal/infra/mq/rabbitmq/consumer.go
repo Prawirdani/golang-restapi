@@ -78,7 +78,7 @@ func (c *Consumer) consumeQueue(ctx context.Context, queueName string) error {
 		return fmt.Errorf("failed to consume: %w", err)
 	}
 
-	log.Debug("consumer started", "queue", queueName)
+	log.Info("consumer started", "queue", queueName)
 
 	for {
 		select {
@@ -104,7 +104,7 @@ func (c *Consumer) handleMessage(ctx context.Context, queueName string, delivery
 		return
 	}
 
-	log.Debug("message received", "queue", queueName, "message", msg)
+	log.Info("message received", "queue", queueName, "queue_message", msg)
 
 	// Find handler
 	c.mu.RLock()
@@ -121,11 +121,13 @@ func (c *Consumer) handleMessage(ctx context.Context, queueName string, delivery
 	err = handler(ctx, msg.Payload)
 	if err != nil {
 		log.Error("failed to handle message", "queue", queueName, "error", err.Error())
+		// TODO: Implement dead letter
 		delivery.Nack(false, true) // Requeue on error
-	} else {
-		delivery.Ack(false)
-		log.Debug("message handled", "queue", queueName, "error", err.Error())
+		return
 	}
+
+	delivery.Ack(false)
+	log.Info("message handled", "queue", queueName, "id", msg.ID)
 }
 
 func (c *Consumer) Close() error {

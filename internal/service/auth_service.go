@@ -50,7 +50,7 @@ func (s *AuthService) Register(ctx context.Context, i model.CreateUserInput) err
 
 	newUser, err := user.New(i, string(hashedPassword))
 	if err != nil {
-		log.Error("failed to create new user", "error", err.Error())
+		log.ErrorCtx(ctx, "failed to create new user", "error", err.Error())
 		return err
 	}
 	if err := s.userRepo.Insert(ctx, newUser); err != nil {
@@ -75,7 +75,7 @@ func (s *AuthService) Login(
 		"name": u.Name,
 	})
 	if err != nil {
-		log.Error("failed to generate access token", "error", err.Error())
+		log.ErrorCtx(ctx, "failed to generate access token", "error", err.Error())
 		return "", "", err
 	}
 
@@ -85,7 +85,7 @@ func (s *AuthService) Login(
 		s.cfg.Token.RefreshTokenExpiry,
 	)
 	if err != nil {
-		log.Error("failed to create new session", "error", err.Error())
+		log.ErrorCtx(ctx, "failed to create new session", "error", err.Error())
 		return "", "", err
 	}
 
@@ -120,7 +120,7 @@ func (s *AuthService) RefreshAccessToken(
 		map[string]any{"id": user.ID.String(), "name": user.Name},
 	)
 	if err != nil {
-		log.Error("failed to generate new access token", "error", err.Error())
+		log.ErrorCtx(ctx, "failed to generate new access token", "error", err.Error())
 		return "", err
 	}
 
@@ -159,7 +159,7 @@ func (s *AuthService) ForgotPassword(ctx context.Context, i model.ForgotPassword
 		expiresAt := time.Now().Add(s.cfg.Token.ResetPasswordTokenExpiry)
 		token, err := auth.NewResetPasswordToken(u.ID, expiresAt)
 		if err != nil {
-			log.Error("failed to create reset password token", "error", err.Error())
+			log.ErrorCtx(ctx, "failed to create reset password token", "error", err.Error())
 			return err
 		}
 
@@ -170,14 +170,13 @@ func (s *AuthService) ForgotPassword(ctx context.Context, i model.ForgotPassword
 
 		// Publish email job to message queue
 		emailJob := mq.EmailResetPasswordJob{
-			Type:      "password_reset",
 			To:        u.Email,
 			Name:      u.Name,
 			ResetURL:  s.cfg.Token.ResetPasswordFormEndpoint + "?token=" + token.Value,
 			ExpiryMin: int(s.cfg.Token.ResetPasswordTokenExpiry.Minutes()),
 		}
 
-		// Non-blocking - just queue the job
+		// Non-blocking - publish the job to message queue
 		return s.producer.Publish(ctx, mq.EmailResetPasswordJobKey, emailJob)
 	})
 }
@@ -208,8 +207,7 @@ func (s *AuthService) ResetPassword(ctx context.Context, i model.ResetPasswordIn
 
 		newHashedPassword, err := auth.HashPassword(i.NewPassword)
 		if err != nil {
-
-			log.Error("failed to hash new password", "error", err.Error())
+			log.ErrorCtx(ctx, "failed to hash new password", "error", err.Error())
 			return err
 		}
 		user.Password = string(newHashedPassword)

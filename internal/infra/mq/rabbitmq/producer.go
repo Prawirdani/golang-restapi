@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/prawirdani/golang-restapi/internal/infra/mq"
+	"github.com/prawirdani/golang-restapi/pkg/log"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -77,7 +77,7 @@ func (p *RMQPublisher) Publish(
 		return fmt.Errorf("failed to publish: %w", err)
 	}
 
-	log.Printf("Published [Queue: %s,  ID: %s]", queueName, msg.ID)
+	log.Info("message pusblished", "queue", queueName, "queue_message", msg)
 	return nil
 }
 

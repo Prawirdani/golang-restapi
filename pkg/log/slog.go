@@ -2,118 +2,141 @@ package log
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"os"
 	"runtime"
+	"strings"
 	"time"
+
+	"github.com/prawirdani/golang-restapi/config"
 )
 
-// Logger wraps slog.Logger to provide skip-aware logging
-type Logger struct {
-	logger *slog.Logger
+// ===================== Slog Adapter =====================
+
+type SlogAdapter struct {
+	l *slog.Logger
 }
 
-// Logger methods
-
-func (l *Logger) Info(msg string, args ...any) {
-	l.logWithSkip(slog.LevelInfo, 1, msg, args...)
-}
-
-func (l *Logger) Error(msg string, args ...any) {
-	l.logWithSkip(slog.LevelError, 1, msg, args...)
-}
-
-func (l *Logger) Warn(msg string, args ...any) {
-	l.logWithSkip(slog.LevelWarn, 1, msg, args...)
-}
-
-func (l *Logger) Debug(msg string, args ...any) {
-	l.logWithSkip(slog.LevelDebug, 1, msg, args...)
-}
-
-// WithGroup returns a new Logger that starts a group
-func (l *Logger) WithGroup(name string) *Logger {
-	return &Logger{logger: l.logger.WithGroup(name)}
-}
-
-// With returns a new Logger with additional attributes
-func (l *Logger) With(args ...any) *Logger {
-	return &Logger{logger: l.logger.With(args...)}
-}
-
-// WithGroup returns a Logger that starts a group
-func WithGroup(name string) *Logger {
-	return &Logger{logger: defaultLogger.logger.WithGroup(name)}
-}
-
-// With returns a Logger with additional attributes
-func With(args ...any) *Logger {
-	return &Logger{logger: defaultLogger.logger.With(args...)}
-}
-
-// Context-aware logging functions
-
-// InfoCtx logs at Info level using logger from context (falls back to default)
-func InfoCtx(ctx context.Context, msg string, args ...any) {
-	FromContext(ctx).Info(msg, args...)
-}
-
-// ErrorCtx logs at Error level using logger from context
-func ErrorCtx(ctx context.Context, msg string, args ...any) {
-	FromContext(ctx).Error(msg, args...)
-}
-
-// WarnCtx logs at Warn level using logger from context
-func WarnCtx(ctx context.Context, msg string, args ...any) {
-	FromContext(ctx).Warn(msg, args...)
-}
-
-// DebugContext logs at Debug level using logger from context
-func DebugCtx(ctx context.Context, msg string, args ...any) {
-	FromContext(ctx).Debug(msg, args...)
-}
-
-type contextKey string
-
-const loggerKey contextKey = "logger"
-
-// WithContext stores a logger with additional attributes in context
-func WithContext(ctx context.Context, args ...any) context.Context {
-	logger := FromContext(ctx).With(args...)
-	return context.WithValue(ctx, loggerKey, logger)
-}
-
-// FromContext retrieves the logger from context, or returns default logger
-func FromContext(ctx context.Context) *Logger {
-	if ctx == nil {
-		return defaultLogger
+func NewSlogAdapter(cfg *config.Config) *SlogAdapter {
+	handlerOpts := &slog.HandlerOptions{
+		AddSource: true,
+		Level:     slog.LevelInfo,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.MessageKey {
+				a.Key = "message"
+			}
+			if a.Key == slog.LevelKey {
+				a.Value = slog.StringValue(strings.ToLower(a.Value.String()))
+			}
+			if a.Key == slog.TimeKey {
+				a.Key = "timestamp"
+			}
+			if a.Key == slog.SourceKey {
+				if source, ok := a.Value.Any().(*slog.Source); ok {
+					a.Value = slog.StringValue(fmt.Sprintf("%s:%d", source.File, source.Line))
+				}
+			}
+			return a
+		},
 	}
-	if logger, ok := ctx.Value(loggerKey).(*Logger); ok {
-		return logger
+	var handler slog.Handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})
+
+	if cfg.IsProduction() {
+		handler = slog.NewJSONHandler(os.Stdout, handlerOpts)
 	}
-	return defaultLogger
+
+	l := slog.New(handler).With(
+		slog.Group("app",
+			slog.String("name", cfg.App.Name),
+			slog.String("version", cfg.App.Version),
+		),
+	)
+
+	return &SlogAdapter{l: l}
 }
 
-// ToContext stores a logger in the context
-func ToContext(ctx context.Context, logger *Logger) context.Context {
-	return context.WithValue(ctx, loggerKey, logger)
+// Addtional 2 skips to capture the correct caller frame:
+// Frame 3: this function
+// Frame 4: wrapper (InfoCtx, DebugCtx ...)
+
+func (s *SlogAdapter) Debug(msg string, args ...any) {
+	s.logWithSkip(context.Background(), slog.LevelDebug, 2, msg, args...)
 }
 
-func (l *Logger) logWithSkip(level slog.Level, skip int, msg string, args ...any) {
-	ctx := context.Background()
-	if !l.logger.Enabled(ctx, level) {
+func (s *SlogAdapter) Info(msg string, args ...any) {
+	s.logWithSkip(context.Background(), slog.LevelInfo, 2, msg, args...)
+}
+
+func (s *SlogAdapter) Warn(msg string, args ...any) {
+	s.logWithSkip(context.Background(), slog.LevelWarn, 2, msg, args...)
+}
+
+func (s *SlogAdapter) Error(msg string, args ...any) {
+	s.logWithSkip(context.Background(), slog.LevelError, 2, msg, args...)
+}
+
+func (s *SlogAdapter) DebugCtx(ctx context.Context, msg string, args ...any) {
+	s.buildContextualLogger(ctx, slog.LevelDebug, msg, args...)
+}
+
+func (s *SlogAdapter) InfoCtx(ctx context.Context, msg string, args ...any) {
+	s.buildContextualLogger(ctx, slog.LevelInfo, msg, args...)
+}
+
+func (s *SlogAdapter) WarnCtx(ctx context.Context, msg string, args ...any) {
+	s.buildContextualLogger(ctx, slog.LevelWarn, msg, args...)
+}
+
+func (s *SlogAdapter) ErrorCtx(ctx context.Context, msg string, args ...any) {
+	s.buildContextualLogger(ctx, slog.LevelError, msg, args...)
+}
+
+func (s *SlogAdapter) With(args ...any) Logger {
+	return &SlogAdapter{l: s.l.With(args...)}
+}
+
+func (s *SlogAdapter) logWithSkip(
+	ctx context.Context,
+	level slog.Level,
+	skip int,
+	msg string,
+	args ...any,
+) {
+	if !s.l.Enabled(ctx, level) {
 		return
 	}
 
 	// Get caller information
 	var pcs [1]uintptr
+	// skip 2 to capture the correct caller frame:
+	// Frame 1: runtime.Callers (this call)
+	// Frame 2: logWithSkip (this method)
 	runtime.Callers(skip+2, pcs[:])
-	fs := runtime.CallersFrames(pcs[:])
-	_, _ = fs.Next()
 
 	// Create a new record with proper source
 	r := slog.NewRecord(time.Now(), level, msg, pcs[0])
 	r.Add(args...)
 
 	// Call handler with the record - this preserves With/WithGroup
-	_ = l.logger.Handler().Handle(ctx, r)
+	_ = s.l.Handler().Handle(ctx, r)
+}
+
+func (s *SlogAdapter) buildContextualLogger(
+	ctx context.Context,
+	level slog.Level,
+	msg string,
+	args ...any,
+) {
+	if l := GetFromContext(ctx); l != nil {
+		if sa, ok := l.(*SlogAdapter); ok {
+			// addtional 3 skips to capture the correct caller frame:
+			// Frame 3: this function
+			// Frame 4: wrapper (InfoCtx, DebugCtx ...)
+			// Frame 5: Actual Caller
+			sa.logWithSkip(ctx, level, 3, msg, args...)
+			return
+		}
+	}
+	s.logWithSkip(ctx, level, 3, msg, args...)
 }
