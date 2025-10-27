@@ -38,9 +38,12 @@ func NewServer(container *Container) (*Server, error) {
 	mws := middleware.Setup(container.Config)
 
 	// Apply global middlewares
+	router.Use(middleware.RequestID)
 	router.Use(mws.MaxBodySizeMiddleware(MAX_BODY_SIZE))
 	router.Use(mws.PanicRecovery)
-	router.Use(mws.Gzip)
+	router.Use(
+		mws.Gzip,
+	) // TODO: Should based on config, since proxy mostly able to handle compression
 	router.Use(mws.Cors)
 	router.Use(mws.ReqLogger)
 
