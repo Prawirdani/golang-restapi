@@ -2,11 +2,14 @@ package config
 
 import (
 	"errors"
-	"fmt"
+	"log"
 	"net/url"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/spf13/viper"
+	"github.com/joho/godotenv"
 )
 
 type AppEnv string
@@ -17,103 +20,263 @@ const (
 )
 
 type Config struct {
-	App         AppConfig     `mapstructure:",squash"`
-	Postgres    PGConfig      `mapstructure:",squash"`
-	Cors        CorsConfig    `mapstructure:",squash"`
-	Token       TokenConfig   `mapstructure:",squash"`
-	Metrics     MetricsConfig `mapstructure:",squash"`
-	SMTP        SMTPConfig    `mapstructure:",squash"`
-	R2          R2Config      `mapstructure:",squash"`
-	RabbitMqURL string        `mapstructure:"RABBITMQ_URL"`
+	App         AppConfig
+	Postgres    PGConfig
+	Cors        CorsConfig
+	Token       TokenConfig
+	Metrics     MetricsConfig
+	SMTP        SMTPConfig
+	R2          R2Config
+	RabbitMqURL string
 }
 
 func (c Config) IsProduction() bool {
 	return c.App.Environment == ENV_PRODUCTION
 }
 
-type AppConfig struct {
-	Name        string `mapstructure:"APP_NAME"`
-	Version     string `mapstructure:"APP_VERSION"`
-	Port        int    `mapstructure:"APP_PORT"`
-	Environment AppEnv `mapstructure:"APP_ENV"`
-}
-
-type PGConfig struct {
-	User            string        `mapstructure:"DB_USER"`
-	Password        string        `mapstructure:"DB_PASSWORD"`
-	Host            string        `mapstructure:"DB_HOST"`
-	Port            int           `mapstructure:"DB_PORT"`
-	Name            string        `mapstructure:"DB_NAME"`
-	MinConns        int           `mapstructure:"DB_MINCONNS"`         // PG Pool minimum connections
-	MaxConns        int           `mapstructure:"DB_MAXCONNS"`         // PG Pool maximum connections
-	MaxConnLifetime time.Duration `mapstructure:"DB_MAXCONN_LIFETIME"` // PG Pool maximun connection lifetime
-}
-
-type MetricsConfig struct {
-	Enable         bool `mapstructure:"METRICS_ENABLE"`
-	PrometheusPort int  `mapstructure:"METRICS_PROMETHEUS_PORT"`
-}
-
-type CorsConfig struct {
-	Origins     []string `mapstructure:"CORS_ORIGINS"`
-	Credentials bool     `mapstructure:"CORS_CREDENTIALS"`
-}
-
-type TokenConfig struct {
-	SecretKey                 string        `mapstructure:"TOKEN_SECRETKEY"`
-	AccessTokenExpiry         time.Duration `mapstructure:"TOKEN_ACCESS_TOKEN_EXPIRY"`
-	RefreshTokenExpiry        time.Duration `mapstructure:"TOKEN_REFRESH_TOKEN_EXPIRY"`
-	ResetPasswordTokenExpiry  time.Duration `mapstructure:"RESET_PASSWORD_TOKEN_EXPIRY"`
-	ResetPasswordFormEndpoint string        `mapstructure:"RESET_PASSWORD_FORM_ENDPOINT"`
-}
-
-type SMTPConfig struct {
-	Host         string `mapstructure:"SMTP_HOST"`
-	Port         int    `mapstructure:"SMTP_PORT"`
-	SenderName   string `mapstructure:"SMTP_SENDER_NAME"`
-	AuthEmail    string `mapstructure:"SMTP_AUTH_EMAIL"`
-	AuthPassword string `mapstructure:"SMTP_AUTH_PASSWORD"`
-}
-
-type R2Config struct {
-	PublicBucketURL string `mapstructure:"R2_PUBLIC_BUCKET_URL"`
-	PublicBucket    string `mapstructure:"R2_PUBLIC_BUCKET"`
-	PrivateBucket   string `mapstructure:"R2_PRIVATE_BUCKET"`
-	AccountID       string `mapstructure:"R2_ACCOUNT_ID"`
-	AccessKeyID     string `mapstructure:"R2_ACCESS_KEY_ID"`
-	AccessKeySecret string `mapstructure:"R2_ACCESS_KEY_SECRET"`
-}
-
-// Load and Parse Config, pass the path of the config file relatively from the root dir
 func LoadConfig(filepath string) (*Config, error) {
-	// Set the file name and path for the .env file
-	viper.SetConfigFile(filepath)
-	viper.SetConfigType("env")
+	_ = godotenv.Load() // Load .env in dev
 
-	viper.AutomaticEnv()
+	cfg := &Config{}
 
-	// Read the config file
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("error reading config file: %w", err)
-		}
+	// Parse each struct
+	if err := cfg.App.Parse(); err != nil {
+		return nil, err
+	}
+	if err := cfg.Postgres.Parse(); err != nil {
+		return nil, err
+	}
+	if err := cfg.Metrics.Parse(); err != nil {
+		return nil, err
+	}
+	if err := cfg.Cors.Parse(); err != nil {
+		return nil, err
+	}
+	if err := cfg.Token.Parse(); err != nil {
+		return nil, err
+	}
+	if err := cfg.SMTP.Parse(); err != nil {
+		return nil, err
+	}
+	if err := cfg.R2.Parse(); err != nil {
+		return nil, err
 	}
 
-	var c Config
-	if err := viper.Unmarshal(&c); err != nil {
-		return nil, fmt.Errorf("fail parse config: %v", err.Error())
+	cfg.RabbitMqURL = os.Getenv("RABBITMQ_URL")
+
+	// Validate
+	if err := cfg.Validate(); err != nil {
+		return nil, err
 	}
 
+	return cfg, nil
+}
+
+func (c *Config) Validate() error {
 	if c.App.Environment != ENV_PRODUCTION && c.App.Environment != ENV_DEVELOPMENT {
-		return nil, errors.New("invalid app.Environtment value, expecting 'DEV' or 'PROD'")
+		return errors.New("invalid APP_ENV, expecting DEV or PROD")
 	}
-
-	// Validate origins URL
 	for _, origin := range c.Cors.Origins {
 		if _, err := url.ParseRequestURI(origin); err != nil {
-			return nil, fmt.Errorf("invalid cors origins url: %s", origin)
+			log.Printf("warning: invalid CORS origin: %s\n", origin)
 		}
 	}
+	return nil
+}
 
-	return &c, nil
+// =======================
+// AppConfig
+// =======================
+
+type AppConfig struct {
+	Name        string
+	Version     string
+	Port        int
+	Environment AppEnv
+}
+
+func (a *AppConfig) Parse() error {
+	a.Name = os.Getenv("APP_NAME")
+	a.Version = os.Getenv("APP_VERSION")
+	a.Environment = AppEnv(os.Getenv("APP_ENV"))
+
+	if val := os.Getenv("APP_PORT"); val != "" {
+		port, err := strconv.Atoi(val)
+		if err != nil {
+			return err
+		}
+		a.Port = port
+	}
+	return nil
+}
+
+// =======================
+// Postgres
+// =======================
+
+type PGConfig struct {
+	User            string
+	Password        string
+	Host            string
+	Port            int
+	Name            string
+	MinConns        int
+	MaxConns        int
+	MaxConnLifetime time.Duration
+}
+
+func (p *PGConfig) Parse() error {
+	p.User = os.Getenv("DB_USER")
+	p.Password = os.Getenv("DB_PASSWORD")
+	p.Host = os.Getenv("DB_HOST")
+	p.Name = os.Getenv("DB_NAME")
+
+	if val := os.Getenv("DB_PORT"); val != "" {
+		if port, err := strconv.Atoi(val); err == nil {
+			p.Port = port
+		}
+	}
+	if val := os.Getenv("DB_MINCONNS"); val != "" {
+		if i, err := strconv.Atoi(val); err == nil {
+			p.MinConns = i
+		}
+	}
+	if val := os.Getenv("DB_MAXCONNS"); val != "" {
+		if i, err := strconv.Atoi(val); err == nil {
+			p.MaxConns = i
+		}
+	}
+	if val := os.Getenv("DB_MAXCONN_LIFETIME"); val != "" {
+		if d, err := time.ParseDuration(val); err == nil {
+			p.MaxConnLifetime = d
+		}
+	}
+	return nil
+}
+
+// =======================
+// Metrics
+// =======================
+
+type MetricsConfig struct {
+	Enable         bool
+	PrometheusPort int
+}
+
+func (m *MetricsConfig) Parse() error {
+	if val := os.Getenv("METRICS_ENABLE"); val != "" {
+		if b, err := strconv.ParseBool(val); err == nil {
+			m.Enable = b
+		}
+	}
+	if val := os.Getenv("METRICS_PROMETHEUS_PORT"); val != "" {
+		if i, err := strconv.Atoi(val); err == nil {
+			m.PrometheusPort = i
+		}
+	}
+	return nil
+}
+
+// =======================
+// CORS
+// =======================
+
+type CorsConfig struct {
+	Origins     []string
+	Credentials bool
+}
+
+func (c *CorsConfig) Parse() error {
+	if val := os.Getenv("CORS_ORIGINS"); val != "" {
+		c.Origins = strings.Split(val, ",")
+	}
+	if val := os.Getenv("CORS_CREDENTIALS"); val != "" {
+		if b, err := strconv.ParseBool(val); err == nil {
+			c.Credentials = b
+		}
+	}
+	return nil
+}
+
+// =======================
+// Token
+// =======================
+
+type TokenConfig struct {
+	SecretKey                 string
+	AccessTokenExpiry         time.Duration
+	RefreshTokenExpiry        time.Duration
+	ResetPasswordTokenExpiry  time.Duration
+	ResetPasswordFormEndpoint string
+}
+
+func (t *TokenConfig) Parse() error {
+	t.SecretKey = os.Getenv("TOKEN_SECRETKEY")
+	t.ResetPasswordFormEndpoint = os.Getenv("RESET_PASSWORD_FORM_ENDPOINT")
+
+	if val := os.Getenv("TOKEN_ACCESS_TOKEN_EXPIRY"); val != "" {
+		if d, err := time.ParseDuration(val); err == nil {
+			t.AccessTokenExpiry = d
+		}
+	}
+	if val := os.Getenv("TOKEN_REFRESH_TOKEN_EXPIRY"); val != "" {
+		if d, err := time.ParseDuration(val); err == nil {
+			t.RefreshTokenExpiry = d
+		}
+	}
+	if val := os.Getenv("RESET_PASSWORD_TOKEN_EXPIRY"); val != "" {
+		if d, err := time.ParseDuration(val); err == nil {
+			t.ResetPasswordTokenExpiry = d
+		}
+	}
+	return nil
+}
+
+// =======================
+// SMTP
+// =======================
+
+type SMTPConfig struct {
+	Host         string
+	Port         int
+	SenderName   string
+	AuthEmail    string
+	AuthPassword string
+}
+
+func (s *SMTPConfig) Parse() error {
+	s.Host = os.Getenv("SMTP_HOST")
+	s.SenderName = os.Getenv("SMTP_SENDER_NAME")
+	s.AuthEmail = os.Getenv("SMTP_AUTH_EMAIL")
+	s.AuthPassword = os.Getenv("SMTP_AUTH_PASSWORD")
+
+	if val := os.Getenv("SMTP_PORT"); val != "" {
+		if i, err := strconv.Atoi(val); err == nil {
+			s.Port = i
+		}
+	}
+	return nil
+}
+
+// =======================
+// R2
+// =======================
+
+type R2Config struct {
+	PublicBucketURL string
+	PublicBucket    string
+	PrivateBucket   string
+	AccountID       string
+	AccessKeyID     string
+	AccessKeySecret string
+}
+
+func (r *R2Config) Parse() error {
+	r.PublicBucketURL = os.Getenv("R2_PUBLIC_BUCKET_URL")
+	r.PublicBucket = os.Getenv("R2_PUBLIC_BUCKET")
+	r.PrivateBucket = os.Getenv("R2_PRIVATE_BUCKET")
+	r.AccountID = os.Getenv("R2_ACCOUNT_ID")
+	r.AccessKeyID = os.Getenv("R2_ACCESS_KEY_ID")
+	r.AccessKeySecret = os.Getenv("R2_ACCESS_KEY_SECRET")
+	return nil
 }
