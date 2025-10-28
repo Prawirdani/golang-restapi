@@ -24,11 +24,11 @@ test:
 
 build:
 	@echo "Building binary..."
-	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ./cmd/api/api ./cmd/api/main.go
+	CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -a -installsuffix cgo -o ./bin/api ./cmd/api/main.go
 	@echo "Build completed successfully..."
 
 run:
-	./cmd/api/api
+	./bin/api
 
 # Makesure you have goose binary installed
 migration\:status:

@@ -2,6 +2,6 @@ tmp
 .env
 /cmd/app/main
 /logs
-/config/config.yml
+/bin
 .env
 
