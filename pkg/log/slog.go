@@ -50,6 +50,7 @@ func NewSlogAdapter(cfg *config.Config) *SlogAdapter {
 		slog.Group("app",
 			slog.String("name", cfg.App.Name),
 			slog.String("version", cfg.App.Version),
+			slog.String("env", string(cfg.App.Environment)),
 		),
 	)
 

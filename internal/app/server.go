@@ -77,14 +77,18 @@ func NewServer(container *Container) (*Server, error) {
 	// Setup routes
 	svr.setupHandlers()
 
+	router.Get("/status", func(w http.ResponseWriter, r *http.Request) {
+		res.Send(w, r, res.WithMessage("services up and running"))
+	})
+
 	return svr, nil
 }
 
 func (s *Server) Start() {
 	cfg := s.container.Config
 
-	fmt.Println("ENV\t:", cfg.App.Environment)
-	fmt.Println("Metrics\t:", cfg.Metrics.Enable)
+	fmt.Println("Environment\t:", cfg.App.Environment)
+	fmt.Println("Metrics\t\t:", cfg.Metrics.Enable)
 
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%v", cfg.App.Port),

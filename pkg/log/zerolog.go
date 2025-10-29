@@ -32,7 +32,7 @@ func NewZerologAdapter(cfg *config.Config) *ZerologAdapter {
 
 	logger := zerolog.New(w).
 		With().
-		Dict("app", zerolog.Dict().Str("name", cfg.App.Name).Str("version", cfg.App.Version)).
+		Dict("app", zerolog.Dict().Str("name", cfg.App.Name).Str("version", cfg.App.Version).Str("env", string(cfg.App.Environment))).
 		Timestamp().
 		Caller().
 		Logger().

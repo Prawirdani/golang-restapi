@@ -1,7 +1,7 @@
 package config
 
 import (
-	"errors"
+	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -15,8 +15,8 @@ import (
 type AppEnv string
 
 const (
-	ENV_PRODUCTION  AppEnv = "PROD"
-	ENV_DEVELOPMENT AppEnv = "DEV"
+	ENV_PRODUCTION  AppEnv = "prod"
+	ENV_DEVELOPMENT AppEnv = "dev"
 )
 
 type Config struct {
@@ -74,7 +74,7 @@ func LoadConfig(filepath string) (*Config, error) {
 
 func (c *Config) Validate() error {
 	if c.App.Environment != ENV_PRODUCTION && c.App.Environment != ENV_DEVELOPMENT {
-		return errors.New("invalid APP_ENV, expecting DEV or PROD")
+		return fmt.Errorf("invalid APP_ENV, expecting %s or %s", ENV_DEVELOPMENT, ENV_PRODUCTION)
 	}
 	for _, origin := range c.Cors.Origins {
 		if _, err := url.ParseRequestURI(origin); err != nil {
@@ -98,7 +98,7 @@ type AppConfig struct {
 func (a *AppConfig) Parse() error {
 	a.Name = os.Getenv("APP_NAME")
 	a.Version = os.Getenv("APP_VERSION")
-	a.Environment = AppEnv(os.Getenv("APP_ENV"))
+	a.Environment = AppEnv(strings.ToLower(os.Getenv("APP_ENV")))
 
 	if val := os.Getenv("APP_PORT"); val != "" {
 		port, err := strconv.Atoi(val)
