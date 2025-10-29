@@ -46,20 +46,15 @@ migration\:create:
 	goose -s -dir database/migrations create $$migration_name sql
 	@echo "Migration created successfully, fill in the schema in the generated file."
 
-# Metrics service docker compose
-metrics\:start:
-	@if ! docker compose -f ./docker/compose.yml start; then \
-		echo "Make sure you already build the metrics service"; \
-		exit 1; \
-	fi
-	@echo "Metrics containers up and running"
 
-metrics\:stop:
-	docker compose -f ./docker/compose.yml stop
+compose:
+	@echo "🚀 Composing....."
+	docker compose  up -d --build
 
-metrics\:build:
-	docker compose -f ./docker/compose.yml up -d --build
+compose-down:
+	@echo "🧹 Stopping docker compose"
+	docker compose down
 
-metrics\:delete:
-	docker compose -f ./docker/compose.yml down
+compose-logs:
+	docker compose logs -f api
 

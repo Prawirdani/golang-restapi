@@ -2,15 +2,12 @@ services:
   api:
     build:
       context: .
-      # dockerfile: Dockerfile # USE THIS ON PROD
-      dockerfile: Dockerfile.dev
     expose:
       - "${APP_PORT:-8080}"
     restart: always
-    volumes: # REMOVE THIS ON PROD
-      - ./:/app
     env_file:
       - .env
+    # Remove this if rolling up postgres inside this compose, its only for bridging container to host because my postgres run on host level
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
