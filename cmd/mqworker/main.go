@@ -16,7 +16,7 @@ import (
 func main() {
 	cfg, err := config.LoadConfig(".env")
 	if err != nil {
-		stdlog.Fatal("failed to load config", err)
+		stdlog.Fatal("Failed to load config", err)
 	}
 	log.SetLogger(log.NewZerologAdapter(cfg))
 
@@ -24,13 +24,13 @@ func main() {
 
 	emailWorker, err := worker.NewEmailWorker(mailer)
 	if err != nil {
-		log.Error("failed to init email worker", "err", err.Error())
+		log.Error("Failed to init email worker", "err", err.Error())
 		os.Exit(1)
 	}
 
 	rmqConsumer, err := rabbitmq.NewConsumer(cfg.RabbitMqURL)
 	if err != nil {
-		log.Error("failed to init rabbitmq consumer", "err", err.Error())
+		log.Error("Failed to init rabbitmq consumer", "err", err.Error())
 		os.Exit(1)
 	}
 	defer rmqConsumer.Close()
@@ -39,6 +39,6 @@ func main() {
 
 	// Start consuming
 	ctx := context.Background()
-	log.Info("rabbitmq consumer started")
+	log.Info("RabbitMQ consumer started")
 	rmqConsumer.Start(ctx)
 }

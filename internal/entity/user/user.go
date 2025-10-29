@@ -31,7 +31,7 @@ type User struct {
 }
 
 // Create new user from request payload
-func New(i model.CreateUserInput, hashedPassword string) (User, error) {
+func New(i model.CreateUserInput, hashedPassword string) (*User, error) {
 	u := User{
 		ID:           uuid.New(),
 		Name:         i.Name,
@@ -42,7 +42,7 @@ func New(i model.CreateUserInput, hashedPassword string) (User, error) {
 	}
 
 	if err := validator.Struct(u); err != nil {
-		return User{}, err
+		return nil, err
 	}
-	return u, nil
+	return &u, nil
 }

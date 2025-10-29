@@ -13,18 +13,18 @@ import (
 func main() {
 	cfg, err := config.LoadConfig(".env")
 	if err != nil {
-		stdlog.Fatal("failed to load config", err)
+		stdlog.Fatal("Failed to load config", err)
 	}
 	log.SetLogger(log.NewZerologAdapter(cfg))
 
 	container, err := app.NewContainer(cfg)
 	if err != nil {
-		log.Error("failed to create container", "error", err.Error())
+		log.Error("Failed to create container", "error", err.Error())
 		os.Exit(1)
 	}
 	server, err := app.NewServer(container)
 	if err != nil {
-		log.Error("failed to create server", "error", err.Error())
+		log.Error("Failed to create server", "error", err.Error())
 		os.Exit(1)
 	}
 

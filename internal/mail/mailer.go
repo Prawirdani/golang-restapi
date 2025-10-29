@@ -38,7 +38,7 @@ func (m *Mailer) Send(headerParams HeaderParams, body bytes.Buffer) error {
 	mail.SetBody("text/html", body.String())
 
 	if err := m.dialer.DialAndSend(mail); err != nil {
-		log.Error("failed to send mail", "err", err.Error())
+		log.Error("Failed to send mail", "err", err.Error())
 		return err
 	}
 

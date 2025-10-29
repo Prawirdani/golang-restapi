@@ -35,14 +35,14 @@ func NewUserService(
 	}
 }
 
-func (s *UserService) GetUserByID(ctx context.Context, userID string) (user.User, error) {
+func (s *UserService) GetUserByID(ctx context.Context, userID string) (*user.User, error) {
 	u, err := s.userRepo.GetUserBy(ctx, "id", userID)
 	if err != nil {
-		return user.User{}, err
+		return nil, err
 	}
 
-	if err := s.assignProfileImageURL(ctx, &u); err != nil {
-		return user.User{}, err
+	if err := s.assignProfileImageURL(ctx, u); err != nil {
+		return nil, err
 	}
 
 	return u, nil
@@ -65,7 +65,7 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File
 
 		// 3. Set New Image name using UUID
 		if err := file.SetName(uuid.NewString()); err != nil {
-			log.ErrorCtx(ctx, "failed to set file name", "error", err.Error())
+			log.ErrorCtx(ctx, "Failed to set profile image file name", "error", err.Error())
 			return err
 		}
 
@@ -74,7 +74,7 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File
 
 		// 4. Store new image to storage
 		if err := s.imageStorage.Put(ctx, newImagePath, file, file.ContentType()); err != nil {
-			log.ErrorCtx(ctx, "failed store new profile image", "error", err.Error())
+			log.ErrorCtx(ctx, "Failed store new profile image", "error", err.Error())
 			return err
 		}
 
@@ -84,7 +84,7 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File
 			// If Fail, Rollback & Delete Latest Image from storage
 			if err := s.imageStorage.Delete(ctx, newImagePath); err != nil {
 				// Non-Fatal
-				log.WarnCtx(ctx, "failed cleanup new profile image", "error", err.Error())
+				log.WarnCtx(ctx, "Failed cleanup new profile image", "error", err.Error())
 			}
 			return err
 		}
@@ -93,7 +93,7 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File
 		go func(prevImage string) {
 			if prevImage != s.buildProfileImagePath(user.DEFAULT_PROFILE_IMG) {
 				if err := s.imageStorage.Delete(context.Background(), prevImage); err != nil {
-					log.WarnCtx(ctx, "failed cleanup old profile image", "error", err.Error())
+					log.WarnCtx(ctx, "Failed cleanup old profile image", "error", err.Error())
 				}
 			}
 		}(prevImage)

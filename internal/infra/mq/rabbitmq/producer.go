@@ -77,7 +77,7 @@ func (p *RMQPublisher) Publish(
 		return fmt.Errorf("failed to publish: %w", err)
 	}
 
-	log.Info("message pusblished", "queue", queueName, "queue_message", msg)
+	log.Info("Message pusblished", "queue", queueName, "queue_message", msg)
 	return nil
 }
 

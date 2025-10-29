@@ -35,7 +35,7 @@ func (c *Consumer) RegisterHandler(queueName string, handler mq.MessageHandler) 
 	c.handlers[queueName] = handler
 	c.mu.Unlock()
 
-	log.Info("message consumer handler registered", "queue", queueName)
+	log.Info("Message consumer handler registered", "queue", queueName)
 }
 
 // Start begins consuming from all registered queues
@@ -78,7 +78,7 @@ func (c *Consumer) consumeQueue(ctx context.Context, queueName string) error {
 		return fmt.Errorf("failed to consume: %w", err)
 	}
 
-	log.Info("consumer started", "queue", queueName)
+	log.Info("Consumer started", "queue", queueName)
 
 	for {
 		select {
@@ -99,12 +99,12 @@ func (c *Consumer) handleMessage(ctx context.Context, queueName string, delivery
 	var msg mq.Message
 	err := json.Unmarshal(delivery.Body, &msg)
 	if err != nil {
-		log.Error("failed to unmarshal message", "error", err.Error())
+		log.Error("Failed to unmarshal message", "error", err.Error())
 		delivery.Nack(false, false)
 		return
 	}
 
-	log.Info("message received", "queue", queueName, "queue_message", msg)
+	log.Info("Message received", "queue", queueName, "queue_message", msg)
 
 	// Find handler
 	c.mu.RLock()
@@ -112,7 +112,7 @@ func (c *Consumer) handleMessage(ctx context.Context, queueName string, delivery
 	c.mu.RUnlock()
 
 	if !exists {
-		log.Warn("message handler not exists", "queue", queueName)
+		log.Warn("Message handler not exists", "queue", queueName)
 		delivery.Nack(false, false) // Don't requeue unknown types
 		return
 	}
@@ -120,14 +120,14 @@ func (c *Consumer) handleMessage(ctx context.Context, queueName string, delivery
 	// Execute handler
 	err = handler(ctx, msg.Payload)
 	if err != nil {
-		log.Error("failed to handle message", "queue", queueName, "error", err.Error())
+		log.Error("Failed to handle message", "queue", queueName, "error", err.Error())
 		// TODO: Implement dead letter
 		delivery.Nack(false, true) // Requeue on error
 		return
 	}
 
 	delivery.Ack(false)
-	log.Info("message handled", "queue", queueName, "id", msg.ID)
+	log.Info("Message handled", "queue", queueName, "id", msg.ID)
 }
 
 func (c *Consumer) Close() error {

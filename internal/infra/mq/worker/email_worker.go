@@ -38,7 +38,7 @@ func NewEmailWorker(mailer *mail.Mailer) (*EmailWorker, error) {
 func (w *EmailWorker) HandlePasswordReset(ctx context.Context, payload json.RawMessage) error {
 	var job mq.EmailResetPasswordJob
 	if err := json.Unmarshal(payload, &job); err != nil {
-		log.Error("failed to unmarshal email payload", "err", err.Error())
+		log.Error("Failed to unmarshal email payload", "err", err.Error())
 		return err
 	}
 
@@ -49,7 +49,7 @@ func (w *EmailWorker) HandlePasswordReset(ctx context.Context, payload json.RawM
 		"Minutes": job.ExpiryMin,
 		"URL":     job.ResetURL,
 	}); err != nil {
-		log.Error("failed to execute email template", "err", err.Error())
+		log.Error("Failed to execute email template", "err", err.Error())
 		return err
 	}
 
@@ -65,6 +65,6 @@ func (w *EmailWorker) HandlePasswordReset(ctx context.Context, payload json.RawM
 		return err
 	}
 
-	log.Info("password reset mail sent", "to", job.To)
+	log.Info("Password reset mail sent", "to", job.To)
 	return nil
 }

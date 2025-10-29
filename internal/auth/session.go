@@ -28,19 +28,19 @@ func NewSession(
 	userID uuid.UUID,
 	userAgent string,
 	expiry time.Duration,
-) (Session, error) {
+) (*Session, error) {
 	if expiry <= 0 {
-		return Session{}, errors.New("expiry must be greater than 0")
+		return nil, errors.New("expiry must be greater than 0")
 	}
 
 	if userID == uuid.Nil {
-		return Session{}, errors.New("user_id must not be empty")
+		return nil, errors.New("user_id must not be empty")
 	}
 
 	// Generate a random 32 bytes for refresh token
 	bytes := make([]byte, 32)
 	if _, err := rand.Read(bytes); err != nil {
-		return Session{}, err
+		return nil, err
 	}
 
 	refreshToken := hex.EncodeToString(bytes)
@@ -54,7 +54,7 @@ func NewSession(
 		AccessedAt:   currentTime,
 	}
 
-	return sess, nil
+	return &sess, nil
 }
 
 // IsExpired checks if the refresh token from the session has expired.

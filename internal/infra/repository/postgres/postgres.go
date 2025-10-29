@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
 type PGQuerier interface {
@@ -27,9 +28,9 @@ type PGQuerier interface {
 	SendBatch(ctx context.Context, b *pgx.Batch) pgx.BatchResults
 }
 
-type TxKey string
+type ctxKey struct{}
 
-const TX_KEY TxKey = "tx_ctx"
+var txCtxKey ctxKey
 
 type db struct {
 	pool *pgxpool.Pool
@@ -37,7 +38,7 @@ type db struct {
 
 // GetConn returns the TXed connection if exists, otherwise it will return the regular pool connection.
 func (r *db) GetConn(ctx context.Context) PGQuerier {
-	tx, ok := ctx.Value(TX_KEY).(pgx.Tx)
+	tx, ok := ctx.Value(txCtxKey).(pgx.Tx)
 	if !ok {
 		return r.pool
 	}
@@ -46,7 +47,7 @@ func (r *db) GetConn(ctx context.Context) PGQuerier {
 
 // GetConnTx returns the transactioned connection. returns error if the connection is not transactioned.
 func (r *db) GetConnTx(ctx context.Context) (PGQuerier, error) {
-	tx, ok := ctx.Value(TX_KEY).(pgx.Tx)
+	tx, ok := ctx.Value(txCtxKey).(pgx.Tx)
 	if !ok {
 		return nil, errors.New("required transaction connection")
 	}
@@ -76,19 +77,22 @@ func (r *db) Transact(
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
+	log.DebugCtx(ctx, "Transaction Begin")
 
-	txCtx := context.WithValue(ctx, TX_KEY, tx)
+	txCtx := context.WithValue(ctx, txCtxKey, tx)
 	err = fn(txCtx)
 	if err != nil {
 		if rbErr := tx.Rollback(ctx); rbErr != nil {
 			return fmt.Errorf("tx failed: %v, rollback failed: %w", err, rbErr)
 		}
+		log.DebugCtx(ctx, "Transaction Rollback")
 		return fmt.Errorf("tx failed: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("failed to commit tx: %w", err)
 	}
+	log.DebugCtx(ctx, "Transaction Commited")
 
 	return nil
 }

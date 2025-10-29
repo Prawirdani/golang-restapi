@@ -37,8 +37,10 @@ func NewServer(container *Container) (*Server, error) {
 
 	mws := middleware.Setup(container.Config)
 
-	// Apply global middlewares
-	router.Use(middleware.RequestID)
+	if container.Config.IsProduction() {
+		router.Use(middleware.RequestID)
+		router.Use(mws.RateLimit(50, 1*time.Minute))
+	}
 	router.Use(mws.MaxBodySizeMiddleware(MAX_BODY_SIZE))
 	router.Use(mws.PanicRecovery)
 	router.Use(
@@ -46,10 +48,6 @@ func NewServer(container *Container) (*Server, error) {
 	) // TODO: Should based on config, since proxy mostly able to handle compression
 	router.Use(mws.Cors)
 	router.Use(mws.ReqLogger)
-
-	if container.Config.IsProduction() {
-		router.Use(mws.RateLimit(50, 1*time.Minute))
-	}
 
 	// Error handlers
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
@@ -100,10 +98,10 @@ func (s *Server) Start() {
 
 	// Start server
 	go func() {
-		log.Info(fmt.Sprintf("server listening on 0.0.0.0:%v", cfg.App.Port))
+		log.Info(fmt.Sprintf("Server listening on 0.0.0.0:%v", cfg.App.Port))
 
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error("failed to start server", "error", err.Error())
+			log.Error("Failed to start server", "error", err.Error())
 			os.Exit(1)
 		}
 	}()
@@ -118,13 +116,13 @@ func (s *Server) Start() {
 	defer cancel()
 
 	if err := httpServer.Shutdown(ctx); err != nil {
-		log.Error("failed to shutdown server", "error", err.Error())
+		log.Error("Failed to shutdown server", "error", err.Error())
 	}
 
 	// Cleanup resources
 	s.container.Cleanup()
 
-	log.Info("server stopped gracefully")
+	log.Info("Server stopped gracefully")
 }
 
 func (s *Server) setupMetrics() {
@@ -138,9 +136,9 @@ func (s *Server) setupMetrics() {
 	port := s.container.Config.Metrics.PrometheusPort
 	go func() {
 		if err := i.RunServer(port); err != nil {
-			log.Error("failed to run metrics server", "err", err.Error())
+			log.Error("Failed to run metrics server", "err", err.Error())
 		}
-		log.Info(fmt.Sprintf("metrics serves on 0.0.0.0:%v/metrics", port))
+		log.Info(fmt.Sprintf("Metrics serves on 0.0.0.0:%v/metrics", port))
 	}()
 }
 

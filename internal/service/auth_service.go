@@ -50,7 +50,7 @@ func (s *AuthService) Register(ctx context.Context, i model.CreateUserInput) err
 
 	newUser, err := user.New(i, string(hashedPassword))
 	if err != nil {
-		log.ErrorCtx(ctx, "failed to create new user", "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to create new user", "error", err.Error())
 		return err
 	}
 	if err := s.userRepo.Insert(ctx, newUser); err != nil {
@@ -64,7 +64,10 @@ func (s *AuthService) Login(
 	ctx context.Context,
 	request model.LoginInput,
 ) (string, string, error) {
-	u, _ := s.userRepo.GetUserBy(ctx, "email", request.Email)
+	u, err := s.userRepo.GetUserBy(ctx, "email", request.Email)
+	if err != nil {
+		return "", "", err
+	}
 
 	if err := auth.VerifyPassword(request.Password, u.Password); err != nil {
 		return "", "", err
@@ -75,7 +78,7 @@ func (s *AuthService) Login(
 		"name": u.Name,
 	})
 	if err != nil {
-		log.ErrorCtx(ctx, "failed to generate access token", "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to generate access token", "error", err.Error())
 		return "", "", err
 	}
 
@@ -85,7 +88,7 @@ func (s *AuthService) Login(
 		s.cfg.Token.RefreshTokenExpiry,
 	)
 	if err != nil {
-		log.ErrorCtx(ctx, "failed to create new session", "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to create new session", "error", err.Error())
 		return "", "", err
 	}
 
@@ -120,7 +123,7 @@ func (s *AuthService) RefreshAccessToken(
 		map[string]any{"id": user.ID.String(), "name": user.Name},
 	)
 	if err != nil {
-		log.ErrorCtx(ctx, "failed to generate new access token", "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to generate new access token", "error", err.Error())
 		return "", err
 	}
 
@@ -131,15 +134,15 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 	return s.authRepo.DeleteSession(ctx, "refresh_token", refreshToken)
 }
 
-func (s *AuthService) IdentifyUser(ctx context.Context) (user.User, error) {
+func (s *AuthService) IdentifyUser(ctx context.Context) (*user.User, error) {
 	tokenPayload, err := contextx.GetAuthCtx(ctx)
 	if err != nil {
-		return user.User{}, err
+		return nil, err
 	}
 
 	u, err := s.userService.GetUserByID(ctx, tokenPayload["id"].(string))
 	if err != nil {
-		return user.User{}, err
+		return nil, err
 	}
 
 	return u, nil
@@ -159,12 +162,12 @@ func (s *AuthService) ForgotPassword(ctx context.Context, i model.ForgotPassword
 		expiresAt := time.Now().Add(s.cfg.Token.ResetPasswordTokenExpiry)
 		token, err := auth.NewResetPasswordToken(u.ID, expiresAt)
 		if err != nil {
-			log.ErrorCtx(ctx, "failed to create reset password token", "error", err.Error())
+			log.ErrorCtx(ctx, "Failed to create reset password token", "error", err.Error())
 			return err
 		}
 
 		// Save token to db
-		if err := s.authRepo.InsertResetPasswordToken(ctx, *token); err != nil {
+		if err := s.authRepo.InsertResetPasswordToken(ctx, token); err != nil {
 			return err
 		}
 
@@ -184,7 +187,7 @@ func (s *AuthService) ForgotPassword(ctx context.Context, i model.ForgotPassword
 func (s *AuthService) GetResetPasswordToken(
 	ctx context.Context,
 	token string,
-) (auth.ResetPasswordToken, error) {
+) (*auth.ResetPasswordToken, error) {
 	return s.authRepo.GetResetPasswordTokenObj(ctx, token)
 }
 
@@ -207,12 +210,12 @@ func (s *AuthService) ResetPassword(ctx context.Context, i model.ResetPasswordIn
 
 		newHashedPassword, err := auth.HashPassword(i.NewPassword)
 		if err != nil {
-			log.ErrorCtx(ctx, "failed to hash new password", "error", err.Error())
+			log.ErrorCtx(ctx, "Failed to hash new password", "error", err.Error())
 			return err
 		}
 		user.Password = string(newHashedPassword)
 
-		if err := s.authRepo.UseResetPasswordToken(ctx, token); err != nil {
+		if err := s.authRepo.InvalidateResetPasswordToken(ctx, token); err != nil {
 			return err
 		}
 
