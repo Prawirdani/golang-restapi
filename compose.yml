@@ -1,0 +1,55 @@
+services:
+  api:
+    build:
+      context: .
+      # dockerfile: Dockerfile # USE THIS ON PROD
+      dockerfile: Dockerfile.dev
+    expose:
+      - "${APP_PORT:-8080}"
+    restart: always
+    volumes: # REMOVE THIS ON PROD
+      - ./:/app
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  nginx:
+    image: nginx:1.29.3-trixie
+    container_name: nginx
+    ports:
+      - "8080:80"
+      - "8181" # For status
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/api.conf:/etc/nginx/conf.d/api.conf:ro
+      - nginx-logs:/var/log/nginx
+    depends_on:
+      - api
+
+  prometheus:
+    image: prom/prometheus:v3.7.2
+    container_name: prometheus
+    ports:
+      - "9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - api
+
+  grafana:
+    image: grafana/grafana:main
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin # Admin username
+      - GF_SECURITY_ADMIN_PASSWORD=admin # Admin password
+    volumes:
+      - ./infra/grafana/provisioning/:/etc/grafana/provisioning
+      - ./infra/grafana/dashboards/:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  nginx-logs:

@@ -1,0 +1,40 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Build artifacts
+/bin/
+/obj/
+*.test
+*.out
+*.o
+*.out
+
+# Dependency directories (if using Go modules, these aren't needed)
+vendor/
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git files
+.git
+.gitignore
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+*.tmp
