@@ -23,7 +23,8 @@ func (m *Metrics) Instrument(next http.Handler) http.Handler {
 		ww := &writerRecorder{w, http.StatusOK}
 		defer func() {
 			duration := time.Since(start).Seconds()
-			m.ReqDuration.WithLabelValues(r.URL.Path, r.Method, strconv.Itoa(ww.statusCode)).Observe(duration)
+			m.ReqDuration.WithLabelValues(r.URL.Path, r.Method, strconv.Itoa(ww.statusCode)).
+				Observe(duration)
 			m.ReqCounter.WithLabelValues(r.URL.Path, r.Method, strconv.Itoa(ww.statusCode)).Inc()
 		}()
 		next.ServeHTTP(ww, r)

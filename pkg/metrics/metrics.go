@@ -15,7 +15,7 @@ type Metrics struct {
 	ReqCounter  *prometheus.CounterVec
 }
 
-func Init() *Metrics {
+func Init(version, env string) *Metrics {
 	m := &Metrics{
 		Info: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -37,6 +37,8 @@ func Init() *Metrics {
 				Help:      "Total number of requests",
 			}, []string{"path", "method", "status_code"}),
 	}
+	m.Info.WithLabelValues(version, env).Set(1)
+
 	prometheus.MustRegister(m.ReqDuration, m.Info, m.ReqCounter)
 	return m
 }
@@ -46,8 +48,4 @@ func (m *Metrics) RunServer(port int) error {
 	mux.Handle("/metrics", promhttp.Handler())
 
 	return http.ListenAndServe(fmt.Sprintf(":%v", port), mux)
-}
-
-func (m *Metrics) SetAppInfo(version, env string) {
-	m.Info.WithLabelValues(version, env).Set(1)
 }

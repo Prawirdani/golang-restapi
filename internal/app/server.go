@@ -124,17 +124,16 @@ func (s *Server) Start() {
 }
 
 func (s *Server) setupMetrics() {
-	m := metrics.Init()
-	m.SetAppInfo(
+	i := metrics.Init(
 		s.container.Config.App.Version,
 		string(s.container.Config.App.Environment),
 	)
-	s.router.Use(m.Instrument)
+	s.router.Use(i.Instrument)
 
 	// Metrics server
 	port := s.container.Config.Metrics.PrometheusPort
 	go func() {
-		if err := m.RunServer(port); err != nil {
+		if err := i.RunServer(port); err != nil {
 			log.Error("failed to run metrics server", "err", err.Error())
 		}
 		log.Info(fmt.Sprintf("metrics serves on 0.0.0.0:%v/metrics", port))
