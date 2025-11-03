@@ -9,9 +9,9 @@ endif
 dev:
 	@air -c .air.toml
 
-# Run the mqworker
-dev\:mqworker:
-	@air -c .air.mqworker.toml
+# Run the message consumers
+dev\:mc:
+	@air -c .air.mc.toml
 
 tidy:
 	@go mod tidy
@@ -24,7 +24,7 @@ test:
 
 build:
 	@echo "Building binary..."
-	CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -a -installsuffix cgo -o ./bin/api ./cmd/api/main.go
+	CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -a -installsuffix cgo -o ./bin/api ./cmd/api/
 	@echo "Build completed successfully..."
 
 run:
@@ -45,16 +45,3 @@ migration\:create:
 	@read -p "Enter migration name: " migration_name; \
 	goose -s -dir database/migrations create $$migration_name sql
 	@echo "Migration created successfully, fill in the schema in the generated file."
-
-
-compose:
-	@echo "🚀 Composing....."
-	docker compose  up -d --build
-
-compose-down:
-	@echo "🧹 Stopping docker compose"
-	docker compose down
-
-compose-logs:
-	docker compose logs -f api
-
