@@ -83,7 +83,7 @@ func (r *db) Transact(
 	err = fn(txCtx)
 	if err != nil {
 		if rbErr := tx.Rollback(ctx); rbErr != nil {
-			return fmt.Errorf("tx failed: %v, rollback failed: %w", err, rbErr)
+			return fmt.Errorf("tx failed: %w, rollback failed: %w", err, rbErr)
 		}
 		log.DebugCtx(ctx, "Transaction Rollback")
 		return fmt.Errorf("tx failed: %w", err)
