@@ -1,0 +1,46 @@
+package consumer
+
+import (
+	"bytes"
+	"fmt"
+
+	"github.com/prawirdani/golang-restapi/internal/messages"
+	"github.com/prawirdani/golang-restapi/pkg/mailer"
+	amqp "github.com/rabbitmq/amqp091-go"
+)
+
+type AuthMessageConsumer struct {
+	mailer *mailer.Mailer
+}
+
+func NewAuthMessageConsumer(mailer *mailer.Mailer) *AuthMessageConsumer {
+	return &AuthMessageConsumer{
+		mailer: mailer,
+	}
+}
+
+func (mc *AuthMessageConsumer) EmailResetPasswordHandler(d amqp.Delivery) error {
+	msg, err := decodeJsonBody[messages.ResetPasswordEmail](d.Body)
+	if err != nil {
+		return fmt.Errorf("failed to decode body: %w", err)
+	}
+
+	// Execute template
+	var buf bytes.Buffer
+	if err := mc.mailer.Templates.ResetPassword.Execute(&buf, map[string]any{
+		"Name":    msg.Name,
+		"Minutes": msg.Expiry.Minutes(),
+		"URL":     msg.ResetURL,
+	}); err != nil {
+		return fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	if err := mc.mailer.Send(
+		mailer.HeaderParams{To: []string{msg.To}, Subject: "Password Reset"},
+		buf,
+	); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	return nil
+}

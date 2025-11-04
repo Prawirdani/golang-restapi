@@ -1,14 +1,13 @@
-package app
+package main
 
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/config"
-	"github.com/prawirdani/golang-restapi/database"
-	"github.com/prawirdani/golang-restapi/internal/infra/mq"
-	"github.com/prawirdani/golang-restapi/internal/infra/mq/rabbitmq"
+	"github.com/prawirdani/golang-restapi/internal/infra/messaging/rabbitmq"
 	"github.com/prawirdani/golang-restapi/internal/infra/repository/postgres"
 	"github.com/prawirdani/golang-restapi/internal/infra/storage/r2"
 	"github.com/prawirdani/golang-restapi/internal/service"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type Services struct {
@@ -18,27 +17,20 @@ type Services struct {
 
 // Container holds all application dependencies
 type Container struct {
-	Config     *config.Config
-	Services   *Services
-	pgpool     *pgxpool.Pool
-	mqproducer mq.MessageProducer
+	Config   *config.Config
+	Services *Services
+	pgpool   *pgxpool.Pool
 }
 
 // NewContainer initializes all dependencies
-func NewContainer(cfg *config.Config) (*Container, error) {
-	pgpool, err := database.NewPGConnection(cfg)
-	if err != nil {
-		return nil, err
-	}
-
+func NewContainer(
+	cfg *config.Config,
+	pgpool *pgxpool.Pool,
+	rmqconn *amqp.Connection,
+) (*Container, error) {
 	// Postgres Repo Factory
 	repoFactory := postgres.NewRepositoryFactory(pgpool)
 	transactor := postgres.NewTransactor(pgpool)
-
-	rmqproducer, err := rabbitmq.NewPublisher(cfg.RabbitMqURL)
-	if err != nil {
-		return nil, err
-	}
 
 	r2PublicStorage, err := r2.New(r2.Config{
 		BucketURL:       cfg.R2.PublicBucketURL,
@@ -58,13 +50,15 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 		repoFactory.User(),
 		r2PublicStorage,
 	)
+
+	authMessagePublisher := rabbitmq.NewAuthMessagePublisher(rmqconn)
 	authService := service.NewAuthService(
 		cfg,
 		transactor,
 		repoFactory.User(),
 		repoFactory.Auth(),
 		userService,
-		rmqproducer,
+		authMessagePublisher,
 	)
 
 	c := &Container{
@@ -73,21 +67,8 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 			UserService: userService,
 			AuthService: authService,
 		},
-		pgpool:     pgpool,
-		mqproducer: rmqproducer,
+		pgpool: pgpool,
 	}
 
 	return c, nil
-}
-
-func (c *Container) Cleanup() error {
-	if c.pgpool != nil {
-		c.pgpool.Close()
-	}
-
-	if c.mqproducer != nil {
-		c.mqproducer.Close()
-	}
-
-	return nil
 }

@@ -17,7 +17,7 @@ func (w *writerRecorder) WriteHeader(code int) {
 }
 
 // Prometheus metrics instrumentation middleware
-func (m *Metrics) Instrument(next http.Handler) http.Handler {
+func (m *Metrics) InstrumentHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		ww := &writerRecorder{w, http.StatusOK}

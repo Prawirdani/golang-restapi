@@ -9,9 +9,10 @@ import (
 	stdlog "log"
 
 	"github.com/prawirdani/golang-restapi/config"
-	"github.com/prawirdani/golang-restapi/database"
 	"github.com/prawirdani/golang-restapi/internal/infra/messaging/rabbitmq"
+	"github.com/prawirdani/golang-restapi/internal/transport/amqp/consumer"
 	"github.com/prawirdani/golang-restapi/pkg/log"
+	"github.com/prawirdani/golang-restapi/pkg/mailer"
 )
 
 func main() {
@@ -21,34 +22,15 @@ func main() {
 	}
 	log.SetLogger(log.NewZerologAdapter(cfg))
 
-	pgpool, err := database.NewPGConnection(cfg)
-	if err != nil {
-		log.Error("Failed to create postgres connection", "error", err.Error())
-		os.Exit(1)
-	}
-	defer pgpool.Close()
-
-	rmqconn, err := rabbitmq.Dial(cfg.RabbitMqURL)
+	conn, err := rabbitmq.Dial(cfg.RabbitMqURL)
 	if err != nil {
 		log.Error("Failed to dial rabbitmq connection", "error", err.Error())
 		os.Exit(1)
 	}
-	defer rmqconn.Close()
+	defer conn.Close()
 
-	container, err := NewContainer(cfg, pgpool, rmqconn)
-	if err != nil {
-		log.Error("Failed to create container", "error", err.Error())
-		os.Exit(1)
-	}
-
-	server, err := NewServer(container)
-	if err != nil {
-		log.Error("Failed to create server", "error", err.Error())
-		os.Exit(1)
-	}
-
-	// Channel for topology setup
-	ch, err := rmqconn.Channel()
+	// Channel for setup topology
+	ch, err := conn.Channel()
 	if err != nil {
 		log.Error("Failed to create rmq channel", "error", err.Error())
 		os.Exit(1)
@@ -59,6 +41,16 @@ func main() {
 		os.Exit(1)
 	}
 	ch.Close()
+
+	// mailQueueHandlers := queueHandler.NewAuthMessageConsumer(m)
+	consumerRegistry := consumer.NewRegistry(conn)
+
+	m := mailer.New(cfg)
+	authConsumers := consumer.NewAuthMessageConsumer(m)
+
+	consumerRegistry.RegisterConsumers(map[string]consumer.HandlerFunc{
+		rabbitmq.AuthEmailResetPasswordQueue.Name: authConsumers.EmailResetPasswordHandler,
+	})
 
 	// Context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
@@ -71,11 +63,9 @@ func main() {
 		<-quit
 		cancel()
 	}()
-
-	// Start HTTP servers (blocks until ctx is canceled)
-	if err := server.Start(ctx); err != nil {
-		log.Error("Server exited with error", "error", err.Error())
+	if err := consumerRegistry.Start(ctx); err != nil && err != context.Canceled {
+		log.Error("Message consumer exited", "error", err.Error())
 	}
 
-	log.Info("Application exited gracefully")
+	log.Info("Message consumer exited gracefully")
 }

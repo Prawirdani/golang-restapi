@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,8 +14,9 @@ type Metrics struct {
 	ReqCounter  *prometheus.CounterVec
 }
 
-func Init(version, env string) *Metrics {
+func Init(version, env string, exporterPort int) *Metrics {
 	m := &Metrics{
+		Port: exporterPort,
 		Info: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: "app",
@@ -43,9 +43,6 @@ func Init(version, env string) *Metrics {
 	return m
 }
 
-func (m *Metrics) RunServer(port int) error {
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
-
-	return http.ListenAndServe(fmt.Sprintf(":%v", port), mux)
+func (m *Metrics) ExporterHandler() http.Handler {
+	return promhttp.Handler()
 }

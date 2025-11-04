@@ -1,7 +1,8 @@
-package mail
+package mailer
 
 import (
 	"bytes"
+	"text/template"
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/pkg/log"
@@ -15,11 +16,12 @@ type HeaderParams struct {
 }
 
 type Mailer struct {
-	dialer *gomail.Dialer
-	cfg    *config.SMTPConfig
+	Templates *EmailTemplates
+	dialer    *gomail.Dialer
+	cfg       *config.SMTPConfig
 }
 
-func NewMailer(cfg *config.Config) *Mailer {
+func New(cfg *config.Config) *Mailer {
 	dialer := gomail.NewDialer(
 		cfg.SMTP.Host,
 		cfg.SMTP.Port,
@@ -27,9 +29,16 @@ func NewMailer(cfg *config.Config) *Mailer {
 		cfg.SMTP.AuthPassword,
 	)
 
+	templates := &EmailTemplates{
+		ResetPassword: template.Must(
+			template.ParseFiles("./templates/email/reset-password-mail.html"),
+		),
+	}
+
 	return &Mailer{
-		dialer: dialer,
-		cfg:    &cfg.SMTP,
+		dialer:    dialer,
+		cfg:       &cfg.SMTP,
+		Templates: templates,
 	}
 }
 

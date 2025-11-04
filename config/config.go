@@ -34,7 +34,7 @@ func (c Config) IsProduction() bool {
 	return c.App.Environment == ENV_PRODUCTION
 }
 
-func LoadConfig(filepath string) (*Config, error) {
+func LoadConfig() (*Config, error) {
 	_ = godotenv.Load() // Load .env in dev
 
 	cfg := &Config{}
@@ -159,16 +159,10 @@ func (p *PGConfig) Parse() error {
 // =======================
 
 type MetricsConfig struct {
-	Enable         bool
 	PrometheusPort int
 }
 
 func (m *MetricsConfig) Parse() error {
-	if val := os.Getenv("METRICS_ENABLE"); val != "" {
-		if b, err := strconv.ParseBool(val); err == nil {
-			m.Enable = b
-		}
-	}
 	if val := os.Getenv("METRICS_PROMETHEUS_PORT"); val != "" {
 		if i, err := strconv.Atoi(val); err == nil {
 			m.PrometheusPort = i

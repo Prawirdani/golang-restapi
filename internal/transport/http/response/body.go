@@ -1,10 +1,13 @@
 package response
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	stderrs "errors"
 
 	"github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/log"
@@ -39,25 +42,38 @@ func Send(w http.ResponseWriter, r *http.Request, opts ...Option) error {
 }
 
 func HandleError(w http.ResponseWriter, err error) {
-	var body Body
-	switch e := err.(type) {
-	case *errors.HttpError:
+	var (
+		body          Body
+		httpErr       *errors.HttpError
+		validationErr *validator.ValidationError
+	)
+
+	switch {
+	case stderrs.Is(err, context.Canceled):
 		body = Body{
-			Message: e.Message,
-			Status:  e.Status,
-			Errors:  e.Cause,
+			Status:  http.StatusServiceUnavailable,
+			Message: "Server is busy",
 		}
-	case *validator.ValidationError:
+
+	case stderrs.As(err, &httpErr):
+		body = Body{
+			Status:  httpErr.Status,
+			Message: httpErr.Message,
+			Errors:  httpErr.Cause,
+		}
+
+	case stderrs.As(err, &validationErr):
 		body = Body{
 			Status:  http.StatusUnprocessableEntity,
-			Message: "Invalid request, the provided data does not meet the required format or rules",
-			Errors:  e.Details,
+			Message: "Validation error",
+			Errors:  validationErr.Details,
 		}
+
 	default:
 		log.Error("unknown error", "error", err.Error())
 		body = Body{
-			Status:  500,
-			Message: "An unexpected error occurred, try again latter",
+			Status:  http.StatusInternalServerError,
+			Message: "An unexpected error occurred, try again later",
 		}
 	}
 	_ = writeJSON(w, &body)

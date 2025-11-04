@@ -4,11 +4,13 @@ import (
 	"context"
 	"time"
 
+	stderrs "errors"
+
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/auth"
 	"github.com/prawirdani/golang-restapi/internal/entity/user"
-	"github.com/prawirdani/golang-restapi/internal/infra/mq"
 	"github.com/prawirdani/golang-restapi/internal/infra/repository"
+	"github.com/prawirdani/golang-restapi/internal/messages"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/pkg/contextx"
 	"github.com/prawirdani/golang-restapi/pkg/errors"
@@ -21,7 +23,7 @@ type AuthService struct {
 	authRepo    auth.Repository
 	userRepo    user.Repository
 	userService *UserService
-	producer    mq.MessageProducer
+	publisher   auth.MessagePublisher
 }
 
 func NewAuthService(
@@ -30,7 +32,7 @@ func NewAuthService(
 	userRepo user.Repository,
 	authRepo auth.Repository,
 	userService *UserService,
-	mqProducer mq.MessageProducer,
+	publisher auth.MessagePublisher,
 ) *AuthService {
 	return &AuthService{
 		cfg:         cfg,
@@ -38,7 +40,7 @@ func NewAuthService(
 		userRepo:    userRepo,
 		authRepo:    authRepo,
 		userService: userService,
-		producer:    mqProducer,
+		publisher:   publisher,
 	}
 }
 
@@ -135,6 +137,7 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 }
 
 func (s *AuthService) IdentifyUser(ctx context.Context) (*user.User, error) {
+	return nil, stderrs.New("intended")
 	tokenPayload, err := contextx.GetAuthCtx(ctx)
 	if err != nil {
 		return nil, err
@@ -172,15 +175,14 @@ func (s *AuthService) ForgotPassword(ctx context.Context, i model.ForgotPassword
 		}
 
 		// Publish email job to message queue
-		emailJob := mq.EmailResetPasswordJob{
-			To:        u.Email,
-			Name:      u.Name,
-			ResetURL:  s.cfg.Token.ResetPasswordFormEndpoint + "?token=" + token.Value,
-			ExpiryMin: int(s.cfg.Token.ResetPasswordTokenExpiry.Minutes()),
+		msg := messages.ResetPasswordEmail{
+			To:       u.Email,
+			Name:     u.Name,
+			ResetURL: s.cfg.Token.ResetPasswordFormEndpoint + "?token=" + token.Value,
+			Expiry:   s.cfg.Token.ResetPasswordTokenExpiry,
 		}
 
-		// Non-blocking - publish the job to message queue
-		return s.producer.Publish(ctx, mq.EmailResetPasswordJobKey, emailJob)
+		return s.publisher.SendResetPasswordEmail(ctx, msg)
 	})
 }
 

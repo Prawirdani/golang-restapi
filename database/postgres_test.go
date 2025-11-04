@@ -10,8 +10,7 @@ import (
 var c *config.Config
 
 func init() {
-	path := "../config"
-	cfg, err := config.LoadConfig(path)
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		panic(err)
 	}
