@@ -54,9 +54,22 @@ func (s *Server) Start(ctx context.Context) error {
 	cfg := s.container.Config
 
 	// Metrics server
-	metricServer := &http.Server{
-		Addr:    fmt.Sprintf(":%v", cfg.Metrics.PrometheusPort),
-		Handler: s.metrics.ExporterHandler(),
+	var metricServer *http.Server
+	if cfg.IsProduction() {
+		metricServer = &http.Server{
+			Addr:    fmt.Sprintf(":%v", cfg.Metrics.PrometheusPort),
+			Handler: s.metrics.ExporterHandler(),
+		}
+
+		// Start metrics server
+		go func() {
+			log.Info(
+				fmt.Sprintf("Metrics serving on 0.0.0.0:%v/metrics", cfg.Metrics.PrometheusPort),
+			)
+			if err := metricServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Error("Metrics server stopped unexpectedly", err)
+			}
+		}()
 	}
 
 	// API server
@@ -67,14 +80,6 @@ func (s *Server) Start(ctx context.Context) error {
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
-
-	// Start metrics server
-	go func() {
-		log.Info(fmt.Sprintf("Metrics serving on 0.0.0.0:%v/metrics", cfg.Metrics.PrometheusPort))
-		if err := metricServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error("Metrics server stopped unexpectedly", err)
-		}
-	}()
 
 	// Start API server
 	go func() {
@@ -93,8 +98,11 @@ func (s *Server) Start(ctx context.Context) error {
 	if err := apiServer.Shutdown(shutdownCtx); err != nil {
 		log.Error("Failed to shutdown API server", err)
 	}
-	if err := metricServer.Shutdown(shutdownCtx); err != nil {
-		log.Error("Failed to shutdown Metrics server", err)
+
+	if metricServer != nil {
+		if err := metricServer.Shutdown(shutdownCtx); err != nil {
+			log.Error("Failed to shutdown Metrics server", err)
+		}
 	}
 	return nil
 }
