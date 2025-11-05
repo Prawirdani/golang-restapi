@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,6 +13,7 @@ import (
 	"github.com/prawirdani/golang-restapi/database"
 	"github.com/prawirdani/golang-restapi/internal/infra/messaging/rabbitmq"
 	"github.com/prawirdani/golang-restapi/pkg/log"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func main() {
@@ -28,9 +30,9 @@ func main() {
 	}
 	defer pgpool.Close()
 
-	rmqconn, err := rabbitmq.Dial(cfg.RabbitMqURL)
+	rmqconn, err := initRabbitMQ(cfg.RabbitMqURL)
 	if err != nil {
-		log.Error("Failed to dial rabbitmq connection", "error", err.Error())
+		log.Error("Failed to init rabbit mq", "error", err.Error())
 		os.Exit(1)
 	}
 	defer rmqconn.Close()
@@ -47,19 +49,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Channel for topology setup
-	ch, err := rmqconn.Channel()
-	if err != nil {
-		log.Error("Failed to create rmq channel", "error", err.Error())
-		os.Exit(1)
-	}
-
-	if err := rabbitmq.SetupTopology(ch); err != nil {
-		log.Error("Failed to setup rmq topology", "error", err.Error())
-		os.Exit(1)
-	}
-	ch.Close()
-
 	// Context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -72,10 +61,34 @@ func main() {
 		cancel()
 	}()
 
-	// Start HTTP servers (blocks until ctx is canceled)
+	// Start message consumers in goroutine because blocking
+	go func() {
+		if err := startMessageConsumers(ctx, rmqconn, cfg); err != nil && err != context.Canceled {
+			log.Error("Worker exited with error", "error", err.Error())
+			cancel()
+		}
+	}()
+
+	// Run HTTP server
 	if err := server.Start(ctx); err != nil {
 		log.Error("Server exited with error", "error", err.Error())
 	}
 
 	log.Info("Application exited gracefully")
+}
+
+func initRabbitMQ(url string) (*amqp.Connection, error) {
+	conn, err := rabbitmq.Dial(url)
+	if err != nil {
+		return nil, fmt.Errorf("dial: %w", err)
+	}
+
+	if err := rabbitmq.SetupTopologies(
+		conn,
+		rabbitmq.ResetPasswordEmailTopology,
+	); err != nil {
+		return nil, fmt.Errorf("setup topologies: %w", err)
+	}
+
+	return conn, nil
 }

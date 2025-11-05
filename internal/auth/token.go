@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -42,9 +43,7 @@ func GenerateJWT(
 	}
 
 	if payload != nil {
-		for k, v := range *payload {
-			mapClaims[k] = v
-		}
+		maps.Copy(mapClaims, *payload)
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, mapClaims)
