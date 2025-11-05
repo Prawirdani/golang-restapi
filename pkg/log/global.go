@@ -14,9 +14,7 @@ import (
 var global Logger = defaultAdapter()
 
 func defaultAdapter() *SlogAdapter {
-	return &SlogAdapter{
-		l: slog.New(slog.NewJSONHandler(os.Stdout, nil)),
-	}
+	return &SlogAdapter{l: slog.New(slog.NewTextHandler(os.Stdout, nil))}
 }
 
 // SetLogger replaces the global logger used by all package-level logging calls.
@@ -31,12 +29,14 @@ func SetLogger(l Logger) {
 	global = l
 }
 
-func Debug(msg string, args ...any) { global.Debug(msg, args...) }
-func Info(msg string, args ...any)  { global.Info(msg, args...) }
-func Warn(msg string, args ...any)  { global.Warn(msg, args...) }
-func Error(msg string, args ...any) { global.Error(msg, args...) }
+func Debug(msg string, args ...any)            { global.Debug(msg, args...) }
+func Info(msg string, args ...any)             { global.Info(msg, args...) }
+func Warn(msg string, args ...any)             { global.Warn(msg, args...) }
+func Error(msg string, err error, args ...any) { global.Error(msg, err, args...) }
 
 func DebugCtx(ctx context.Context, msg string, args ...any) { global.DebugCtx(ctx, msg, args...) }
 func InfoCtx(ctx context.Context, msg string, args ...any)  { global.InfoCtx(ctx, msg, args...) }
 func WarnCtx(ctx context.Context, msg string, args ...any)  { global.WarnCtx(ctx, msg, args...) }
-func ErrorCtx(ctx context.Context, msg string, args ...any) { global.ErrorCtx(ctx, msg, args...) }
+func ErrorCtx(ctx context.Context, msg string, err error, args ...any) {
+	global.ErrorCtx(ctx, msg, err, args...)
+}

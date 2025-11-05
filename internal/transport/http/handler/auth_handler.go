@@ -33,7 +33,7 @@ func NewAuthHandler(cfg *config.Config, us *service.AuthService) *AuthHandler {
 func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) error {
 	var reqBody model.CreateUserInput
 	if err := req.BindValidate(r, &reqBody); err != nil {
-		log.WarnCtx(r.Context(), BindValidateWarnLog, "error", err.Error())
+		log.ErrorCtx(r.Context(), BindValidateWarnLog, err)
 		return err
 	}
 
@@ -47,7 +47,7 @@ func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) er
 func (h *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) error {
 	var reqBody model.LoginInput
 	if err := req.BindValidate(r, &reqBody); err != nil {
-		log.WarnCtx(r.Context(), BindValidateWarnLog, "error", err.Error())
+		log.ErrorCtx(r.Context(), BindValidateWarnLog, err)
 		return err
 	}
 
@@ -141,7 +141,7 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) erro
 func (h *AuthHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) error {
 	var reqBody model.ForgotPasswordInput
 	if err := req.BindValidate(r, &reqBody); err != nil {
-		log.WarnCtx(r.Context(), BindValidateWarnLog, "error", err.Error())
+		log.ErrorCtx(r.Context(), BindValidateWarnLog, err)
 		return err
 	}
 
@@ -169,7 +169,7 @@ func (h *AuthHandler) GetResetPasswordTokenHandler(w http.ResponseWriter, r *htt
 func (h *AuthHandler) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) error {
 	var reqBody model.ResetPasswordInput
 	if err := req.BindValidate(r, &reqBody); err != nil {
-		log.WarnCtx(r.Context(), BindValidateWarnLog, "error", err.Error())
+		log.ErrorCtx(r.Context(), BindValidateWarnLog, err)
 		return err
 	}
 
@@ -183,7 +183,7 @@ func (h *AuthHandler) ResetPasswordHandler(w http.ResponseWriter, r *http.Reques
 func (h *AuthHandler) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) error {
 	var reqBody model.ChangePasswordInput
 	if err := req.BindValidate(r, &reqBody); err != nil {
-		log.WarnCtx(r.Context(), BindValidateWarnLog, "error", err.Error())
+		log.ErrorCtx(r.Context(), BindValidateWarnLog, err)
 		return err
 	}
 

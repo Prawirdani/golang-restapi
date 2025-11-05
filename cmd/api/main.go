@@ -25,27 +25,27 @@ func main() {
 
 	pgpool, err := database.NewPGConnection(cfg)
 	if err != nil {
-		log.Error("Failed to create postgres connection", "error", err.Error())
+		log.Error("Failed to create postgres connection", err)
 		os.Exit(1)
 	}
 	defer pgpool.Close()
 
 	rmqconn, err := initRabbitMQ(cfg.RabbitMqURL)
 	if err != nil {
-		log.Error("Failed to init rabbit mq", "error", err.Error())
+		log.Error("Failed to init rabbit mq", err)
 		os.Exit(1)
 	}
 	defer rmqconn.Close()
 
 	container, err := NewContainer(cfg, pgpool, rmqconn)
 	if err != nil {
-		log.Error("Failed to create container", "error", err.Error())
+		log.Error("Failed to create container", err)
 		os.Exit(1)
 	}
 
 	server, err := NewServer(container)
 	if err != nil {
-		log.Error("Failed to create server", "error", err.Error())
+		log.Error("Failed to create server", err)
 		os.Exit(1)
 	}
 
@@ -64,14 +64,14 @@ func main() {
 	// Start message consumers in goroutine because blocking
 	go func() {
 		if err := startMessageConsumers(ctx, rmqconn, cfg); err != nil && err != context.Canceled {
-			log.Error("Worker exited with error", "error", err.Error())
+			log.Error("Worker exited with error", err)
 			cancel()
 		}
 	}()
 
 	// Run HTTP server
 	if err := server.Start(ctx); err != nil {
-		log.Error("Server exited with error", "error", err.Error())
+		log.Error("Server exited with error", err)
 	}
 
 	log.Info("Application exited gracefully")

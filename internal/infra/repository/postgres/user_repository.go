@@ -40,7 +40,7 @@ func (r *userRepository) Insert(ctx context.Context, u *user.User) error {
 			return user.ErrEmailExist
 		}
 
-		log.ErrorCtx(ctx, "Failed to insert user", "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to insert user", err)
 		return err
 	}
 	return nil
@@ -68,7 +68,7 @@ func (r *userRepository) GetUserBy(
 		if noRowsErr(err) {
 			return nil, user.ErrUserNotFound
 		}
-		log.ErrorCtx(ctx, "Failed to get user", "field", field, "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to get user", err, "field", field)
 		return nil, err
 	}
 
@@ -104,7 +104,7 @@ func (r *userRepository) UpdateUser(ctx context.Context, u *user.User) error {
 			return user.ErrEmailExist
 		}
 
-		log.ErrorCtx(ctx, "Failed to update user", "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to update user", err)
 		return err
 	}
 
@@ -127,7 +127,7 @@ func (r *userRepository) DeleteUser(ctx context.Context, u *user.User) error {
 
 	_, err := conn.Exec(ctx, query, deleteTime, u.ID)
 	if err != nil {
-		log.ErrorCtx(ctx, "Failed to delete user", "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to delete user", err)
 		return err
 	}
 

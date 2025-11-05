@@ -19,9 +19,16 @@ type SlogAdapter struct {
 }
 
 func NewSlogAdapter(cfg *config.Config) *SlogAdapter {
+	isProd := cfg.IsProduction()
+
+	level := slog.LevelDebug
+	if isProd {
+		level = slog.LevelInfo
+	}
+
 	handlerOpts := &slog.HandlerOptions{
 		AddSource: true,
-		Level:     slog.LevelInfo,
+		Level:     level,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			if a.Key == slog.MessageKey {
 				a.Key = "message"
@@ -40,21 +47,20 @@ func NewSlogAdapter(cfg *config.Config) *SlogAdapter {
 			return a
 		},
 	}
-	var handler slog.Handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})
 
-	if cfg.IsProduction() {
-		handler = slog.NewJSONHandler(os.Stdout, handlerOpts)
+	logger := slog.New(slog.NewTextHandler(os.Stdout, handlerOpts))
+
+	if isProd {
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, handlerOpts)).With(
+			slog.Group("app",
+				slog.String("name", cfg.App.Name),
+				slog.String("version", cfg.App.Version),
+				slog.String("env", string(cfg.App.Environment)),
+			),
+		)
 	}
 
-	l := slog.New(handler).With(
-		slog.Group("app",
-			slog.String("name", cfg.App.Name),
-			slog.String("version", cfg.App.Version),
-			slog.String("env", string(cfg.App.Environment)),
-		),
-	)
-
-	return &SlogAdapter{l: l}
+	return &SlogAdapter{l: logger}
 }
 
 // Addtional 2 skips to capture the correct caller frame:
@@ -73,7 +79,8 @@ func (s *SlogAdapter) Warn(msg string, args ...any) {
 	s.logWithSkip(context.Background(), slog.LevelWarn, 2, msg, args...)
 }
 
-func (s *SlogAdapter) Error(msg string, args ...any) {
+func (s *SlogAdapter) Error(msg string, err error, args ...any) {
+	args = append(args, []string{"error", err.Error()})
 	s.logWithSkip(context.Background(), slog.LevelError, 2, msg, args...)
 }
 
@@ -89,7 +96,8 @@ func (s *SlogAdapter) WarnCtx(ctx context.Context, msg string, args ...any) {
 	s.buildContextualLogger(ctx, slog.LevelWarn, msg, args...)
 }
 
-func (s *SlogAdapter) ErrorCtx(ctx context.Context, msg string, args ...any) {
+func (s *SlogAdapter) ErrorCtx(ctx context.Context, msg string, err error, args ...any) {
+	args = append(args, []string{"error", err.Error()})
 	s.buildContextualLogger(ctx, slog.LevelError, msg, args...)
 }
 

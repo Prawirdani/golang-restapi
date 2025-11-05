@@ -23,20 +23,25 @@ func NewZerologAdapter(cfg *config.Config) *ZerologAdapter {
 	zerolog.CallerFieldName = "source"
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 
-	var w io.Writer = os.Stdout
-	level := zerolog.InfoLevel
 	if !cfg.IsProduction() {
-		w = zerolog.ConsoleWriter{NoColor: false, Out: os.Stdout, TimeFormat: time.TimeOnly}
-		level = zerolog.DebugLevel
+		logger := zerolog.New(zerolog.ConsoleWriter{NoColor: false, Out: os.Stdout, TimeFormat: time.TimeOnly}).
+			With().
+			Timestamp().
+			Caller().
+			Logger().
+			Level(zerolog.DebugLevel)
+		return &ZerologAdapter{
+			l: logger,
+		}
 	}
 
-	logger := zerolog.New(w).
+	logger := zerolog.New(os.Stdout).
 		With().
 		Dict("app", zerolog.Dict().Str("name", cfg.App.Name).Str("version", cfg.App.Version).Str("env", string(cfg.App.Environment))).
 		Timestamp().
 		Caller().
 		Logger().
-		Level(level)
+		Level(zerolog.InfoLevel)
 	return &ZerologAdapter{
 		l: logger,
 	}
@@ -70,8 +75,8 @@ func (z *ZerologAdapter) Warn(msg string, args ...any) {
 }
 
 // Error logs at Error level
-func (z *ZerologAdapter) Error(msg string, args ...any) {
-	event := z.l.Error()
+func (z *ZerologAdapter) Error(msg string, err error, args ...any) {
+	event := z.l.Error().Err(err)
 	addFields(event, args...).Msg(msg)
 }
 
@@ -112,14 +117,14 @@ func (z *ZerologAdapter) WarnCtx(ctx context.Context, msg string, args ...any) {
 }
 
 // ErrorCtx logs at Error level with context
-func (z *ZerologAdapter) ErrorCtx(ctx context.Context, msg string, args ...any) {
+func (z *ZerologAdapter) ErrorCtx(ctx context.Context, msg string, err error, args ...any) {
 	logger := z.l
 	if l := GetFromContext(ctx); l != nil {
 		if za, ok := l.(*ZerologAdapter); ok {
 			logger = za.l
 		}
 	}
-	event := logger.Error()
+	event := logger.Error().Err(err)
 	addFields(event, args...).Msg(msg)
 }
 

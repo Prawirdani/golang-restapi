@@ -34,7 +34,7 @@ func (r *authRepository) InsertSession(ctx context.Context, sess *auth.Session) 
 	query := "INSERT INTO sessions(user_id, refresh_token, user_agent, expires_at, accessed_at) VALUES($1, $2, $3, $4, $5)"
 	conn := r.db.GetConn(ctx)
 	if _, err := conn.Exec(ctx, query, sess.UserID, sess.RefreshToken, sess.UserAgent, sess.ExpiresAt, sess.AccessedAt); err != nil {
-		log.ErrorCtx(ctx, "Failed to insert session", "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to insert session", err)
 		return err
 	}
 
@@ -65,7 +65,7 @@ func (r *authRepository) GetUserSessionBy(
 		if noRowsErr(err) {
 			return nil, auth.ErrSessionNotFound
 		}
-		log.ErrorCtx(ctx, "Failed to get user session", "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to get user session", err)
 		return nil, err
 	}
 
@@ -80,7 +80,7 @@ func (r *authRepository) DeleteSession(ctx context.Context, field string, value 
 	conn := r.db.GetConn(ctx)
 	_, err := conn.Exec(ctx, query, value)
 	if err != nil {
-		log.ErrorCtx(ctx, "Failed to delete session", "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to delete session", err)
 		return err
 	}
 	return nil
@@ -93,7 +93,7 @@ func (r *authRepository) DeleteExpiredSessions(ctx context.Context) error {
 
 	_, err := conn.Exec(ctx, query)
 	if err != nil {
-		log.ErrorCtx(ctx, "Failed to delete expired sessions", "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to delete expired sessions", err)
 		return err
 	}
 
@@ -117,7 +117,7 @@ func (r *authRepository) GetResetPasswordTokenObj(
 		if noRowsErr(err) {
 			return nil, auth.ErrResetPasswordTokenNotFound
 		}
-		log.ErrorCtx(ctx, "Failed to get reset password token", "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to get reset password token", err)
 		return nil, err
 	}
 
@@ -140,7 +140,7 @@ func (r *authRepository) InsertResetPasswordToken(
 	conn := r.db.GetConn(ctx)
 
 	if _, err := conn.Exec(ctx, query, token.UserId, token.Value, token.ExpiresAt); err != nil {
-		log.ErrorCtx(ctx, "Failed to insert reset password token", "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to insert reset password token", err)
 		return err
 	}
 
@@ -163,7 +163,7 @@ func (r *authRepository) InvalidateResetPasswordToken(
 	now := time.Now()
 
 	if _, err := conn.Exec(ctx, query, now, token.Value); err != nil {
-		log.ErrorCtx(ctx, "Failed to invalidate reset password token", "error", err.Error())
+		log.ErrorCtx(ctx, "Failed to invalidate reset password token", err)
 		return err
 	}
 

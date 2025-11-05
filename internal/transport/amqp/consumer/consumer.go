@@ -59,11 +59,11 @@ func (m *ConsumerClient) Consume(
 
 			log.InfoCtx(ctx, "Message received")
 			if err := handler(ctx, d); err != nil {
-				log.ErrorCtx(ctx, "Failed to handle message", "error", err.Error())
+				log.ErrorCtx(ctx, "Failed to handle message", err)
 				m.handleFailure(ctx, ch, tpl, d, err)
 			} else {
 				if err := d.Ack(false); err != nil {
-					log.ErrorCtx(ctx, "Failed to Ack message", "error", err)
+					log.ErrorCtx(ctx, "Failed to Ack message", err)
 				}
 				log.InfoCtx(ctx, "Message processed")
 			}
@@ -105,13 +105,13 @@ func (m *ConsumerClient) handleFailure(
 		)
 		// Ack Message
 		if err := d.Ack(false); err != nil {
-			log.ErrorCtx(ctx, "Failed to Ack message", "error", err)
+			log.ErrorCtx(ctx, "Failed to Ack message", err)
 		}
 		return
 	}
 	log.InfoCtx(ctx, "Message sent to retry queue")
 	if err := d.Nack(false, false); err != nil {
-		log.ErrorCtx(ctx, "Failed to Nack message", "error", err)
+		log.ErrorCtx(ctx, "Failed to Nack message", err)
 	}
 }
 

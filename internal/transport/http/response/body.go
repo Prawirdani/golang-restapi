@@ -70,7 +70,7 @@ func HandleError(w http.ResponseWriter, err error) {
 		}
 
 	default:
-		log.Error("unknown error", "error", err.Error())
+		log.Error("unknown error", err)
 		body = Body{
 			Status:  http.StatusInternalServerError,
 			Message: "An unexpected error occurred, try again later",

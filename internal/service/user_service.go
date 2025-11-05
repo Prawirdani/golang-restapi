@@ -65,7 +65,7 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File
 
 		// 3. Set New Image name using UUID
 		if err := file.SetName(uuid.NewString()); err != nil {
-			log.ErrorCtx(ctx, "Failed to set profile image file name", "error", err.Error())
+			log.ErrorCtx(ctx, "Failed to set profile image file name", err)
 			return err
 		}
 
@@ -74,7 +74,7 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File
 
 		// 4. Store new image to storage
 		if err := s.imageStorage.Put(ctx, newImagePath, file, file.ContentType()); err != nil {
-			log.ErrorCtx(ctx, "Failed store new profile image", "error", err.Error())
+			log.ErrorCtx(ctx, "Failed store new profile image", err)
 			return err
 		}
 

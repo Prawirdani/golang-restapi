@@ -26,7 +26,7 @@ func (h *UserHandler) ChangeProfilePictureHandler(w http.ResponseWriter, r *http
 
 	file, err := h.imageFileParser.ParseSingleFile(r, "image")
 	if err != nil {
-		log.WarnCtx(r.Context(), "Failed to parse profile image file", "error", err.Error())
+		log.ErrorCtx(r.Context(), "Failed to parse profile image file", err)
 		return err
 	}
 

@@ -27,13 +27,13 @@ type Logger interface {
 	Debug(msg string, args ...any)
 	Info(msg string, args ...any)
 	Warn(msg string, args ...any)
-	Error(msg string, args ...any)
+	Error(msg string, err error, args ...any)
 
 	// Contextual logging methods
 	DebugCtx(ctx context.Context, msg string, args ...any)
 	InfoCtx(ctx context.Context, msg string, args ...any)
 	WarnCtx(ctx context.Context, msg string, args ...any)
-	ErrorCtx(ctx context.Context, msg string, args ...any)
+	ErrorCtx(ctx context.Context, msg string, err error, args ...any)
 
 	// With returns a new Logger instance that includes the given key–value pairs
 	// Use With() to attach persistent fields to a derived logger, preserving immutability.

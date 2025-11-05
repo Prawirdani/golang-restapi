@@ -13,7 +13,7 @@ var cfg *config.Config
 
 func TestMain(m *testing.M) {
 	var err error
-	cfg, err = config.LoadConfig("../../.env")
+	cfg, err = config.LoadConfig()
 	if err != nil {
 		stdlog.Fatal("failed to load config:", err)
 	}
