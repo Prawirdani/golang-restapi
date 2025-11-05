@@ -30,7 +30,7 @@ func main() {
 	}
 	defer pgpool.Close()
 
-	rmqconn, err := initRabbitMQ(cfg.RabbitMqURL)
+	rmqconn, err := initRabbitMQ(cfg.RabbitMQURL)
 	if err != nil {
 		log.Error("Failed to init rabbit mq", err)
 		os.Exit(1)

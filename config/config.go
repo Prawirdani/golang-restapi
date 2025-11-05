@@ -24,10 +24,9 @@ type Config struct {
 	Postgres    PGConfig
 	Cors        CorsConfig
 	Token       TokenConfig
-	Metrics     MetricsConfig
 	SMTP        SMTPConfig
 	R2          R2Config
-	RabbitMqURL string
+	RabbitMQURL string
 }
 
 func (c Config) IsProduction() bool {
@@ -46,9 +45,6 @@ func LoadConfig() (*Config, error) {
 	if err := cfg.Postgres.Parse(); err != nil {
 		return nil, err
 	}
-	if err := cfg.Metrics.Parse(); err != nil {
-		return nil, err
-	}
 	if err := cfg.Cors.Parse(); err != nil {
 		return nil, err
 	}
@@ -62,7 +58,7 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
-	cfg.RabbitMqURL = os.Getenv("RABBITMQ_URL")
+	cfg.RabbitMQURL = os.Getenv("RABBITMQ_URL")
 
 	// Validate
 	if err := cfg.Validate(); err != nil {
@@ -149,23 +145,6 @@ func (p *PGConfig) Parse() error {
 	if val := os.Getenv("DB_MAXCONN_LIFETIME"); val != "" {
 		if d, err := time.ParseDuration(val); err == nil {
 			p.MaxConnLifetime = d
-		}
-	}
-	return nil
-}
-
-// =======================
-// Metrics
-// =======================
-
-type MetricsConfig struct {
-	PrometheusPort int
-}
-
-func (m *MetricsConfig) Parse() error {
-	if val := os.Getenv("METRICS_PROMETHEUS_PORT"); val != "" {
-		if i, err := strconv.Atoi(val); err == nil {
-			m.PrometheusPort = i
 		}
 	}
 	return nil

@@ -39,7 +39,7 @@ func NewServer(container *Container) (*Server, error) {
 		metrics: metrics.Init(
 			container.Config.App.Version,
 			string(container.Config.App.Environment),
-			container.Config.Metrics.PrometheusPort,
+			container.Config.App.Port+1,
 		),
 		middlewares: middleware.Setup(container.Config),
 	}
@@ -52,19 +52,20 @@ func (s *Server) Start(ctx context.Context) error {
 	s.setupRouter()
 
 	cfg := s.container.Config
+	port := cfg.App.Port
 
 	// Metrics server
 	var metricServer *http.Server
 	if cfg.IsProduction() {
 		metricServer = &http.Server{
-			Addr:    fmt.Sprintf(":%v", cfg.Metrics.PrometheusPort),
+			Addr:    fmt.Sprintf(":%v", port+1),
 			Handler: s.metrics.ExporterHandler(),
 		}
 
 		// Start metrics server
 		go func() {
 			log.Info(
-				fmt.Sprintf("Metrics serving on 0.0.0.0:%v/metrics", cfg.Metrics.PrometheusPort),
+				fmt.Sprintf("Metrics serving on 0.0.0.0:%v/metrics", port+1),
 			)
 			if err := metricServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				log.Error("Metrics server stopped unexpectedly", err)
@@ -74,7 +75,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	// API server
 	apiServer := &http.Server{
-		Addr:         fmt.Sprintf(":%v", cfg.App.Port),
+		Addr:         fmt.Sprintf(":%v", port),
 		Handler:      s.router,
 		ReadTimeout:  60 * time.Second,
 		WriteTimeout: 60 * time.Second,
@@ -83,7 +84,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	// Start API server
 	go func() {
-		log.Info(fmt.Sprintf("API server listening on 0.0.0.0:%v", cfg.App.Port))
+		log.Info(fmt.Sprintf("API server listening on 0.0.0.0:%v", port))
 		if err := apiServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("API server stopped unexpectedly", err)
 		}
