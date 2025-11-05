@@ -7,7 +7,7 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/prawirdani/golang-restapi/internal/entity/user"
+	"github.com/prawirdani/golang-restapi/internal/domain/user"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 	strs "github.com/prawirdani/golang-restapi/pkg/strings"
 )

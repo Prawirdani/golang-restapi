@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/prawirdani/golang-restapi/config"
-	"github.com/prawirdani/golang-restapi/internal/entity/user"
+	"github.com/prawirdani/golang-restapi/internal/domain/user"
 	"github.com/prawirdani/golang-restapi/internal/infra/repository"
 	"github.com/prawirdani/golang-restapi/internal/infra/storage"
 	"github.com/prawirdani/golang-restapi/pkg/common"

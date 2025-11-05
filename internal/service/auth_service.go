@@ -4,11 +4,9 @@ import (
 	"context"
 	"time"
 
-	stderrs "errors"
-
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/auth"
-	"github.com/prawirdani/golang-restapi/internal/entity/user"
+	"github.com/prawirdani/golang-restapi/internal/domain/user"
 	"github.com/prawirdani/golang-restapi/internal/infra/repository"
 	"github.com/prawirdani/golang-restapi/internal/messages"
 	"github.com/prawirdani/golang-restapi/internal/model"
@@ -137,7 +135,6 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 }
 
 func (s *AuthService) IdentifyUser(ctx context.Context) (*user.User, error) {
-	return nil, stderrs.New("intended")
 	tokenPayload, err := contextx.GetAuthCtx(ctx)
 	if err != nil {
 		return nil, err
