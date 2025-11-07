@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	res "github.com/prawirdani/golang-restapi/internal/transport/http/response"
-	"github.com/prawirdani/golang-restapi/pkg/errors"
+	httpx "github.com/prawirdani/golang-restapi/internal/transport/http"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
@@ -14,12 +13,13 @@ func (c *Collection) PanicRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
+				err := fmt.Errorf("%w", rec)
 				log.Error("panic recovered",
-					fmt.Errorf("%v", rec),
+					err,
 					"path", r.URL.Path,
 					"method", r.Method,
 				)
-				res.HandleError(w, errors.InternalServer("internal server error"))
+				httpx.HandleError(w, err)
 			}
 		}()
 

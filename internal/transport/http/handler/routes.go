@@ -1,17 +1,16 @@
-package http
+package handler
 
 import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/prawirdani/golang-restapi/internal/transport/http/handler"
+	httpx "github.com/prawirdani/golang-restapi/internal/transport/http"
 	"github.com/prawirdani/golang-restapi/internal/transport/http/middleware"
-	res "github.com/prawirdani/golang-restapi/internal/transport/http/response"
 )
 
 // HandlerFn is a custom handler wrapper function type.
 // It is used to wrap handler function to make it easier handling errors from handler function.
-// Also help handler code to be more readable without to many early return statement.
+// Also help handler code to be more readable without too many early return statement.
 // Every handler function should use this function signature.
 type HandlerFn func(w http.ResponseWriter, r *http.Request) error
 
@@ -19,13 +18,13 @@ type HandlerFn func(w http.ResponseWriter, r *http.Request) error
 func fn(fn HandlerFn) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := fn(w, r); err != nil {
-			res.HandleError(w, err)
+			httpx.HandleError(w, err)
 			return
 		}
 	}
 }
 
-func RegisterAuthRoutes(r chi.Router, h *handler.AuthHandler, mw *middleware.Collection) {
+func RegisterAuthRoutes(r chi.Router, h *AuthHandler, mw *middleware.Collection) {
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/login", fn(h.LoginHandler))
 		r.Post("/register", fn(h.RegisterHandler))
@@ -42,7 +41,7 @@ func RegisterAuthRoutes(r chi.Router, h *handler.AuthHandler, mw *middleware.Col
 	})
 }
 
-func RegisterUserRoutes(r chi.Router, h *handler.UserHandler, mw *middleware.Collection) {
+func RegisterUserRoutes(r chi.Router, h *UserHandler, mw *middleware.Collection) {
 	r.With(mw.Auth).Route("/users", func(r chi.Router) {
 		r.Post("/profile/upload", fn(h.ChangeProfilePictureHandler))
 	})

@@ -6,9 +6,15 @@ import (
 	"fmt"
 	"io"
 	"strings"
-
-	apiErr "github.com/prawirdani/golang-restapi/pkg/errors"
 )
+
+type JsonBodyError struct {
+	Message string
+}
+
+func (e *JsonBodyError) Error() string {
+	return e.Message
+}
 
 func parseJsonBodyErr(err error) error {
 	var syntaxError *json.SyntaxError
@@ -41,7 +47,8 @@ func parseJsonBodyErr(err error) error {
 		msg = "Request body must not be empty"
 
 	default:
-		msg = err.Error()
+		return err
 	}
-	return apiErr.BadRequest(msg)
+
+	return &JsonBodyError{Message: msg}
 }

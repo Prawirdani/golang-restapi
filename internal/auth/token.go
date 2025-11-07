@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	apiErr "github.com/prawirdani/golang-restapi/pkg/errors"
 )
 
 const (
@@ -17,10 +16,10 @@ const (
 )
 
 var (
-	ErrTokenExpired = apiErr.Unauthorized("Token has expired.")
-	ErrTokenInvalid = apiErr.Unauthorized("Invalid or malformed token.")
-	ErrMissingToken = apiErr.Unauthorized(
-		"Missing auth token from cookie or Authorization bearer token",
+	ErrTokenExpired     = errors.New("Token has expired")
+	ErrTokenInvalid     = errors.New("Invalid or malformed token")
+	ErrTokenNotProvided = errors.New(
+		"Missing auth token from Authorization header or http-only cookie",
 	)
 	ErrEmptyTokenSecret = errors.New("secret key must not be empty")
 )
@@ -54,9 +53,7 @@ func GenerateJWT(
 func ValidateJWT(tokenStr, secretKey string) (map[string]any, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, apiErr.BadRequest(
-				fmt.Sprintf("unexpected signing method: %v", token.Header["alg"]),
-			)
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return []byte(secretKey), nil
 	})

@@ -11,7 +11,6 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/messages"
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/pkg/contextx"
-	"github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
@@ -42,34 +41,41 @@ func NewAuthService(
 	}
 }
 
-func (s *AuthService) Register(ctx context.Context, i model.CreateUserInput) error {
-	hashedPassword, err := auth.HashPassword(i.Password)
+func (s *AuthService) Register(ctx context.Context, payload model.CreateUserInput) error {
+	userExists, err := s.userRepo.GetUserBy(ctx, "email", payload.Email)
 	if err != nil {
 		return err
 	}
 
-	newUser, err := user.New(i, string(hashedPassword))
+	if userExists != nil {
+		return user.ErrEmailExist
+	}
+
+	hashedPassword, err := auth.HashPassword(payload.Password)
+	if err != nil {
+		return err
+	}
+
+	newUser, err := user.New(payload, string(hashedPassword))
 	if err != nil {
 		log.ErrorCtx(ctx, "Failed to create new user", err)
 		return err
 	}
-	if err := s.userRepo.Insert(ctx, newUser); err != nil {
-		return err
-	}
-	return nil
+
+	return s.userRepo.Insert(ctx, newUser)
 }
 
 // Login is a method to authenticate the user, returning access token, refresh token, and error if any.
 func (s *AuthService) Login(
 	ctx context.Context,
-	request model.LoginInput,
+	payload model.LoginInput,
 ) (string, string, error) {
-	u, err := s.userRepo.GetUserBy(ctx, "email", request.Email)
+	u, err := s.userRepo.GetUserBy(ctx, "email", payload.Email)
 	if err != nil {
 		return "", "", err
 	}
 
-	if err := auth.VerifyPassword(request.Password, u.Password); err != nil {
+	if err := auth.VerifyPassword(payload.Password, u.Password); err != nil {
 		return "", "", err
 	}
 
@@ -84,7 +90,7 @@ func (s *AuthService) Login(
 
 	sess, err := auth.NewSession(
 		u.ID,
-		request.UserAgent,
+		payload.UserAgent,
 		s.cfg.Token.RefreshTokenExpiry,
 	)
 	if err != nil {
@@ -154,7 +160,7 @@ func (s *AuthService) ForgotPassword(ctx context.Context, i model.ForgotPassword
 		u, err := s.userRepo.GetUserBy(ctx, "email", i.Email)
 		if err != nil {
 			if err == user.ErrUserNotFound {
-				return errors.Forbidden("Email is not registered or not verified")
+				return user.ErrEmailNotVerified
 			}
 			return err
 		}

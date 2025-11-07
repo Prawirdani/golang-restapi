@@ -1,11 +1,12 @@
 package auth
 
 import (
-	"github.com/prawirdani/golang-restapi/pkg/errors"
+	"errors"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
-var ErrWrongCredentials = errors.Unauthorized("Check your credentials")
+var ErrWrongCredentials = errors.New("Check your credentials")
 
 func HashPassword(plain string) ([]byte, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(plain), bcrypt.DefaultCost)

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	apiErr "github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/validator"
 )
 
@@ -21,7 +20,7 @@ type Body interface {
 // BindValidate is a helper function to bind and validate json request body, requires a struct that implements RequestBody interface
 func BindValidate(r *http.Request, body any) error {
 	if r.Header.Get("Content-Type") != "application/json" {
-		return apiErr.BadRequest("Content-Type must be application/json")
+		return &JsonBodyError{Message: "Content-Type must be application/json"}
 	}
 
 	defer r.Body.Close()

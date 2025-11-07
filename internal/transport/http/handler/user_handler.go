@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/prawirdani/golang-restapi/internal/service"
-	"github.com/prawirdani/golang-restapi/internal/transport/http/response"
+	"github.com/prawirdani/golang-restapi/internal/transport/http/request/uploader"
+	res "github.com/prawirdani/golang-restapi/internal/transport/http/response"
 	"github.com/prawirdani/golang-restapi/pkg/log"
-	"github.com/prawirdani/golang-restapi/pkg/uploader"
 )
 
 type UserHandler struct {
@@ -34,5 +34,5 @@ func (h *UserHandler) ChangeProfilePictureHandler(w http.ResponseWriter, r *http
 		return err
 	}
 
-	return response.Send(w, r, response.WithMessage("Profile picture updated successfully!"))
+	return res.JSON(w, r, res.WithMessage("Profile picture updated successfully!"))
 }

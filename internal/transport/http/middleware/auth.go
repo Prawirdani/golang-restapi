@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/prawirdani/golang-restapi/internal/auth"
-	"github.com/prawirdani/golang-restapi/internal/transport/http/response"
+	httpx "github.com/prawirdani/golang-restapi/internal/transport/http"
 	"github.com/prawirdani/golang-restapi/pkg/contextx"
 )
 
@@ -30,13 +30,13 @@ func (mw *Collection) Auth(next http.Handler) http.Handler {
 
 		// If token is still empty, return an error
 		if tokenStr == "" {
-			response.HandleError(w, auth.ErrMissingToken)
+			httpx.HandleError(w, auth.ErrTokenNotProvided)
 			return
 		}
 
 		payload, err := auth.ValidateJWT(tokenStr, mw.cfg.Token.SecretKey)
 		if err != nil {
-			response.HandleError(w, err)
+			httpx.HandleError(w, err)
 			return
 		}
 

@@ -7,14 +7,12 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	httpx "github.com/prawirdani/golang-restapi/internal/transport/http"
 	"github.com/prawirdani/golang-restapi/internal/transport/http/handler"
 	"github.com/prawirdani/golang-restapi/internal/transport/http/middleware"
-	res "github.com/prawirdani/golang-restapi/internal/transport/http/response"
-	"github.com/prawirdani/golang-restapi/pkg/errors"
+	"github.com/prawirdani/golang-restapi/internal/transport/http/response"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 	"github.com/prawirdani/golang-restapi/pkg/metrics"
-
-	httptransport "github.com/prawirdani/golang-restapi/internal/transport/http"
 )
 
 const MAX_BODY_SIZE = 10 << 20 // 10MB
@@ -123,18 +121,15 @@ func (s *Server) setupRouter() {
 	// Apply common middlewares
 	s.router.Use(mws.MaxBodySizeMiddleware(MAX_BODY_SIZE))
 	s.router.Use(mws.PanicRecovery)
-	s.router.Use(mws.Gzip) // TODO: Should be based on config
+	s.router.Use(mws.Gzip)
 	s.router.Use(mws.Cors)
 
 	// Custom 404 and 405 handlers
 	s.router.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		res.HandleError(w, errors.NotFound("The requested resource could not be found"))
+		httpx.HandleError(w, httpx.ErrResourceNotFound)
 	})
 	s.router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		res.HandleError(
-			w,
-			errors.MethodNotAllowed("The method is not allowed for the requested URL"),
-		)
+		httpx.HandleError(w, httpx.ErrMethodNotAllowed)
 	})
 
 	// Setup API routes
@@ -142,7 +137,7 @@ func (s *Server) setupRouter() {
 
 	// Health check route
 	s.router.Get("/status", func(w http.ResponseWriter, r *http.Request) {
-		res.Send(w, r, res.WithMessage("services up and running"))
+		response.JSON(w, r, response.WithMessage("services up and running"))
 	})
 }
 
@@ -156,7 +151,7 @@ func (s *Server) setupHandlers() {
 
 	// Register API routes
 	s.router.Route("/api", func(r chi.Router) {
-		httptransport.RegisterUserRoutes(r, userHandler, s.middlewares)
-		httptransport.RegisterAuthRoutes(r, authHandler, s.middlewares)
+		handler.RegisterUserRoutes(r, userHandler, s.middlewares)
+		handler.RegisterAuthRoutes(r, authHandler, s.middlewares)
 	})
 }

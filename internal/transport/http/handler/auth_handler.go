@@ -9,7 +9,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	req "github.com/prawirdani/golang-restapi/internal/transport/http/request"
 	res "github.com/prawirdani/golang-restapi/internal/transport/http/response"
-	httpErr "github.com/prawirdani/golang-restapi/pkg/errors"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 
 	"github.com/prawirdani/golang-restapi/config"
@@ -41,7 +40,7 @@ func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	return res.Send(w, r, res.WithStatus(201), res.WithMessage("Registration successful."))
+	return res.JSON(w, r, res.WithStatus(201), res.WithMessage("Registration successful."))
 }
 
 func (h *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) error {
@@ -72,7 +71,7 @@ func (h *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 
-	return res.Send(w, r, res.WithData(&d))
+	return res.JSON(w, r, res.WithData(&d))
 }
 
 func (h *AuthHandler) CurrentUserHandler(w http.ResponseWriter, r *http.Request) error {
@@ -81,7 +80,7 @@ func (h *AuthHandler) CurrentUserHandler(w http.ResponseWriter, r *http.Request)
 		return err
 	}
 
-	return res.Send(w, r, res.WithData(&user))
+	return res.JSON(w, r, res.WithData(&user))
 }
 
 func (h *AuthHandler) RefreshTokenHandler(w http.ResponseWriter, r *http.Request) error {
@@ -101,7 +100,7 @@ func (h *AuthHandler) RefreshTokenHandler(w http.ResponseWriter, r *http.Request
 
 	// If token is still empty, return an error
 	if refreshToken == "" {
-		return auth.ErrMissingToken
+		return auth.ErrTokenNotProvided
 	}
 
 	newAccessToken, err := h.authService.RefreshAccessToken(r.Context(), refreshToken)
@@ -117,7 +116,7 @@ func (h *AuthHandler) RefreshTokenHandler(w http.ResponseWriter, r *http.Request
 		return err
 	}
 
-	return res.Send(
+	return res.JSON(
 		w,
 		r,
 		res.WithData(d),
@@ -135,7 +134,7 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) erro
 	_ = h.authService.Logout(r.Context(), refreshToken)
 	h.removeTokenCookies(w)
 
-	return res.Send(w, r, res.WithMessage("Logout successful."))
+	return res.JSON(w, r, res.WithMessage("Logout successful."))
 }
 
 func (h *AuthHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) error {
@@ -149,21 +148,18 @@ func (h *AuthHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Reque
 		return err
 	}
 
-	return res.Send(w, r, res.WithMessage("Password recovery email have been sent!"))
+	return res.JSON(w, r, res.WithMessage("Password recovery email have been sent!"))
 }
 
 func (h *AuthHandler) GetResetPasswordTokenHandler(w http.ResponseWriter, r *http.Request) error {
 	token := chi.URLParam(r, "token")
-	if token == "" {
-		return httpErr.BadRequest("Invalid token")
-	}
 
 	tokenObj, err := h.authService.GetResetPasswordToken(r.Context(), token)
 	if err != nil {
 		return err
 	}
 
-	return res.Send(w, r, res.WithData(&tokenObj))
+	return res.JSON(w, r, res.WithData(&tokenObj))
 }
 
 func (h *AuthHandler) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) error {
@@ -177,7 +173,7 @@ func (h *AuthHandler) ResetPasswordHandler(w http.ResponseWriter, r *http.Reques
 		return err
 	}
 
-	return res.Send(w, r, res.WithMessage("Password has been reset successfuly!"))
+	return res.JSON(w, r, res.WithMessage("Password has been reset successfuly!"))
 }
 
 func (h *AuthHandler) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) error {
@@ -191,7 +187,7 @@ func (h *AuthHandler) ChangePasswordHandler(w http.ResponseWriter, r *http.Reque
 		return err
 	}
 
-	return res.Send(w, r, res.WithMessage("Password has been reset successfuly!"))
+	return res.JSON(w, r, res.WithMessage("Password has been reset successfuly!"))
 }
 
 func (h *AuthHandler) setTokenCookie(

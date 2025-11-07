@@ -3,18 +3,18 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/prawirdani/golang-restapi/pkg/common"
-	"github.com/prawirdani/golang-restapi/pkg/errors"
 )
 
 var (
-	ErrResetPasswordTokenInvalid = errors.Forbidden(
+	ErrResetPasswordTokenInvalid = errors.New(
 		"The reset token is invalid or expired. Please request a new password reset.",
 	)
-	ErrResetPasswordTokenNotFound = errors.NotFound(
+	ErrResetPasswordTokenNotFound = errors.New(
 		"Reset password token not found",
 	)
 )
