@@ -44,6 +44,6 @@ func RegisterAuthRoutes(r chi.Router, h *handler.AuthHandler, mw *middleware.Col
 
 func RegisterUserRoutes(r chi.Router, h *handler.UserHandler, mw *middleware.Collection) {
 	r.With(mw.Auth).Route("/users", func(r chi.Router) {
-		r.Post("/{userID}/profile/upload", fn(h.ChangeProfilePictureHandler))
+		r.Post("/profile/upload", fn(h.ChangeProfilePictureHandler))
 	})
 }
