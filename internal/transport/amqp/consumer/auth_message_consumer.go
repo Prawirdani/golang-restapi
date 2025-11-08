@@ -5,9 +5,10 @@ import (
 	"context"
 	"fmt"
 
+	amqp "github.com/rabbitmq/amqp091-go"
+
 	"github.com/prawirdani/golang-restapi/internal/messages"
 	"github.com/prawirdani/golang-restapi/pkg/mailer"
-	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type AuthMessageConsumer struct {

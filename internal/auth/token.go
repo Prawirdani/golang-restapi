@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/prawirdani/golang-restapi/pkg/errorsx"
 )
 
 const (
@@ -16,10 +17,10 @@ const (
 )
 
 var (
-	ErrTokenExpired     = errors.New("Token has expired")
-	ErrTokenInvalid     = errors.New("Invalid or malformed token")
-	ErrTokenNotProvided = errors.New(
-		"Missing auth token from Authorization header or http-only cookie",
+	ErrTokenExpired     = errorsx.Unauthorized("token expired")
+	ErrTokenInvalid     = errorsx.Unauthorized("invalid or malformed token")
+	ErrTokenNotProvided = errorsx.Unauthorized(
+		"missing auth token from authorization header or http-only cookie",
 	)
 	ErrEmptyTokenSecret = errors.New("secret key must not be empty")
 )

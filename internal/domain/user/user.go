@@ -1,21 +1,22 @@
 package user
 
 import (
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/prawirdani/golang-restapi/internal/model"
 	"github.com/prawirdani/golang-restapi/pkg/common"
+	"github.com/prawirdani/golang-restapi/pkg/errorsx"
 	"github.com/prawirdani/golang-restapi/pkg/validator"
 )
 
 const DEFAULT_PROFILE_IMG = "default-profile.jpg"
 
 var (
-	ErrEmailExist       = errors.New("Email already exists")
-	ErrUserNotFound     = errors.New("User not found")
-	ErrEmailNotVerified = errors.New("Email is not registered or not verified")
+	ErrEmailExist       = errorsx.Duplicate("email already exists")
+	ErrUserNotFound     = errorsx.NotExists("user not found")
+	ErrEmailNotVerified = errorsx.Forbidden("email is not registered or not verified")
 )
 
 type User struct {

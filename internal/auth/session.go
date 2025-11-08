@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/prawirdani/golang-restapi/pkg/errorsx"
 )
 
 var (
-	ErrSessionExpired  = errors.New("session expired")
-	ErrSessionNotFound = errors.New("session not found, please login to proceed")
+	ErrSessionExpired  = errorsx.Forbidden("session expired")
+	ErrSessionNotFound = errorsx.NotExists("session not found, please login to proceed")
 )
 
 type Session struct {

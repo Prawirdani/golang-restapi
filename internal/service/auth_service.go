@@ -69,23 +69,26 @@ func (s *AuthService) Register(ctx context.Context, payload model.CreateUserInpu
 func (s *AuthService) Login(
 	ctx context.Context,
 	payload model.LoginInput,
-) (string, string, error) {
+) (accessToken string, refreshToken string, err error) {
 	u, err := s.userRepo.GetUserBy(ctx, "email", payload.Email)
 	if err != nil {
-		return "", "", err
+		if err == user.ErrUserNotFound {
+			return accessToken, refreshToken, auth.ErrWrongCredentials
+		}
+		return accessToken, refreshToken, err
 	}
 
 	if err := auth.VerifyPassword(payload.Password, u.Password); err != nil {
-		return "", "", err
+		return accessToken, refreshToken, err
 	}
 
-	accessToken, err := s.generateAccessToken(map[string]any{
+	accessToken, err = s.generateAccessToken(map[string]any{
 		"id":   u.ID.String(),
 		"name": u.Name,
 	})
 	if err != nil {
 		log.ErrorCtx(ctx, "Failed to generate access token", err)
-		return "", "", err
+		return accessToken, refreshToken, err
 	}
 
 	sess, err := auth.NewSession(
@@ -95,11 +98,11 @@ func (s *AuthService) Login(
 	)
 	if err != nil {
 		log.ErrorCtx(ctx, "Failed to create new session", err)
-		return "", "", err
+		return accessToken, refreshToken, err
 	}
 
 	if err = s.authRepo.InsertSession(ctx, sess); err != nil {
-		return "", "", err
+		return accessToken, refreshToken, err
 	}
 
 	return accessToken, sess.RefreshToken, nil
