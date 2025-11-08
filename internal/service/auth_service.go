@@ -10,7 +10,6 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/infra/repository"
 	"github.com/prawirdani/golang-restapi/internal/messages"
 	"github.com/prawirdani/golang-restapi/internal/model"
-	"github.com/prawirdani/golang-restapi/pkg/contextx"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
@@ -144,7 +143,7 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 }
 
 func (s *AuthService) IdentifyUser(ctx context.Context) (*user.User, error) {
-	tokenPayload, err := contextx.GetAuthCtx(ctx)
+	tokenPayload, err := auth.GetAuthCtx(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +232,7 @@ func (s *AuthService) ResetPassword(ctx context.Context, i model.ResetPasswordIn
 
 // ChangePassword updates the authenticated user's password after verifying the current password.
 func (s *AuthService) ChangePassword(ctx context.Context, i model.ChangePasswordInput) error {
-	tokenPayload, err := contextx.GetAuthCtx(ctx)
+	tokenPayload, err := auth.GetAuthCtx(ctx)
 	if err != nil {
 		return err
 	}

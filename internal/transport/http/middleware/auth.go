@@ -6,7 +6,6 @@ import (
 
 	"github.com/prawirdani/golang-restapi/internal/auth"
 	httpx "github.com/prawirdani/golang-restapi/internal/transport/http"
-	"github.com/prawirdani/golang-restapi/pkg/contextx"
 )
 
 // AccessToken authorization middleware
@@ -41,7 +40,7 @@ func (mw *Collection) Auth(next http.Handler) http.Handler {
 		}
 
 		// Passing the map claims / payload to the next handler via Context.
-		ctx := contextx.SetAuthCtx(r.Context(), payload)
+		ctx := auth.SetAuthCtx(r.Context(), payload)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

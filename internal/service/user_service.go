@@ -6,11 +6,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/prawirdani/golang-restapi/config"
+	"github.com/prawirdani/golang-restapi/internal/auth"
 	"github.com/prawirdani/golang-restapi/internal/domain/user"
 	"github.com/prawirdani/golang-restapi/internal/infra/repository"
 	"github.com/prawirdani/golang-restapi/internal/infra/storage"
 	"github.com/prawirdani/golang-restapi/pkg/common"
-	"github.com/prawirdani/golang-restapi/pkg/contextx"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
@@ -50,7 +50,7 @@ func (s *UserService) GetUserByID(ctx context.Context, userID string) (*user.Use
 
 func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File) error {
 	// 1. Retrieve User Data
-	tokenPayload, err := contextx.GetAuthCtx(ctx)
+	tokenPayload, err := auth.GetAuthCtx(ctx)
 	if err != nil {
 		return err
 	}
