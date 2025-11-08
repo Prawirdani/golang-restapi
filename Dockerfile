@@ -28,7 +28,6 @@ WORKDIR /app
 
 # Copy the binary from the builder stage
 COPY --from=builder /app/bin/api .
-COPY ./templates ./templates
 
 # Run the binary
 CMD ["./api"]

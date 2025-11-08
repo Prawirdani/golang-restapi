@@ -1,7 +1,21 @@
 package mailer
 
-import "text/template"
+import (
+	"embed"
+	"text/template"
+)
 
-type EmailTemplates struct {
+//go:embed templates/*
+var templatesFS embed.FS
+
+type Templates struct {
 	ResetPassword *template.Template
+}
+
+func parseTemplates() *Templates {
+	return &Templates{
+		ResetPassword: template.Must(
+			template.ParseFS(templatesFS, "templates/reset-password-mail.html"),
+		),
+	}
 }
