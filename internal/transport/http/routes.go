@@ -20,8 +20,8 @@ func RegisterAuthRoutes(r chi.Router, h *handler.AuthHandler, authMw authMiddlew
 		r.Get("/password/reset/{token}", fn(h.GetResetPasswordTokenHandler))
 		r.Post("/password/reset", fn(h.ResetPasswordHandler))
 
+		r.Get("/refresh", fn(h.RefreshTokenHandler))
 		r.With(authMw).Group(func(r chi.Router) {
-			r.Get("/refresh", fn(h.RefreshTokenHandler))
 			r.Get("/current", fn(h.CurrentUserHandler))
 			r.Post("/password/change", fn(h.ChangePasswordHandler))
 		})
