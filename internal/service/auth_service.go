@@ -42,7 +42,7 @@ func NewAuthService(
 
 func (s *AuthService) Register(ctx context.Context, payload model.CreateUserInput) error {
 	userExists, err := s.userRepo.GetUserBy(ctx, "email", payload.Email)
-	if err != nil {
+	if err != nil && err != user.ErrUserNotFound {
 		return err
 	}
 

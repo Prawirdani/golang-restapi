@@ -1,14 +1,10 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	req "github.com/prawirdani/golang-restapi/internal/transport/http/request"
-	res "github.com/prawirdani/golang-restapi/internal/transport/http/response"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 
 	"github.com/prawirdani/golang-restapi/config"
@@ -29,70 +25,69 @@ func NewAuthHandler(cfg *config.Config, us *service.AuthService) *AuthHandler {
 	}
 }
 
-func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) error {
+func (h *AuthHandler) RegisterHandler(c *Context) error {
 	var reqBody model.CreateUserInput
-	if err := req.BindValidate(r, &reqBody); err != nil {
-		log.ErrorCtx(r.Context(), BindValidateWarnLog, err)
+	if err := c.BindValidate(&reqBody); err != nil {
+		log.ErrorCtx(c.Context(), BindValidateWarnLog, err)
 		return err
 	}
 
-	if err := h.authService.Register(r.Context(), reqBody); err != nil {
+	if err := h.authService.Register(c.Context(), reqBody); err != nil {
 		return err
 	}
 
-	return res.JSON(w, r, res.WithStatus(201), res.WithMessage("Registration successful."))
+	return c.JSON(http.StatusCreated, Body{
+		Message: "Registration successful",
+	})
 }
 
-func (h *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) error {
+func (h *AuthHandler) LoginHandler(c *Context) error {
 	var reqBody model.LoginInput
-	if err := req.BindValidate(r, &reqBody); err != nil {
-		log.ErrorCtx(r.Context(), BindValidateWarnLog, err)
+	if err := c.BindValidate(&reqBody); err != nil {
+		log.ErrorCtx(c.Context(), BindValidateWarnLog, err)
 		return err
 	}
+	reqBody.UserAgent = c.Get("User-Agent")
 
-	uAgent := r.Header.Get("User-Agent")
-	reqBody.UserAgent = uAgent
-
-	accessToken, refreshToken, err := h.authService.Login(r.Context(), reqBody)
+	accessToken, refreshToken, err := h.authService.Login(c.Context(), reqBody)
 	if err != nil {
 		return err
 	}
 
-	d := map[string]string{
-		auth.ACCESS_TOKEN:  accessToken,
-		auth.REFRESH_TOKEN: refreshToken,
+	tp := model.TokenPair{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 	}
 
-	if err := h.setTokenCookie(w, accessToken, auth.ACCESS_TOKEN); err != nil {
-		return err
-	}
+	c.SetCookie(h.createTokenCookie(accessToken, auth.ACCESS_TOKEN))
+	c.SetCookie(h.createTokenCookie(refreshToken, auth.REFRESH_TOKEN))
 
-	if err := h.setTokenCookie(w, refreshToken, auth.REFRESH_TOKEN); err != nil {
-		return err
-	}
-
-	return res.JSON(w, r, res.WithData(&d))
+	return c.JSON(200, Body{
+		Data: tp,
+	})
 }
 
-func (h *AuthHandler) CurrentUserHandler(w http.ResponseWriter, r *http.Request) error {
-	user, err := h.authService.IdentifyUser(r.Context())
+func (h *AuthHandler) CurrentUserHandler(c *Context) error {
+	user, err := h.authService.IdentifyUser(c.Context())
 	if err != nil {
 		return err
 	}
 
-	return res.JSON(w, r, res.WithData(&user))
+	return c.JSON(http.StatusOK, Body{
+		Data: user,
+	})
 }
 
-func (h *AuthHandler) RefreshTokenHandler(w http.ResponseWriter, r *http.Request) error {
+func (h *AuthHandler) RefreshTokenHandler(c *Context) error {
 	var refreshToken string
 
-	if cookie, err := r.Cookie(auth.REFRESH_TOKEN); err == nil {
+	if cookie, err := c.GetCookie(auth.REFRESH_TOKEN); err == nil {
 		refreshToken = cookie.Value
 	}
 
 	// If token doesn't exist in cookie, retrieve from Authorization header
 	if refreshToken == "" {
-		authHeader := r.Header.Get("Authorization")
+		authHeader := c.Get("Authorization")
 		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
 			refreshToken = authHeader[len("Bearer "):]
 		}
@@ -103,7 +98,7 @@ func (h *AuthHandler) RefreshTokenHandler(w http.ResponseWriter, r *http.Request
 		return auth.ErrTokenNotProvided
 	}
 
-	newAccessToken, err := h.authService.RefreshAccessToken(r.Context(), refreshToken)
+	newAccessToken, err := h.authService.RefreshAccessToken(c.Context(), refreshToken)
 	if err != nil {
 		return err
 	}
@@ -112,93 +107,94 @@ func (h *AuthHandler) RefreshTokenHandler(w http.ResponseWriter, r *http.Request
 		auth.ACCESS_TOKEN: newAccessToken,
 	}
 
-	if err := h.setTokenCookie(w, newAccessToken, auth.ACCESS_TOKEN); err != nil {
-		return err
-	}
+	c.SetCookie(h.createTokenCookie(newAccessToken, auth.ACCESS_TOKEN))
 
-	return res.JSON(
-		w,
-		r,
-		res.WithData(d),
-		res.WithMessage("Token refreshed."),
-	)
+	return c.JSON(http.StatusOK, Body{
+		Data:    d,
+		Message: "Token refreshed",
+	})
 }
 
-func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) error {
+func (h *AuthHandler) LogoutHandler(c *Context) error {
 	// Retrieve the refresh token from the request cookie
 	var refreshToken string
-	if cookie, err := r.Cookie(auth.REFRESH_TOKEN); err == nil {
+	if cookie, err := c.GetCookie(auth.REFRESH_TOKEN); err == nil {
 		refreshToken = cookie.Value
 	}
 
-	_ = h.authService.Logout(r.Context(), refreshToken)
-	h.removeTokenCookies(w)
+	_ = h.authService.Logout(c.Context(), refreshToken)
+	h.removeTokenCookies(c)
 
-	return res.JSON(w, r, res.WithMessage("Logout successful."))
+	return c.JSON(http.StatusOK, Body{
+		Message: "Logged out",
+	})
 }
 
-func (h *AuthHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) error {
+func (h *AuthHandler) ForgotPasswordHandler(c *Context) error {
 	var reqBody model.ForgotPasswordInput
-	if err := req.BindValidate(r, &reqBody); err != nil {
-		log.ErrorCtx(r.Context(), BindValidateWarnLog, err)
+	if err := c.BindValidate(&reqBody); err != nil {
+		log.ErrorCtx(c.Context(), BindValidateWarnLog, err)
 		return err
 	}
 
-	if err := h.authService.ForgotPassword(r.Context(), reqBody); err != nil {
+	if err := h.authService.ForgotPassword(c.Context(), reqBody); err != nil {
 		return err
 	}
 
-	return res.JSON(w, r, res.WithMessage("Password recovery email have been sent!"))
+	return c.JSON(http.StatusOK, Body{
+		Message: "Password recovery email have been sent!",
+	})
 }
 
-func (h *AuthHandler) GetResetPasswordTokenHandler(w http.ResponseWriter, r *http.Request) error {
-	token := chi.URLParam(r, "token")
+func (h *AuthHandler) GetResetPasswordTokenHandler(c *Context) error {
+	token := c.Param("token")
 
-	tokenObj, err := h.authService.GetResetPasswordToken(r.Context(), token)
+	tokenObj, err := h.authService.GetResetPasswordToken(c.Context(), token)
 	if err != nil {
 		return err
 	}
 
-	return res.JSON(w, r, res.WithData(&tokenObj))
+	return c.JSON(http.StatusOK, Body{
+		Data: tokenObj,
+	})
 }
 
-func (h *AuthHandler) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) error {
+func (h *AuthHandler) ResetPasswordHandler(c *Context) error {
 	var reqBody model.ResetPasswordInput
-	if err := req.BindValidate(r, &reqBody); err != nil {
-		log.ErrorCtx(r.Context(), BindValidateWarnLog, err)
+	if err := c.BindValidate(&reqBody); err != nil {
+		log.ErrorCtx(c.Context(), BindValidateWarnLog, err)
 		return err
 	}
 
-	if err := h.authService.ResetPassword(r.Context(), reqBody); err != nil {
+	if err := h.authService.ResetPassword(c.Context(), reqBody); err != nil {
 		return err
 	}
 
-	return res.JSON(w, r, res.WithMessage("Password has been reset successfuly!"))
+	return c.JSON(200, Body{
+		Message: "Password has been reset successfuly",
+	})
 }
 
-func (h *AuthHandler) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) error {
+func (h *AuthHandler) ChangePasswordHandler(c *Context) error {
 	var reqBody model.ChangePasswordInput
-	if err := req.BindValidate(r, &reqBody); err != nil {
-		log.ErrorCtx(r.Context(), BindValidateWarnLog, err)
+	if err := c.BindValidate(&reqBody); err != nil {
+		log.ErrorCtx(c.Context(), BindValidateWarnLog, err)
 		return err
 	}
 
-	if err := h.authService.ChangePassword(r.Context(), reqBody); err != nil {
+	if err := h.authService.ChangePassword(c.Context(), reqBody); err != nil {
 		return err
 	}
 
-	return res.JSON(w, r, res.WithMessage("Password has been reset successfuly!"))
+	return c.JSON(http.StatusOK, Body{
+		Message: "Password has been reset successfuly!",
+	})
 }
 
-func (h *AuthHandler) setTokenCookie(
-	w http.ResponseWriter,
+func (h *AuthHandler) createTokenCookie(
 	token string,
 	label string,
-) error {
-	if label != auth.ACCESS_TOKEN && label != auth.REFRESH_TOKEN {
-		return errors.New("invalid token label")
-	}
-
+) *http.Cookie {
 	expiry := h.cfg.Token.AccessTokenExpiry
 	if label == auth.REFRESH_TOKEN {
 		expiry = h.cfg.Token.RefreshTokenExpiry
@@ -206,7 +202,7 @@ func (h *AuthHandler) setTokenCookie(
 
 	currTime := time.Now()
 
-	ck := &http.Cookie{
+	return &http.Cookie{
 		Name:     label,
 		Value:    token,
 		Expires:  currTime.Add(expiry),
@@ -214,12 +210,9 @@ func (h *AuthHandler) setTokenCookie(
 		Secure:   h.cfg.IsProduction(),
 		Path:     "/",
 	}
-
-	http.SetCookie(w, ck)
-	return nil
 }
 
-func (h *AuthHandler) removeTokenCookies(w http.ResponseWriter) {
+func (h *AuthHandler) removeTokenCookies(c *Context) {
 	atCookie := &http.Cookie{
 		Name:     auth.ACCESS_TOKEN,
 		Value:    "",
@@ -232,6 +225,6 @@ func (h *AuthHandler) removeTokenCookies(w http.ResponseWriter) {
 	rtCookie := *atCookie
 	rtCookie.Name = auth.REFRESH_TOKEN
 
-	http.SetCookie(w, atCookie)
-	http.SetCookie(w, &rtCookie)
+	c.SetCookie(atCookie)
+	c.SetCookie(&rtCookie)
 }

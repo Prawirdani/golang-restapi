@@ -7,48 +7,88 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	httpx "github.com/prawirdani/golang-restapi/internal/transport/http"
+	httptransport "github.com/prawirdani/golang-restapi/internal/transport/http"
+	httperr "github.com/prawirdani/golang-restapi/internal/transport/http/error"
 	"github.com/prawirdani/golang-restapi/internal/transport/http/handler"
 	"github.com/prawirdani/golang-restapi/internal/transport/http/middleware"
-	"github.com/prawirdani/golang-restapi/internal/transport/http/response"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 	"github.com/prawirdani/golang-restapi/pkg/metrics"
 )
 
-const MAX_BODY_SIZE = 10 << 20 // 10MB
-
 type Server struct {
-	container   *Container
-	router      *chi.Mux
-	metrics     *metrics.Metrics
-	middlewares *middleware.Collection
+	container *Container
+	router    *chi.Mux
+	metrics   *metrics.Metrics
 }
 
 // NewServer acts as a constructor, initializing the server and its dependencies.
-// All router setup is deferred to the setupRouter method.
 func NewServer(container *Container) (*Server, error) {
 	if container == nil {
 		return nil, fmt.Errorf("container is required")
 	}
 
+	router := chi.NewRouter()
+	metrics := metrics.Init(
+		container.Config.App.Version,
+		string(container.Config.App.Environment),
+		container.Config.App.Port+1,
+	)
+
+	if container.Config.IsProduction() {
+		router.Use(middleware.RequestID)
+		router.Use(middleware.RateLimit(50, 1*time.Minute))
+		router.Use(metrics.InstrumentHandler) // Instrument the main router
+	} else {
+		router.Use(middleware.ReqLogger)
+	}
+
+	// Apply common middlewares
+	router.Use(middleware.MaxBodySizeMiddleware(handler.MaxBodySize))
+	router.Use(handler.Middleware(middleware.PanicRecoverer))
+	router.Use(middleware.Gzip)
+	router.Use(middleware.Cors(
+		container.Config.Cors.Origins,
+		container.Config.Cors.Credentials,
+		container.Config.IsProduction(),
+	))
+
+	// Custom 404 and 405 handlers
+	router.NotFound(handler.Handler(func(c *handler.Context) error {
+		return httperr.New(
+			http.StatusNotFound,
+			"the requested resource could not be found",
+			nil,
+		)
+	}))
+
+	router.MethodNotAllowed(handler.Handler(func(c *handler.Context) error {
+		return httperr.New(
+			http.StatusMethodNotAllowed,
+			"the method is not allowed for the requested url",
+			nil,
+		)
+	}))
+
+	// Health check route
+	router.Get("/status", handler.Handler(func(c *handler.Context) error {
+		return c.JSON(http.StatusOK, handler.Body{
+			Message: "services up and running",
+		})
+	}))
+
 	svr := &Server{
 		container: container,
-		router:    chi.NewRouter(),
-		metrics: metrics.Init(
-			container.Config.App.Version,
-			string(container.Config.App.Environment),
-			container.Config.App.Port+1,
-		),
-		middlewares: middleware.Setup(container.Config),
+		router:    router,
+		metrics:   metrics,
 	}
+
+	// Setup API routes
+	svr.setupHandlers()
 
 	return svr, nil
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	// Configure all routes, middlewares, and handlers
-	s.setupRouter()
-
 	cfg := s.container.Config
 	port := cfg.App.Port
 
@@ -106,41 +146,6 @@ func (s *Server) Start(ctx context.Context) error {
 	return nil
 }
 
-// setupRouter configures all middlewares, error handlers, and API routes.
-func (s *Server) setupRouter() {
-	mws := s.middlewares
-
-	if s.container.Config.IsProduction() {
-		s.router.Use(middleware.RequestID)
-		s.router.Use(mws.RateLimit(50, 1*time.Minute))
-		s.router.Use(s.metrics.InstrumentHandler) // Instrument the main router
-	} else {
-		s.router.Use(mws.ReqLogger)
-	}
-
-	// Apply common middlewares
-	s.router.Use(mws.MaxBodySizeMiddleware(MAX_BODY_SIZE))
-	s.router.Use(mws.PanicRecovery)
-	s.router.Use(mws.Gzip)
-	s.router.Use(mws.Cors)
-
-	// Custom 404 and 405 handlers
-	s.router.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		httpx.HandleError(w, httpx.ErrResourceNotFound)
-	})
-	s.router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		httpx.HandleError(w, httpx.ErrMethodNotAllowed)
-	})
-
-	// Setup API routes
-	s.setupHandlers()
-
-	// Health check route
-	s.router.Get("/status", func(w http.ResponseWriter, r *http.Request) {
-		response.JSON(w, r, response.WithMessage("services up and running"))
-	})
-}
-
 // setupHandlers initializes and registers all API handlers.
 func (s *Server) setupHandlers() {
 	svcs := s.container.Services
@@ -149,9 +154,13 @@ func (s *Server) setupHandlers() {
 	userHandler := handler.NewUserHandler(svcs.UserService)
 	authHandler := handler.NewAuthHandler(s.container.Config, svcs.AuthService)
 
+	authMiddleware := handler.Middleware(middleware.Auth(s.container.Config.Token.SecretKey))
+
 	// Register API routes
 	s.router.Route("/api", func(r chi.Router) {
-		handler.RegisterUserRoutes(r, userHandler, s.middlewares)
-		handler.RegisterAuthRoutes(r, authHandler, s.middlewares)
+		r.Route("/v1", func(r chi.Router) {
+			httptransport.RegisterUserRoutes(r, userHandler, authMiddleware)
+			httptransport.RegisterAuthRoutes(r, authHandler, authMiddleware)
+		})
 	})
 }

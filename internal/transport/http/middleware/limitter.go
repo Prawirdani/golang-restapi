@@ -5,21 +5,21 @@ import (
 	"time"
 
 	m "github.com/go-chi/httprate"
-	httpx "github.com/prawirdani/golang-restapi/internal/transport/http"
+	httperr "github.com/prawirdani/golang-restapi/internal/transport/http/error"
+	"github.com/prawirdani/golang-restapi/internal/transport/http/handler"
 )
 
-func _handler(w http.ResponseWriter, r *http.Request) {
-	httpx.HandleError(w, httpx.ErrTooManyRequest)
-}
-
-func (c *Collection) RateLimit(
-	reqLimit int,
-	windowLength time.Duration,
-) func(next http.Handler) http.Handler {
+func RateLimit(reqLimit int, windowLength time.Duration) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return m.Limit(reqLimit, windowLength,
 			m.WithKeyFuncs(m.KeyByIP, m.KeyByEndpoint),
-			m.WithLimitHandler(_handler),
+			m.WithLimitHandler(handler.Handler(func(ctx *handler.Context) error {
+				return httperr.New(
+					http.StatusTooManyRequests,
+					"too many request, try again later",
+					nil,
+				)
+			})),
 		)(next)
 	}
 }

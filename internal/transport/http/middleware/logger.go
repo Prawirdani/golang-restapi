@@ -6,6 +6,6 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
-func (c *Collection) ReqLogger(next http.Handler) http.Handler {
+func ReqLogger(next http.Handler) http.Handler {
 	return chiMiddleware.Logger(next)
 }

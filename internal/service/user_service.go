@@ -10,7 +10,6 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/domain/user"
 	"github.com/prawirdani/golang-restapi/internal/infra/repository"
 	"github.com/prawirdani/golang-restapi/internal/infra/storage"
-	"github.com/prawirdani/golang-restapi/pkg/common"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
@@ -48,7 +47,7 @@ func (s *UserService) GetUserByID(ctx context.Context, userID string) (*user.Use
 	return u, nil
 }
 
-func (s *UserService) ChangeProfilePicture(ctx context.Context, file common.File) error {
+func (s *UserService) ChangeProfilePicture(ctx context.Context, file storage.File) error {
 	// 1. Retrieve User Data
 	tokenPayload, err := auth.GetAuthCtx(ctx)
 	if err != nil {

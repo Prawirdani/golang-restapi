@@ -1,4 +1,4 @@
-package request
+package error
 
 import (
 	"encoding/json"
@@ -8,15 +8,15 @@ import (
 	"strings"
 )
 
-type JsonBodyError struct {
+type JSONBindError struct {
 	Message string
 }
 
-func (e *JsonBodyError) Error() string {
+func (e *JSONBindError) Error() string {
 	return e.Message
 }
 
-func parseJsonBodyErr(err error) error {
+func ParseJSONBindErr(err error) error {
 	var syntaxError *json.SyntaxError
 	var unmarshalTypeError *json.UnmarshalTypeError
 
@@ -50,5 +50,5 @@ func parseJsonBodyErr(err error) error {
 		return err
 	}
 
-	return &JsonBodyError{Message: msg}
+	return &JSONBindError{Message: msg}
 }

@@ -2,27 +2,25 @@ package middleware
 
 import (
 	"fmt"
-	"net/http"
 
-	httpx "github.com/prawirdani/golang-restapi/internal/transport/http"
+	"github.com/prawirdani/golang-restapi/internal/transport/http/handler"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
-// Recovery Middleware
-func (c *Collection) PanicRecovery(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func PanicRecoverer(next handler.Func) handler.Func {
+	return func(c *handler.Context) error {
 		defer func() {
 			if rec := recover(); rec != nil {
-				err := fmt.Errorf("%w", rec)
+				err := fmt.Errorf("%v", rec)
 				log.Error("panic recovered",
 					err,
-					"path", r.URL.Path,
-					"method", r.Method,
+					"path", c.URLPath,
+					"method", c.Method,
 				)
-				httpx.HandleError(w, err)
+				// httpx.HandleError(w, err)
 			}
 		}()
 
-		next.ServeHTTP(w, r)
-	})
+		return next(c)
+	}
 }
