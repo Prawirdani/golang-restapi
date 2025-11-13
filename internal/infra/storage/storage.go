@@ -20,6 +20,8 @@ type Storage interface {
 	// GetURL returns a public or signed URL for an object (Non Local Storage)
 	GetURL(ctx context.Context, path string, expiry time.Duration) (string, error)
 
+	// TODO: Add GetPresignedURL, to differentitate with GetURL
+
 	// Return directory or storage public url
 	Dir() string
 

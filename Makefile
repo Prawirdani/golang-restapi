@@ -10,8 +10,8 @@ dev:
 	@air -c .air.toml
 
 # Run the message consumers
-dev\:mc:
-	@air -c .air.mc.toml
+dev\:worker:
+	@air -c .air.worker.toml
 
 tidy:
 	@go mod tidy
@@ -32,16 +32,16 @@ run:
 
 # Makesure you have goose binary installed
 migration\:status:
-	@goose -dir database/migrations postgres "host=$(DB_HOST) port=$(DB_PORT) user=$(DB_USER) password=$(DB_PASSWORD) dbname=$(DB_NAME) sslmode=disable" status
+	@goose -dir internal/infra/repository/postgres/migrations postgres "host=$(DB_HOST) port=$(DB_PORT) user=$(DB_USER) password=$(DB_PASSWORD) dbname=$(DB_NAME) sslmode=disable" status
 
 migration\:up:
-	@goose -dir database/migrations postgres "host=$(DB_HOST) port=$(DB_PORT) user=$(DB_USER) password=$(DB_PASSWORD) dbname=$(DB_NAME) sslmode=disable" up
+	@goose -dir internal/infra/repository/postgres/migrations postgres "host=$(DB_HOST) port=$(DB_PORT) user=$(DB_USER) password=$(DB_PASSWORD) dbname=$(DB_NAME) sslmode=disable" up
 
 migration\:down:
-	@goose -dir database/migrations postgres "host=$(DB_HOST) port=$(DB_PORT) user=$(DB_USER) password=$(DB_PASSWORD) dbname=$(DB_NAME) sslmode=disable" down
+	@goose -dir internal/infra/repository/postgres/migrations postgres "host=$(DB_HOST) port=$(DB_PORT) user=$(DB_USER) password=$(DB_PASSWORD) dbname=$(DB_NAME) sslmode=disable" down
 
 migration\:create:
 	@echo "Create Migration"
 	@read -p "Enter migration name: " migration_name; \
-	goose -s -dir database/migrations create $$migration_name sql
+	goose -s -dir internal/infra/repository/postgres/migrations create $$migration_name sql
 	@echo "Migration created successfully, fill in the schema in the generated file."

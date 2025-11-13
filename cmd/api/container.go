@@ -44,20 +44,14 @@ func NewContainer(
 	}
 
 	// Setup Services
-	userService := service.NewUserService(
-		cfg,
-		transactor,
-		repoFactory.User(),
-		r2PublicStorage,
-	)
+	userService := service.NewUserService(transactor, repoFactory.User(), r2PublicStorage)
 
 	authMessagePublisher := rabbitmq.NewAuthMessagePublisher(rmqconn)
 	authService := service.NewAuthService(
-		cfg,
+		cfg.Auth,
 		transactor,
 		repoFactory.User(),
 		repoFactory.Auth(),
-		userService,
 		authMessagePublisher,
 	)
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/prawirdani/golang-restapi/internal/auth"
 	"github.com/prawirdani/golang-restapi/internal/service"
 	httperr "github.com/prawirdani/golang-restapi/internal/transport/http/error"
 	"github.com/prawirdani/golang-restapi/internal/transport/http/uploader"
@@ -46,11 +47,16 @@ func (h *UserHandler) ChangeProfilePictureHandler(c *Context) error {
 		return err
 	}
 
-	if err := h.userService.ChangeProfilePicture(c.Context(), file); err != nil {
+	claims, err := auth.GetAccessTokenCtx(c.Context())
+	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, Body{
+	if err := h.userService.ChangeProfilePicture(c.Context(), claims.UserID, file); err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, &Body{
 		Message: "Profile picture updated!",
 	})
 }

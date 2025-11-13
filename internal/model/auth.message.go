@@ -1,8 +1,8 @@
-package messages
+package model
 
 import "time"
 
-type ResetPasswordEmail struct {
+type ResetPasswordEmailMessage struct {
 	To       string        `json:"to"`         // Recipient's email address
 	Name     string        `json:"name"`       // Recipient's name
 	ResetURL string        `json:"reset_url"`  // Link for resetting the password

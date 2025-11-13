@@ -5,21 +5,15 @@ import (
 
 	"github.com/prawirdani/golang-restapi/internal/auth"
 	"github.com/prawirdani/golang-restapi/internal/transport/http/handler"
-	// httpx "github.com/prawirdani/golang-restapi/internal/transport/http"
 )
 
-// Auth AccessToken authorization middleware
-//
-//	func (mw *Collection) Auth(next http.Handler) http.Handler {
-//		return handler.Middleware(mw.authHandler)(next)
-//	}
 func Auth(jwtSecret string) func(next handler.Func) handler.Func {
 	return func(next handler.Func) handler.Func {
 		return func(c *handler.Context) error {
 			var tokenStr string
 
 			// Try from cookie
-			if cookie, err := c.GetCookie(auth.ACCESS_TOKEN); err == nil {
+			if cookie, err := c.GetCookie(handler.AccessTokenCookie); err == nil {
 				tokenStr = cookie.Value
 			}
 
@@ -33,17 +27,17 @@ func Auth(jwtSecret string) func(next handler.Func) handler.Func {
 
 			// If missing, return unauthorized error
 			if tokenStr == "" {
-				return auth.ErrTokenNotProvided
+				return handler.ErrMissingAuthToken
 			}
 
 			// Validate token
-			payload, err := auth.ValidateJWT(tokenStr, jwtSecret)
+			claims, err := auth.VerifyAccessToken(jwtSecret, tokenStr)
 			if err != nil {
 				return err
 			}
 
-			// Inject auth payload into request context
-			ctx := auth.SetAuthCtx(c.Context(), payload)
+			// Inject access token claims into request context
+			ctx := auth.SetAccessTokenCtx(c.Context(), claims)
 			c = c.WithContext(ctx)
 
 			return next(c)

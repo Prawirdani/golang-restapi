@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,36 +21,34 @@ func NewAuthRepository(pool *pgxpool.Pool) *authRepository {
 	}
 }
 
-// Implements auth.Repository
-func (r *authRepository) InsertSession(ctx context.Context, sess *auth.Session) error {
-	if sess == nil {
-		log.WarnCtx(ctx, "Insert session called with nil session data")
-		return errors.New("sess is nil")
+// StoreSession implements [auth.Repository]
+func (r *authRepository) StoreSession(ctx context.Context, session *auth.Session) error {
+	if session == nil {
+		log.WarnCtx(ctx, "StoreSession called with nil session data")
+		return errors.New("session is nil")
 	}
 
-	log.DebugCtx(ctx, "Inserting session data", "args", sess)
+	log.DebugCtx(ctx, "Storing session data...", "data", session)
 
-	query := "INSERT INTO sessions(user_id, refresh_token, user_agent, expires_at, accessed_at) VALUES($1, $2, $3, $4, $5)"
+	query := "INSERT INTO sessions(id, user_id, user_agent, expires_at, accessed_at) VALUES($1, $2, $3, $4, $5)"
 	conn := r.db.GetConn(ctx)
-	if _, err := conn.Exec(ctx, query, sess.UserID, sess.RefreshToken, sess.UserAgent, sess.ExpiresAt, sess.AccessedAt); err != nil {
-		log.ErrorCtx(ctx, "Failed to insert session", err)
+	if _, err := conn.Exec(ctx, query, session.ID, session.UserID, session.UserAgent, session.ExpiresAt, session.AccessedAt); err != nil {
+		log.ErrorCtx(ctx, "Failed to store session", err)
 		return err
 	}
 
 	return nil
 }
 
-// Implements auth.Repository
-func (r *authRepository) GetUserSessionBy(
+// GetSession implements [auth.Repository]
+func (r *authRepository) GetSession(
 	ctx context.Context,
-	field string,
-	value any,
+	sessID string,
 ) (*auth.Session, error) {
-	log.DebugCtx(ctx, "Getting session data", "search_field", field, "search_arg", value)
+	log.DebugCtx(ctx, "Getting session data...", "session_id", sessID)
 
 	query := strs.Concatenate(
-		"UPDATE sessions SET accessed_at=NOW() WHERE ",
-		field,
+		"UPDATE sessions SET accessed_at=NOW() WHERE id",
 		"=$1 RETURNING *",
 	)
 
@@ -61,50 +58,43 @@ func (r *authRepository) GetUserSessionBy(
 	}
 
 	var sess auth.Session
-	if err := pgxscan.Get(ctx, conn, &sess, query, value); err != nil {
+	if err := pgxscan.Get(ctx, conn, &sess, query, sessID); err != nil {
 		if noRowsErr(err) {
 			return nil, auth.ErrSessionNotFound
 		}
-		log.ErrorCtx(ctx, "Failed to get user session", err)
+		log.ErrorCtx(ctx, "Failed to get session data", err)
 		return nil, err
 	}
 
 	return &sess, nil
 }
 
-// Implements auth.Repository
-func (r *authRepository) DeleteSession(ctx context.Context, field string, value any) error {
-	log.DebugCtx(ctx, "Deleting session data", "search_field", field, "search_arg", value)
-
-	query := strs.Concatenate("DELETE FROM sessions WHERE ", field, "=$1")
-	conn := r.db.GetConn(ctx)
-	_, err := conn.Exec(ctx, query, value)
-	if err != nil {
-		log.ErrorCtx(ctx, "Failed to delete session", err)
-		return err
+// UpdateSession implements [auth.Repository]
+func (r *authRepository) UpdateSession(ctx context.Context, session *auth.Session) error {
+	if session == nil {
+		log.WarnCtx(ctx, "UpdateSession called with nil session struct ptr")
+		return errors.New("session is nil")
 	}
-	return nil
-}
+	log.DebugCtx(ctx, "Updating session data...", "data", session)
 
-// Implements auth.Repository
-func (r *authRepository) DeleteExpiredSessions(ctx context.Context) error {
-	query := "DELETE FROM sessions WHERE expires_at < NOW()"
+	query := "UPDATE sessions SET expires_at=$1 WHERE id=$2"
 	conn := r.db.GetConn(ctx)
 
-	_, err := conn.Exec(ctx, query)
-	if err != nil {
-		log.ErrorCtx(ctx, "Failed to delete expired sessions", err)
+	if _, err := conn.Exec(ctx, query, session.ExpiresAt, session.ID); err != nil {
+		log.ErrorCtx(ctx, "Failed to updated session", err)
 		return err
 	}
 
 	return nil
 }
 
-// GetResetPasswordTokenObj implements auth.Repository.
-func (r *authRepository) GetResetPasswordTokenObj(
+// GetResetPasswordToken implements [auth.Repository]
+func (r *authRepository) GetResetPasswordToken(
 	ctx context.Context,
 	tokenValue string,
 ) (*auth.ResetPasswordToken, error) {
+	log.DebugCtx(ctx, "Getting reset password token...", "token_value", tokenValue)
+
 	query := "SELECT user_id, value, expires_at, used_at FROM reset_password_tokens WHERE value=$1"
 
 	conn := r.db.GetConn(ctx)
@@ -124,46 +114,44 @@ func (r *authRepository) GetResetPasswordTokenObj(
 	return &tokenObj, nil
 }
 
-// InsertResetPasswordToken implements auth.Repository.
-func (r *authRepository) InsertResetPasswordToken(
+// StoreResetPasswordToken implements [auth.Repository]
+func (r *authRepository) StoreResetPasswordToken(
 	ctx context.Context,
 	token *auth.ResetPasswordToken,
 ) error {
 	if token == nil {
-		log.WarnCtx(ctx, "Insert reset password token called with nil token object")
+		log.WarnCtx(ctx, "StoreResetPasswordToken called with nil token ptr")
 		return errors.New("reset password token is nil")
 	}
-
-	log.DebugCtx(ctx, "Inserting reset password token", "args", token)
+	log.DebugCtx(ctx, "Storing reset password token...", "data", token)
 
 	query := "INSERT INTO reset_password_tokens(user_id, value, expires_at) VALUES($1, $2, $3)"
 	conn := r.db.GetConn(ctx)
 
-	if _, err := conn.Exec(ctx, query, token.UserId, token.Value, token.ExpiresAt); err != nil {
-		log.ErrorCtx(ctx, "Failed to insert reset password token", err)
+	if _, err := conn.Exec(ctx, query, token.UserID, token.Value, token.ExpiresAt); err != nil {
+		log.ErrorCtx(ctx, "Failed to store reset password token", err)
 		return err
 	}
 
 	return nil
 }
 
-// InvalidateResetPasswordToken implements auth.Repository.
-func (r *authRepository) InvalidateResetPasswordToken(
+// UpdateResetPasswordToken implements [auth.Repository]
+func (r *authRepository) UpdateResetPasswordToken(
 	ctx context.Context,
 	token *auth.ResetPasswordToken,
 ) error {
 	if token == nil {
-		log.WarnCtx(ctx, "Invalidate reset password token called with nil token object")
+		log.WarnCtx(ctx, "UpdateResetPasswordToken called with nil token object")
 		return errors.New("reset password token is nil")
 	}
+	log.DebugCtx(ctx, "Updating reset password token data...", "data", token)
 
 	query := "UPDATE reset_password_tokens SET used_at=$1 WHERE value=$2"
 	conn := r.db.GetConn(ctx)
 
-	now := time.Now()
-
-	if _, err := conn.Exec(ctx, query, now, token.Value); err != nil {
-		log.ErrorCtx(ctx, "Failed to invalidate reset password token", err)
+	if _, err := conn.Exec(ctx, query, token.UsedAt, token.Value); err != nil {
+		log.ErrorCtx(ctx, "Failed to update reset password token", err)
 		return err
 	}
 

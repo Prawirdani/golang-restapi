@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/prawirdani/golang-restapi/internal/messages"
+	"github.com/prawirdani/golang-restapi/internal/model"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -42,7 +42,7 @@ func NewAuthMessagePublisher(conn *amqp.Connection) *AuthMessagePublisher {
 // Implements auth.MessagePublisher
 func (mp *AuthMessagePublisher) SendResetPasswordEmail(
 	ctx context.Context,
-	msg messages.ResetPasswordEmail,
+	msg model.ResetPasswordEmailMessage,
 ) error {
 	// NOTE: For low to moderate traffic is okay to open channel per function call, but when the traffic goes up it slightly more overhead per publish (channel open/close is a network round-trip)
 	// TODO: Use thread safe channel or use channel pool

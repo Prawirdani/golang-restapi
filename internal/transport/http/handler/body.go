@@ -17,7 +17,7 @@ type Body struct {
 }
 
 // MarshalJSON implements json.Marshaller to prevent using pointer on Body fields while preserving the field on the body with nullable ability
-func (b Body) MarshalJSON() ([]byte, error) {
+func (b *Body) MarshalJSON() ([]byte, error) {
 	m := map[string]any{
 		"data": b.Data,
 	}

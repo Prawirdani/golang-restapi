@@ -11,8 +11,9 @@ import (
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/infra/messaging/rabbitmq"
-	"github.com/prawirdani/golang-restapi/internal/infra/repository/postgres"
+	"github.com/prawirdani/golang-restapi/internal/transport/amqp/consumer"
 	"github.com/prawirdani/golang-restapi/pkg/log"
+	"github.com/prawirdani/golang-restapi/pkg/mailer"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -23,31 +24,12 @@ func main() {
 	}
 	log.SetLogger(log.NewZerologAdapter(cfg))
 
-	pgpool, err := postgres.NewPool(cfg.Postgres)
-	if err != nil {
-		log.Error("Failed to create postgres connection", err)
-		os.Exit(1)
-	}
-	defer pgpool.Close()
-
 	rmqconn, err := initRabbitMQ(cfg.RabbitMQURL)
 	if err != nil {
 		log.Error("Failed to init rabbit mq", err)
 		os.Exit(1)
 	}
 	defer rmqconn.Close()
-
-	container, err := NewContainer(cfg, pgpool, rmqconn)
-	if err != nil {
-		log.Error("Failed to create container", err)
-		os.Exit(1)
-	}
-
-	server, err := NewServer(container)
-	if err != nil {
-		log.Error("Failed to create server", err)
-		os.Exit(1)
-	}
 
 	// Context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
@@ -61,12 +43,12 @@ func main() {
 		cancel()
 	}()
 
-	// Run HTTP server
-	if err := server.Start(ctx); err != nil {
-		log.Error("Server exited with error", err)
+	if err := startMessageConsumers(ctx, rmqconn, cfg); err != nil && err != context.Canceled {
+		log.Error("Worker exited with error", err)
+		cancel()
 	}
 
-	log.Info("Application exited gracefully")
+	log.Info("Worker exited gracefully")
 }
 
 func initRabbitMQ(url string) (*amqp.Connection, error) {
@@ -83,4 +65,40 @@ func initRabbitMQ(url string) (*amqp.Connection, error) {
 	}
 
 	return conn, nil
+}
+
+// Start message consumers, this function is blocking, so run it inside seperate goroutine
+func startMessageConsumers(
+	ctx context.Context,
+	conn *amqp.Connection,
+	cfg *config.Config,
+) error {
+	m := mailer.New(cfg.SMTP)
+	authConsumers := consumer.NewAuthMessageConsumer(m)
+	consumerClient := consumer.NewConsumerClient(conn)
+
+	errCh := make(chan error, 1)
+
+	// Run consumers in background
+	// TODO: As things grows, consider using slice of [topology+handler] and run all of it through loops
+	go func() {
+		if err := consumerClient.Consume(
+			ctx,
+			rabbitmq.ResetPasswordEmailTopology,
+			authConsumers.EmailResetPasswordHandler,
+		); err != nil {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+
+	case err := <-errCh:
+		if err != nil {
+			return fmt.Errorf("consumer error: %w", err)
+		}
+		return nil
+	}
 }

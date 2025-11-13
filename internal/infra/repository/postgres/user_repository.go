@@ -7,7 +7,7 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/prawirdani/golang-restapi/internal/domain/user"
+	"github.com/prawirdani/golang-restapi/internal/entity/user"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 	strs "github.com/prawirdani/golang-restapi/pkg/strings"
 )
@@ -22,14 +22,14 @@ func NewUserRepository(connPool *pgxpool.Pool) *userRepository {
 	}
 }
 
-// Implements user.Repository
-func (r *userRepository) Insert(ctx context.Context, u *user.User) error {
+// Store implements [user.Repository].
+func (r *userRepository) Store(ctx context.Context, u *user.User) error {
 	if u == nil {
-		log.WarnCtx(ctx, "Insert user called with nil user")
+		log.WarnCtx(ctx, "Store called with nil user")
 		return errors.New("user is nil")
 	}
 
-	log.DebugCtx(ctx, "Insert user into db", "args", u)
+	log.DebugCtx(ctx, "Storing user data...", "data", u)
 
 	query := "INSERT INTO users(id, name, email, phone, password, profile_image) VALUES($1, $2, $3, $4, $5, $6)"
 	conn := r.db.GetConn(ctx)
@@ -40,52 +40,33 @@ func (r *userRepository) Insert(ctx context.Context, u *user.User) error {
 			return user.ErrEmailExist
 		}
 
-		log.ErrorCtx(ctx, "Failed to insert user", err)
+		log.ErrorCtx(ctx, "Failed to store user", err)
 		return err
 	}
 	return nil
 }
 
-// Implements user.Repository
-func (r *userRepository) GetUserBy(
-	ctx context.Context,
-	field string,
-	value any,
-) (*user.User, error) {
-	var u user.User
-	query := strs.Concatenate(
-		"SELECT id, name, email, phone, password, profile_image, created_at, updated_at, deleted_at FROM users WHERE ",
-		field,
-		"=$1",
-	)
-	conn := r.db.GetConn(ctx)
-	if r.db.IsTxConn(conn) {
-		query += "\nFOR UPDATE"
-	}
-
-	log.DebugCtx(ctx, "Get user data", "search_field", field, "search_arg", value)
-	if err := pgxscan.Get(ctx, conn, &u, query, value); err != nil {
-		if noRowsErr(err) {
-			return nil, user.ErrUserNotFound
-		}
-		log.ErrorCtx(ctx, "Failed to get user", err, "field", field)
-		return nil, err
-	}
-
-	return &u, nil
+// GetByEmail implements [user.Repository].
+func (r *userRepository) GetByEmail(ctx context.Context, email string) (*user.User, error) {
+	return r.getUserBy(ctx, "email", email)
 }
 
-// Implements user.Repository.
-func (r *userRepository) UpdateUser(ctx context.Context, u *user.User) error {
+// GetByID implements [user.Repository].
+func (r *userRepository) GetByID(ctx context.Context, userID string) (*user.User, error) {
+	return r.getUserBy(ctx, "id", userID)
+}
+
+// Update implements [user.Repository].
+func (r *userRepository) Update(ctx context.Context, u *user.User) error {
 	if u == nil {
-		log.WarnCtx(ctx, "Update user called with nil user")
+		log.WarnCtx(ctx, "Update called with nil user")
 		return errors.New("user is nil")
 	}
 
-	log.DebugCtx(ctx, "Updating user data", "args", u)
+	log.DebugCtx(ctx, "Updating user data...", "data", u)
 
 	query := "UPDATE users SET name=$1, email=$2, phone=$3, password=$4, profile_image=$5, updated_at=$6 WHERE id=$7"
-	updateTime := time.Now()
+	updatedAt := time.Now()
 
 	conn := r.db.GetConn(ctx)
 	_, err := conn.Exec(
@@ -96,7 +77,7 @@ func (r *userRepository) UpdateUser(ctx context.Context, u *user.User) error {
 		u.Phone,
 		u.Password,
 		u.ProfileImage,
-		updateTime,
+		updatedAt,
 		u.ID,
 	)
 	if err != nil {
@@ -111,20 +92,19 @@ func (r *userRepository) UpdateUser(ctx context.Context, u *user.User) error {
 	return nil
 }
 
-// Implements user.Repository
-func (r *userRepository) DeleteUser(ctx context.Context, u *user.User) error {
+// Delete implements [user.Repository].
+func (r *userRepository) Delete(ctx context.Context, u *user.User) error {
 	if u == nil {
 		log.WarnCtx(ctx, "Delete user called with nil user")
 		return errors.New("user is nil")
 	}
 
-	log.WarnCtx(ctx, "Deleting user data", "id", u.ID.String(), "name", u.Name)
-
 	query := "UPDATE users SET deleted_at=$1 WHERE id=$2"
 	conn := r.db.GetConn(ctx)
 
-	deleteTime := time.Now()
+	log.DebugCtx(ctx, "Deleting user data (soft delete)...", "id", u.ID.String())
 
+	deleteTime := time.Now()
 	_, err := conn.Exec(ctx, query, deleteTime, u.ID)
 	if err != nil {
 		log.ErrorCtx(ctx, "Failed to delete user", err)
@@ -132,4 +112,33 @@ func (r *userRepository) DeleteUser(ctx context.Context, u *user.User) error {
 	}
 
 	return nil
+}
+
+func (r *userRepository) getUserBy(
+	ctx context.Context,
+	field string,
+	value any,
+) (*user.User, error) {
+	log.DebugCtx(ctx, "Getting user data...", "search_field", field, "search_arg", value)
+
+	query := strs.Concatenate(
+		"SELECT id, name, email, phone, password, profile_image, created_at, updated_at, deleted_at FROM users WHERE ",
+		field,
+		"=$1",
+	)
+	conn := r.db.GetConn(ctx)
+	if r.db.IsTxConn(conn) {
+		query += "\nFOR UPDATE"
+	}
+
+	var u user.User
+	if err := pgxscan.Get(ctx, conn, &u, query, value); err != nil {
+		if noRowsErr(err) {
+			return nil, user.ErrNotFound
+		}
+		log.ErrorCtx(ctx, "Failed to get user", err, "field", field)
+		return nil, err
+	}
+
+	return &u, nil
 }

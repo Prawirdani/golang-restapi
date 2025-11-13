@@ -17,21 +17,21 @@ func TestNewSession(t *testing.T) {
 	session, err := NewSession(mockUserID, mockUserAgent, mockExpiry)
 	require.NoError(t, err)
 
-	require.NotEqual(t, uuid.Nil, session.RefreshToken)
+	require.NotEqual(t, uuid.Nil, session.ID)
 	assert.Equal(t, mockUserID, session.UserID)
 	assert.Equal(t, mockUserAgent, session.UserAgent)
 	assert.WithinDuration(t, time.Now().Add(mockExpiry), session.ExpiresAt, 1*time.Second)
 
-	t.Run("Invalid-Expiry", func(t *testing.T) {
-		_, err := NewSession(mockUserID, mockUserAgent, 0)
+	t.Run("Invalid-TTL", func(t *testing.T) {
+		_, err := NewSession(mockUserID, mockUserAgent, -5*time.Minute)
 		require.Error(t, err)
-		assert.Equal(t, "expiry must be greater than 0", err.Error())
+		assert.ErrorIs(t, err, ErrSessionInvalidTTL)
 	})
 
 	t.Run("Invalid-UserID", func(t *testing.T) {
 		_, err := NewSession(uuid.Nil, mockUserAgent, mockExpiry)
 		require.Error(t, err)
-		assert.Equal(t, "user_id must not be empty", err.Error())
+		assert.ErrorIs(t, err, ErrSessionEmptyUID)
 	})
 
 	t.Run("Expired", func(t *testing.T) {

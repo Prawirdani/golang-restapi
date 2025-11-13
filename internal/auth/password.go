@@ -15,7 +15,7 @@ func HashPassword(plain string) ([]byte, error) {
 	return hashedPassword, nil
 }
 
-// Verify / Decrypt user password
+// VerifyPassword Verify / Decrypt user password
 func VerifyPassword(plain, hashed string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(hashed), []byte(plain))
 	if err != nil {

@@ -18,8 +18,8 @@ services:
       - "8080:80"
       - "8181" # For status
     volumes:
-      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./infra/nginx/api.conf:/etc/nginx/conf.d/api.conf:ro
+      - ./deployment/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deployment/nginx/api.conf:/etc/nginx/conf.d/api.conf:ro
       - nginx-logs:/var/log/nginx
     depends_on:
       - api
@@ -30,7 +30,7 @@ services:
     ports:
       - "9090"
     volumes:
-      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./deployment/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     depends_on:
       - api
 
@@ -41,8 +41,8 @@ services:
       - GF_SECURITY_ADMIN_USER=admin # Admin username
       - GF_SECURITY_ADMIN_PASSWORD=admin # Admin password
     volumes:
-      - ./infra/grafana/provisioning/:/etc/grafana/provisioning
-      - ./infra/grafana/dashboards/:/var/lib/grafana/dashboards
+      - ./deployment/grafana/provisioning/:/etc/grafana/provisioning
+      - ./deployment/grafana/dashboards/:/var/lib/grafana/dashboards
     ports:
       - "3000:3000"
     depends_on:

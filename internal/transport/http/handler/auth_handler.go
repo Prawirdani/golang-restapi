@@ -15,12 +15,18 @@ import (
 
 type AuthHandler struct {
 	authService *service.AuthService
+	userService *service.UserService
 	cfg         *config.Config
 }
 
-func NewAuthHandler(cfg *config.Config, us *service.AuthService) *AuthHandler {
+func NewAuthHandler(
+	cfg *config.Config,
+	authService *service.AuthService,
+	userService *service.UserService,
+) *AuthHandler {
 	return &AuthHandler{
-		authService: us,
+		authService: authService,
+		userService: userService,
 		cfg:         cfg,
 	}
 }
@@ -36,7 +42,7 @@ func (h *AuthHandler) RegisterHandler(c *Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusCreated, Body{
+	return c.JSON(http.StatusCreated, &Body{
 		Message: "Registration successful",
 	})
 }
@@ -49,39 +55,44 @@ func (h *AuthHandler) LoginHandler(c *Context) error {
 	}
 	reqBody.UserAgent = c.Get("User-Agent")
 
-	accessToken, refreshToken, err := h.authService.Login(c.Context(), reqBody)
+	accessToken, sessID, err := h.authService.Login(c.Context(), reqBody)
 	if err != nil {
 		return err
 	}
 
 	tp := model.TokenPair{
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		RefreshToken: sessID,
 	}
 
-	c.SetCookie(h.createTokenCookie(accessToken, auth.ACCESS_TOKEN))
-	c.SetCookie(h.createTokenCookie(refreshToken, auth.REFRESH_TOKEN))
+	c.SetCookie(h.createTokenCookie(accessToken, AccessTokenCookie))
+	c.SetCookie(h.createTokenCookie(sessID, RefreshTokenCookie))
 
-	return c.JSON(200, Body{
+	return c.JSON(200, &Body{
 		Data: tp,
 	})
 }
 
-func (h *AuthHandler) CurrentUserHandler(c *Context) error {
-	user, err := h.authService.IdentifyUser(c.Context())
+func (h *AuthHandler) GetCurrentUserHandler(c *Context) error {
+	claims, err := auth.GetAccessTokenCtx(c.Context())
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, Body{
-		Data: user,
+	usr, err := h.userService.GetUserByID(c.Context(), claims.UserID)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, &Body{
+		Data: usr,
 	})
 }
 
 func (h *AuthHandler) RefreshTokenHandler(c *Context) error {
 	var refreshToken string
 
-	if cookie, err := c.GetCookie(auth.REFRESH_TOKEN); err == nil {
+	if cookie, err := c.GetCookie(RefreshTokenCookie); err == nil {
 		refreshToken = cookie.Value
 	}
 
@@ -95,7 +106,7 @@ func (h *AuthHandler) RefreshTokenHandler(c *Context) error {
 
 	// If token is still empty, return an error
 	if refreshToken == "" {
-		return auth.ErrTokenNotProvided
+		return ErrMissingAuthToken
 	}
 
 	newAccessToken, err := h.authService.RefreshAccessToken(c.Context(), refreshToken)
@@ -104,28 +115,28 @@ func (h *AuthHandler) RefreshTokenHandler(c *Context) error {
 	}
 
 	d := map[string]string{
-		auth.ACCESS_TOKEN: newAccessToken,
+		AccessTokenCookie: newAccessToken,
 	}
 
-	c.SetCookie(h.createTokenCookie(newAccessToken, auth.ACCESS_TOKEN))
+	c.SetCookie(h.createTokenCookie(newAccessToken, AccessTokenCookie))
 
-	return c.JSON(http.StatusOK, Body{
+	return c.JSON(http.StatusOK, &Body{
 		Data:    d,
-		Message: "Token refreshed",
+		Message: "Access token refreshed",
 	})
 }
 
 func (h *AuthHandler) LogoutHandler(c *Context) error {
 	// Retrieve the refresh token from the request cookie
 	var refreshToken string
-	if cookie, err := c.GetCookie(auth.REFRESH_TOKEN); err == nil {
+	if cookie, err := c.GetCookie(RefreshTokenCookie); err == nil {
 		refreshToken = cookie.Value
 	}
 
 	_ = h.authService.Logout(c.Context(), refreshToken)
 	h.removeTokenCookies(c)
 
-	return c.JSON(http.StatusOK, Body{
+	return c.JSON(http.StatusOK, &Body{
 		Message: "Logged out",
 	})
 }
@@ -141,7 +152,7 @@ func (h *AuthHandler) ForgotPasswordHandler(c *Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, Body{
+	return c.JSON(http.StatusOK, &Body{
 		Message: "Password recovery email have been sent!",
 	})
 }
@@ -154,7 +165,7 @@ func (h *AuthHandler) GetResetPasswordTokenHandler(c *Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, Body{
+	return c.JSON(http.StatusOK, &Body{
 		Data: tokenObj,
 	})
 }
@@ -170,8 +181,8 @@ func (h *AuthHandler) ResetPasswordHandler(c *Context) error {
 		return err
 	}
 
-	return c.JSON(200, Body{
-		Message: "Password has been reset successfuly",
+	return c.JSON(200, &Body{
+		Message: "Password has been reset successfully!",
 	})
 }
 
@@ -182,12 +193,17 @@ func (h *AuthHandler) ChangePasswordHandler(c *Context) error {
 		return err
 	}
 
-	if err := h.authService.ChangePassword(c.Context(), reqBody); err != nil {
+	claims, err := auth.GetAccessTokenCtx(c.Context())
+	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, Body{
-		Message: "Password has been reset successfuly!",
+	if err := h.authService.ChangePassword(c.Context(), claims.UserID, reqBody); err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, &Body{
+		Message: "Password has been changed successfully!",
 	})
 }
 
@@ -195,9 +211,9 @@ func (h *AuthHandler) createTokenCookie(
 	token string,
 	label string,
 ) *http.Cookie {
-	expiry := h.cfg.Token.AccessTokenExpiry
-	if label == auth.REFRESH_TOKEN {
-		expiry = h.cfg.Token.RefreshTokenExpiry
+	expiry := h.cfg.Auth.JwtTTL
+	if label == RefreshTokenCookie {
+		expiry = h.cfg.Auth.SessionTTL
 	}
 
 	currTime := time.Now()
@@ -213,8 +229,8 @@ func (h *AuthHandler) createTokenCookie(
 }
 
 func (h *AuthHandler) removeTokenCookies(c *Context) {
-	atCookie := &http.Cookie{
-		Name:     auth.ACCESS_TOKEN,
+	accessTokenCookie := &http.Cookie{
+		Name:     AccessTokenCookie,
 		Value:    "",
 		Expires:  time.Unix(0, 0),
 		HttpOnly: h.cfg.IsProduction(),
@@ -222,9 +238,9 @@ func (h *AuthHandler) removeTokenCookies(c *Context) {
 		Path:     "/",
 	}
 
-	rtCookie := *atCookie
-	rtCookie.Name = auth.REFRESH_TOKEN
+	sessCookie := *accessTokenCookie
+	sessCookie.Name = RefreshTokenCookie
 
-	c.SetCookie(atCookie)
-	c.SetCookie(&rtCookie)
+	c.SetCookie(accessTokenCookie)
+	c.SetCookie(&sessCookie)
 }

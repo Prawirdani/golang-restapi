@@ -49,7 +49,7 @@ func NewServer(container *Container) (*Server, error) {
 	router.Use(middleware.Cors(
 		container.Config.Cors.Origins,
 		container.Config.Cors.Credentials,
-		container.Config.IsProduction(),
+		!container.Config.IsProduction(),
 	))
 
 	// Custom 404 and 405 handlers
@@ -152,9 +152,9 @@ func (s *Server) setupHandlers() {
 
 	// Initialize Handlers
 	userHandler := handler.NewUserHandler(svcs.UserService)
-	authHandler := handler.NewAuthHandler(s.container.Config, svcs.AuthService)
+	authHandler := handler.NewAuthHandler(s.container.Config, svcs.AuthService, svcs.UserService)
 
-	authMiddleware := handler.Middleware(middleware.Auth(s.container.Config.Token.SecretKey))
+	authMiddleware := handler.Middleware(middleware.Auth(s.container.Config.Auth.JwtSecret))
 
 	// Register API routes
 	s.router.Route("/api", func(r chi.Router) {

@@ -14,7 +14,7 @@ Personal Go RESTful API template with common 3 Layered architecture with followi
 - Message Queueing: [RabbitMQ](https://github.com/rabbitmq/amqp091-go)
 - SMTP Mailing: [gomail.v2](https://pkg.go.dev/gopkg.in/gomail.v2)
 - ENV Loader: [godotenv](https://github.com/joho/godotenv)
-- Logger: std `log/slog`
+- Logger: std `log/slog` & [zerolog](https://github.com/rs/zerolog) (Swappable)
 - Auth: [jwt](https://github.com/golang-jwt/jwt)
 - Testing: [testify](https://github.com/stretchr/testify)
 - Metrics & Instrumentation:

@@ -5,29 +5,24 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/prawirdani/golang-restapi/config"
-	"github.com/prawirdani/golang-restapi/internal/auth"
-	"github.com/prawirdani/golang-restapi/internal/domain/user"
+	"github.com/prawirdani/golang-restapi/internal/entity/user"
 	"github.com/prawirdani/golang-restapi/internal/infra/repository"
 	"github.com/prawirdani/golang-restapi/internal/infra/storage"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
 type UserService struct {
-	cfg          *config.Config
 	tx           repository.Transactor
 	userRepo     user.Repository
 	imageStorage storage.Storage
 }
 
 func NewUserService(
-	cfg *config.Config,
 	transactor repository.Transactor,
 	userRepo user.Repository,
 	imageStorage storage.Storage,
 ) *UserService {
 	return &UserService{
-		cfg:          cfg,
 		tx:           transactor,
 		userRepo:     userRepo,
 		imageStorage: imageStorage,
@@ -35,7 +30,7 @@ func NewUserService(
 }
 
 func (s *UserService) GetUserByID(ctx context.Context, userID string) (*user.User, error) {
-	u, err := s.userRepo.GetUserBy(ctx, "id", userID)
+	u, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -47,22 +42,34 @@ func (s *UserService) GetUserByID(ctx context.Context, userID string) (*user.Use
 	return u, nil
 }
 
-func (s *UserService) ChangeProfilePicture(ctx context.Context, file storage.File) error {
-	// 1. Retrieve User Data
-	tokenPayload, err := auth.GetAuthCtx(ctx)
+func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*user.User, error) {
+	u, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	if err := s.assignProfileImageURL(ctx, u); err != nil {
+		return nil, err
+	}
+
+	return u, nil
+}
+
+func (s *UserService) ChangeProfilePicture(
+	ctx context.Context,
+	userID string,
+	file storage.File,
+) error {
 	return s.tx.Transact(ctx, func(ctx context.Context) error {
-		u, err := s.userRepo.GetUserBy(ctx, "id", tokenPayload["id"].(string))
+		u, err := s.userRepo.GetByID(ctx, userID)
 		if err != nil {
 			return err
 		}
 
-		// 2. Prev image name + storage path
+		//  Prev image name + storage path
 		prevImage := s.buildProfileImagePath(u.ProfileImage)
 
-		// 3. Set New Image name using UUID
+		//  Set New Image name using UUID
 		if err := file.SetName(uuid.NewString()); err != nil {
 			log.ErrorCtx(ctx, "Failed to set profile image file name", err)
 			return err
@@ -71,15 +78,15 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file storage.Fil
 		newImageName := file.Name()
 		newImagePath := s.buildProfileImagePath(newImageName)
 
-		// 4. Store new image to storage
+		//  Store new image to storage
 		if err := s.imageStorage.Put(ctx, newImagePath, file, file.ContentType()); err != nil {
 			log.ErrorCtx(ctx, "Failed store new profile image", err)
 			return err
 		}
 
-		// 5. Update user image_profile field and save to db
+		//  Update user image_profile field and save to db
 		u.ProfileImage = newImageName
-		if err := s.userRepo.UpdateUser(ctx, u); err != nil {
+		if err := s.userRepo.Update(ctx, u); err != nil {
 			// If Fail, Rollback & Delete Latest Image from storage
 			if err := s.imageStorage.Delete(ctx, newImagePath); err != nil {
 				// Non-Fatal
@@ -90,7 +97,7 @@ func (s *UserService) ChangeProfilePicture(ctx context.Context, file storage.Fil
 
 		// -- Cleanup old image (Non Fatal: Should not rollback if error)
 		go func(prevImage string) {
-			if prevImage != s.buildProfileImagePath(user.DEFAULT_PROFILE_IMG) {
+			if prevImage != s.buildProfileImagePath(user.DefaultProfilePictureFile) {
 				if err := s.imageStorage.Delete(context.Background(), prevImage); err != nil {
 					log.WarnCtx(ctx, "Failed cleanup old profile image", "error", err.Error())
 				}

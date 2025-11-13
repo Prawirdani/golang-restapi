@@ -15,25 +15,25 @@ type HeaderParams struct {
 }
 
 type Mailer struct {
-	Templates *Templates
-	dialer    *gomail.Dialer
-	cfg       *config.SMTPConfig
+	Templates  *Templates
+	dialer     *gomail.Dialer
+	senderName string
 }
 
-func New(cfg *config.Config) *Mailer {
+func New(cfg config.SMTP) *Mailer {
 	dialer := gomail.NewDialer(
-		cfg.SMTP.Host,
-		cfg.SMTP.Port,
-		cfg.SMTP.AuthEmail,
-		cfg.SMTP.AuthPassword,
+		cfg.Host,
+		cfg.Port,
+		cfg.AuthEmail,
+		cfg.AuthPassword,
 	)
 
 	templates := parseTemplates()
 
 	return &Mailer{
-		dialer:    dialer,
-		cfg:       &cfg.SMTP,
-		Templates: templates,
+		dialer:     dialer,
+		Templates:  templates,
+		senderName: cfg.SenderName,
 	}
 }
 
@@ -52,7 +52,7 @@ func (m *Mailer) Send(headerParams HeaderParams, body bytes.Buffer) error {
 func (m *Mailer) createHeader(params HeaderParams) *gomail.Message {
 	mail := gomail.NewMessage()
 
-	mail.SetHeader("From", m.cfg.SenderName)
+	mail.SetHeader("From", m.senderName)
 	mail.SetHeader("To", params.To...)
 	mail.SetHeader("Cc", params.Cc...)
 	mail.SetHeader("Subject", params.Subject)

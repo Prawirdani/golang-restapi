@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"time"
 
@@ -11,53 +9,82 @@ import (
 )
 
 var (
-	ErrSessionExpired  = errorsx.Forbidden("session expired")
-	ErrSessionNotFound = errorsx.NotExists("session not found, please login to proceed")
+	ErrSessionExpired    = errorsx.Forbidden("session expired")
+	ErrSessionNotFound   = errorsx.NotExists("session not found, please login to proceed")
+	ErrSessionEmptyUID   = errors.New("user_id must not be empty")
+	ErrSessionInvalidTTL = errors.New("session ttl must be greater than 0")
 )
 
+// Session represents a long-lived refresh token stored server-side.
+// The session ID is stored in an httpOnly cookie on the client and used to generate
+// new access tokens when they expire. Sessions are stored in the database and can
+// be revoked server-side for immediate logout.
+//
+// Architecture:
+//   - Access Token (JWT): Short-lived (e.g., 15 min), sent with API requests
+//   - Session ID: Long-lived (e.g., 30 days), stored in httpOnly cookie, used to refresh access tokens
+//
+// Security Features:
+//   - Server-side revocation (logout invalidates session immediately)
+//   - User agent tracking (detect token theft across devices)
+//   - UUID v7 for session IDs (time-ordered for better DB performance)
 type Session struct {
-	ID           int       `db:"id"`
-	UserID       uuid.UUID `db:"user_id"`
-	RefreshToken string    `db:"refresh_token"`
-	UserAgent    string    `db:"user_agent"`
-	ExpiresAt    time.Time `db:"expires_at"`
-	AccessedAt   time.Time `db:"accessed_at"`
+	// ID is the session identifier used as the refresh token.
+	// This UUID v7 is exposed to clients via httpOnly cookies and used
+	// to request new access tokens from refresh token endpoint.
+	ID uuid.UUID `db:"id"`
+
+	// UserID is the user who owns this session.
+	UserID uuid.UUID `db:"user_id"`
+
+	// UserAgent stores the client's User-Agent header for security tracking.
+	// Used to detect session hijacking when requests come from different devices.
+	UserAgent string `db:"user_agent"`
+
+	// ExpiresAt is when this refresh token expires.
+	// After expiration, the user must re-authenticate with credentials.
+	ExpiresAt time.Time `db:"expires_at"`
+
+	// AccessedAt tracks the last time this session was used to refresh an access token.
+	// Updated on each successful refresh request for activity monitoring.
+	AccessedAt time.Time `db:"accessed_at"`
 }
 
+// NewSession creates a new session for the given user.
+// The session ID serves as a refresh token and should be stored in an httpOnly cookie.
 func NewSession(
 	userID uuid.UUID,
 	userAgent string,
-	expiry time.Duration,
+	ttl time.Duration,
 ) (*Session, error) {
-	if expiry <= 0 {
-		return nil, errors.New("expiry must be greater than 0")
+	if ttl <= 0 {
+		return nil, ErrSessionInvalidTTL
 	}
-
 	if userID == uuid.Nil {
-		return nil, errors.New("user_id must not be empty")
+		return nil, ErrSessionEmptyUID
 	}
 
-	// Generate a random 32 bytes for refresh token
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
+	sessID, err := uuid.NewV7()
+	if err != nil {
 		return nil, err
 	}
 
-	refreshToken := hex.EncodeToString(bytes)
-
-	currentTime := time.Now()
+	now := time.Now()
 	sess := Session{
-		UserID:       userID,
-		RefreshToken: refreshToken,
-		UserAgent:    userAgent,
-		ExpiresAt:    currentTime.Add(expiry),
-		AccessedAt:   currentTime,
+		ID:         sessID,
+		UserID:     userID,
+		UserAgent:  userAgent,
+		ExpiresAt:  now.Add(ttl),
+		AccessedAt: now,
 	}
-
 	return &sess, nil
 }
 
-// IsExpired checks if the refresh token from the session has expired.
+// IsExpired checks if the session (refresh token) has expired.
+// Expired sessions cannot be used to generate new access tokens and
+// require the user to re-authenticate with their credentials.
+//
+// Returns true if the current time is past ExpiresAt.
 func (s Session) IsExpired() bool {
 	return s.ExpiresAt.Before(time.Now())
 }
