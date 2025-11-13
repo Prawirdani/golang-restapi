@@ -25,19 +25,3 @@ Personal Go RESTful API template with common 3 Layered architecture with followi
     - Development live reloading: [air](https://github.com/cosmtrek/air)
     - Linters: [golangci-lint](https://github.com/golangci/golangci-lint)
 
-## RMQ Steps: Declare Exchange -> Declare Queues -> Setup Producer, Setup
-- Put consumer/handler on same level as http handler
-- Treat message producer like repository, (UserRepository = UserMessageProducer)
-
-## Metrics:
-- Multiple node? merge metrics?
-- Version, Env 
-- Total request
-- Request by status code (total)
-- RPS
-- P99, p95, p90
-- cpu & mem usage
-- error rate
-- error request by path
-
-
