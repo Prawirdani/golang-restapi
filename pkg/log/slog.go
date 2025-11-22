@@ -80,7 +80,7 @@ func (s *SlogAdapter) Warn(msg string, args ...any) {
 }
 
 func (s *SlogAdapter) Error(msg string, err error, args ...any) {
-	args = append(args, []string{"error", err.Error()})
+	args = append(args, "error", err.Error())
 	s.logWithSkip(context.Background(), slog.LevelError, 2, msg, args...)
 }
 
@@ -97,7 +97,7 @@ func (s *SlogAdapter) WarnCtx(ctx context.Context, msg string, args ...any) {
 }
 
 func (s *SlogAdapter) ErrorCtx(ctx context.Context, msg string, err error, args ...any) {
-	args = append(args, []string{"error", err.Error()})
+	args = append(args, "error", err.Error())
 	s.buildContextualLogger(ctx, slog.LevelError, msg, args...)
 }
 

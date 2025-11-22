@@ -71,7 +71,7 @@ func (r *R2) Put(
 	reader io.Reader,
 	contentType string,
 ) error {
-	_, err := r.client.PutObject(context.TODO(), &s3.PutObjectInput{
+	_, err := r.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(r.bucket),
 		Key:         aws.String(path),
 		Body:        reader,
