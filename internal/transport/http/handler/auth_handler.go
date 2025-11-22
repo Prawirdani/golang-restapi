@@ -34,7 +34,7 @@ func NewAuthHandler(
 func (h *AuthHandler) RegisterHandler(c *Context) error {
 	var reqBody model.CreateUserInput
 	if err := c.BindValidate(&reqBody); err != nil {
-		log.ErrorCtx(c.Context(), BindValidateWarnLog, err)
+		log.ErrorCtx(c.Context(), "Failed to bind & validate create user input", err)
 		return err
 	}
 
@@ -50,7 +50,7 @@ func (h *AuthHandler) RegisterHandler(c *Context) error {
 func (h *AuthHandler) LoginHandler(c *Context) error {
 	var reqBody model.LoginInput
 	if err := c.BindValidate(&reqBody); err != nil {
-		log.ErrorCtx(c.Context(), BindValidateWarnLog, err)
+		log.ErrorCtx(c.Context(), "Failed to bind & validate login input", err)
 		return err
 	}
 	reqBody.UserAgent = c.Get("User-Agent")
@@ -144,7 +144,7 @@ func (h *AuthHandler) LogoutHandler(c *Context) error {
 func (h *AuthHandler) ForgotPasswordHandler(c *Context) error {
 	var reqBody model.ForgotPasswordInput
 	if err := c.BindValidate(&reqBody); err != nil {
-		log.ErrorCtx(c.Context(), BindValidateWarnLog, err)
+		log.ErrorCtx(c.Context(), "Failed to bind & validate forgot password input", err)
 		return err
 	}
 
@@ -173,7 +173,7 @@ func (h *AuthHandler) GetResetPasswordTokenHandler(c *Context) error {
 func (h *AuthHandler) ResetPasswordHandler(c *Context) error {
 	var reqBody model.ResetPasswordInput
 	if err := c.BindValidate(&reqBody); err != nil {
-		log.ErrorCtx(c.Context(), BindValidateWarnLog, err)
+		log.ErrorCtx(c.Context(), "Failed to bind & validate reset password input", err)
 		return err
 	}
 
@@ -189,7 +189,7 @@ func (h *AuthHandler) ResetPasswordHandler(c *Context) error {
 func (h *AuthHandler) ChangePasswordHandler(c *Context) error {
 	var reqBody model.ChangePasswordInput
 	if err := c.BindValidate(&reqBody); err != nil {
-		log.ErrorCtx(c.Context(), BindValidateWarnLog, err)
+		log.ErrorCtx(c.Context(), "Failed to bind & validate change password input", err)
 		return err
 	}
 

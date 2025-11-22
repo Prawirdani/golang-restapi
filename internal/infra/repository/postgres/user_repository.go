@@ -29,8 +29,6 @@ func (r *userRepository) Store(ctx context.Context, u *user.User) error {
 		return errors.New("user is nil")
 	}
 
-	log.DebugCtx(ctx, "Storing user data...", "data", u)
-
 	query := "INSERT INTO users(id, name, email, phone, password, profile_image) VALUES($1, $2, $3, $4, $5, $6)"
 	conn := r.db.GetConn(ctx)
 
@@ -62,8 +60,6 @@ func (r *userRepository) Update(ctx context.Context, u *user.User) error {
 		log.WarnCtx(ctx, "Update called with nil user")
 		return errors.New("user is nil")
 	}
-
-	log.DebugCtx(ctx, "Updating user data...", "data", u)
 
 	query := "UPDATE users SET name=$1, email=$2, phone=$3, password=$4, profile_image=$5, updated_at=$6 WHERE id=$7"
 	updatedAt := time.Now()
@@ -102,8 +98,6 @@ func (r *userRepository) Delete(ctx context.Context, u *user.User) error {
 	query := "UPDATE users SET deleted_at=$1 WHERE id=$2"
 	conn := r.db.GetConn(ctx)
 
-	log.DebugCtx(ctx, "Deleting user data (soft delete)...", "id", u.ID.String())
-
 	deleteTime := time.Now()
 	_, err := conn.Exec(ctx, query, deleteTime, u.ID)
 	if err != nil {
@@ -119,8 +113,6 @@ func (r *userRepository) getUserBy(
 	field string,
 	value any,
 ) (*user.User, error) {
-	log.DebugCtx(ctx, "Getting user data...", "search_field", field, "search_arg", value)
-
 	query := strs.Concatenate(
 		"SELECT id, name, email, phone, password, profile_image, created_at, updated_at, deleted_at FROM users WHERE ",
 		field,

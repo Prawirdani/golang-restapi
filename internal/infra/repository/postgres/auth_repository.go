@@ -28,8 +28,6 @@ func (r *authRepository) StoreSession(ctx context.Context, session *auth.Session
 		return errors.New("session is nil")
 	}
 
-	log.DebugCtx(ctx, "Storing session data...", "data", session)
-
 	query := "INSERT INTO sessions(id, user_id, user_agent, expires_at, accessed_at) VALUES($1, $2, $3, $4, $5)"
 	conn := r.db.GetConn(ctx)
 	if _, err := conn.Exec(ctx, query, session.ID, session.UserID, session.UserAgent, session.ExpiresAt, session.AccessedAt); err != nil {
@@ -45,8 +43,6 @@ func (r *authRepository) GetSession(
 	ctx context.Context,
 	sessID string,
 ) (*auth.Session, error) {
-	log.DebugCtx(ctx, "Getting session data...", "session_id", sessID)
-
 	query := strs.Concatenate(
 		"UPDATE sessions SET accessed_at=NOW() WHERE id",
 		"=$1 RETURNING *",
@@ -75,7 +71,6 @@ func (r *authRepository) UpdateSession(ctx context.Context, session *auth.Sessio
 		log.WarnCtx(ctx, "UpdateSession called with nil session struct ptr")
 		return errors.New("session is nil")
 	}
-	log.DebugCtx(ctx, "Updating session data...", "data", session)
 
 	query := "UPDATE sessions SET expires_at=$1 WHERE id=$2"
 	conn := r.db.GetConn(ctx)
@@ -93,8 +88,6 @@ func (r *authRepository) GetResetPasswordToken(
 	ctx context.Context,
 	tokenValue string,
 ) (*auth.ResetPasswordToken, error) {
-	log.DebugCtx(ctx, "Getting reset password token...", "token_value", tokenValue)
-
 	query := "SELECT user_id, value, expires_at, used_at FROM reset_password_tokens WHERE value=$1"
 
 	conn := r.db.GetConn(ctx)
@@ -123,7 +116,6 @@ func (r *authRepository) StoreResetPasswordToken(
 		log.WarnCtx(ctx, "StoreResetPasswordToken called with nil token ptr")
 		return errors.New("reset password token is nil")
 	}
-	log.DebugCtx(ctx, "Storing reset password token...", "data", token)
 
 	query := "INSERT INTO reset_password_tokens(user_id, value, expires_at) VALUES($1, $2, $3)"
 	conn := r.db.GetConn(ctx)
@@ -145,7 +137,6 @@ func (r *authRepository) UpdateResetPasswordToken(
 		log.WarnCtx(ctx, "UpdateResetPasswordToken called with nil token object")
 		return errors.New("reset password token is nil")
 	}
-	log.DebugCtx(ctx, "Updating reset password token data...", "data", token)
 
 	query := "UPDATE reset_password_tokens SET used_at=$1 WHERE value=$2"
 	conn := r.db.GetConn(ctx)
