@@ -7,18 +7,19 @@ import (
 )
 
 // Nullable represents an optional value of type T.
-// Valid indicates whether Val is set (non-zero).
+// Valid indicates whether Val is not null.
 type Nullable[T comparable] struct {
 	val   T
 	valid bool
 }
 
-// New returns a Nullable wrapping value.
-// If value equals the zero value of T, Valid is false.
-func New[T comparable](value T) Nullable[T] {
+// New returns a Nullable wrapping the given value.
+// If value is the zero value of T and allowZero is false,
+// the Nullable will be invalid. Otherwise, it will be valid.
+func New[T comparable](value T, allowZero bool) Nullable[T] {
 	var zero T
 	if value == zero {
-		return Nullable[T]{val: zero, valid: false}
+		return Nullable[T]{val: zero, valid: allowZero}
 	}
 	return Nullable[T]{val: value, valid: true}
 }
@@ -28,7 +29,7 @@ func (n Nullable[T]) NotNull() bool {
 	return n.valid
 }
 
-// Scan implements the [sql.Scanner] interface, called when scanning a row from the database.
+// Scan implements the [sql.Scanner] interface, called when scanning a row from sql based database.
 func (n *Nullable[T]) Scan(value any) error {
 	var zero T
 	if value == nil {
@@ -102,16 +103,21 @@ func (n Nullable[T]) Get() T {
 	return n.val
 }
 
-// Set sets the value of the nullable, if value is zero value of T, it will set the nullable to invalid.
-// TODO: Should allow zero value, eg int with 0 should be a valid one, perhaps provide option to set the validity
-func (n *Nullable[T]) Set(value T) {
+// Set sets the value of the nullable, if value is zero value of T and allowZero is false it will set the nullable to
+// invalid.
+func (n *Nullable[T]) Set(value T, allowZero bool) {
 	var zero T
 	if value == zero {
-		n.valid = false
+		n.valid = allowZero
 		n.val = zero
 		return
 	}
 
 	n.val = value
 	n.valid = true
+}
+
+// Valid return nullable valid value
+func (n *Nullable[T]) Valid() bool {
+	return n.valid
 }

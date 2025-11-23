@@ -10,8 +10,8 @@ import (
 	stdlog "log"
 
 	"github.com/prawirdani/golang-restapi/config"
-	"github.com/prawirdani/golang-restapi/internal/infra/messaging/rabbitmq"
-	"github.com/prawirdani/golang-restapi/internal/infra/repository/postgres"
+	"github.com/prawirdani/golang-restapi/internal/infrastructure/messaging/rabbitmq"
+	"github.com/prawirdani/golang-restapi/internal/infrastructure/repository/postgres"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 	amqp "github.com/rabbitmq/amqp091-go"
 )

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/prawirdani/golang-restapi/pkg/errorsx"
+	"github.com/prawirdani/golang-restapi/internal/domain"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 	"github.com/prawirdani/golang-restapi/pkg/validator"
 )
@@ -41,10 +41,9 @@ func FromError(err error) *Error {
 		status: http.StatusInternalServerError,
 	}
 
-	// Prioritize the CategorizedError
-	var e errorsx.CategorizedError
+	var e *domain.Error
 	if errors.As(err, &e) {
-		if status, exists := catdErrStatusCodes[e.Category()]; exists {
+		if status, exists := domainErrStatusCodes[e.Kind]; exists {
 			body.status = status
 		}
 		body.Message = e.Error()
@@ -56,7 +55,7 @@ func FromError(err error) *Error {
 		switch {
 		case errors.Is(err, context.Canceled):
 			body.status = http.StatusServiceUnavailable
-			body.Message = "server is busy"
+			body.Message = "Server is busy"
 
 		case errors.As(err, &jsonBindErr):
 			body.status = http.StatusBadRequest
@@ -68,7 +67,7 @@ func FromError(err error) *Error {
 			body.Errors = validationErr.Details
 
 		default:
-			body.Message = "an unexpected error occurred, try again later"
+			body.Message = "An unexpected error occurred, try again later"
 			log.Error("Unknown error", err)
 		}
 	}
@@ -76,16 +75,12 @@ func FromError(err error) *Error {
 	return &body
 }
 
-// catdErrStatusCodes maps CategroziedError into http status codes
-var catdErrStatusCodes = map[errorsx.Category]int{
-	errorsx.CategoryValidation:        http.StatusBadRequest,         // 400
-	errorsx.CategoryFormat:            http.StatusBadRequest,         // 400
-	errorsx.CategoryUnauthorized:      http.StatusUnauthorized,       // 401
-	errorsx.CategoryForbidden:         http.StatusForbidden,          // 403
-	errorsx.CategoryNotExists:         http.StatusNotFound,           // 404
-	errorsx.CategoryTimeout:           http.StatusRequestTimeout,     // 408
-	errorsx.CategoryDuplicate:         http.StatusConflict,           // 409
-	errorsx.CategoryDependency:        http.StatusServiceUnavailable, // 503
-	errorsx.CategoryUnavailable:       http.StatusServiceUnavailable, // 503
-	errorsx.CategoryDependencyTimeout: http.StatusGatewayTimeout,     // 504
+// domainErrStatusCodes maps domain error into http status codes
+var domainErrStatusCodes = map[domain.ErrorKind]int{
+	domain.ErrorKindUnauthorized: http.StatusUnauthorized,        // 401
+	domain.ErrorKindForbidden:    http.StatusForbidden,           // 403
+	domain.ErrorKindNotFound:     http.StatusNotFound,            // 404
+	domain.ErrorKindDuplicate:    http.StatusConflict,            // 409
+	domain.ErrorKindValidation:   http.StatusUnprocessableEntity, // 422
+	domain.ErrorKindUnavailable:  http.StatusServiceUnavailable,  // 503
 }

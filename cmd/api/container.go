@@ -3,16 +3,17 @@ package main
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prawirdani/golang-restapi/config"
-	"github.com/prawirdani/golang-restapi/internal/infra/messaging/rabbitmq"
-	"github.com/prawirdani/golang-restapi/internal/infra/repository/postgres"
-	"github.com/prawirdani/golang-restapi/internal/infra/storage/r2"
-	"github.com/prawirdani/golang-restapi/internal/service"
+	"github.com/prawirdani/golang-restapi/internal/domain/auth"
+	"github.com/prawirdani/golang-restapi/internal/domain/user"
+	"github.com/prawirdani/golang-restapi/internal/infrastructure/messaging/rabbitmq"
+	"github.com/prawirdani/golang-restapi/internal/infrastructure/repository/postgres"
+	"github.com/prawirdani/golang-restapi/internal/infrastructure/storage/r2"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type Services struct {
-	UserService *service.UserService
-	AuthService *service.AuthService
+	UserService *user.Service
+	AuthService *auth.Service
 }
 
 // Container holds all application dependencies
@@ -44,10 +45,10 @@ func NewContainer(
 	}
 
 	// Setup Services
-	userService := service.NewUserService(transactor, repoFactory.User(), r2PublicStorage)
+	userService := user.NewService(transactor, repoFactory.User(), r2PublicStorage)
 
 	authMessagePublisher := rabbitmq.NewAuthMessagePublisher(rmqconn)
-	authService := service.NewAuthService(
+	authService := auth.NewService(
 		cfg.Auth,
 		transactor,
 		repoFactory.User(),

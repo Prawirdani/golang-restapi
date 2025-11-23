@@ -7,7 +7,7 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	"github.com/prawirdani/golang-restapi/internal/model"
+	"github.com/prawirdani/golang-restapi/internal/domain/auth"
 	"github.com/prawirdani/golang-restapi/pkg/mailer"
 )
 
@@ -25,7 +25,7 @@ func (mc *AuthMessageConsumer) EmailResetPasswordHandler(
 	ctx context.Context,
 	d amqp.Delivery,
 ) error {
-	msg, err := decodeJsonBody[model.ResetPasswordEmailMessage](d.Body)
+	msg, err := decodeJsonBody[auth.ResetPasswordEmailMessage](d.Body)
 	if err != nil {
 		return fmt.Errorf("failed to decode body: %w", err)
 	}

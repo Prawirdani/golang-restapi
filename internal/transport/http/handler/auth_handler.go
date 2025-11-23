@@ -8,21 +8,20 @@ import (
 	"github.com/prawirdani/golang-restapi/pkg/log"
 
 	"github.com/prawirdani/golang-restapi/config"
-	"github.com/prawirdani/golang-restapi/internal/auth"
-	"github.com/prawirdani/golang-restapi/internal/model"
-	"github.com/prawirdani/golang-restapi/internal/service"
+	"github.com/prawirdani/golang-restapi/internal/domain/auth"
+	"github.com/prawirdani/golang-restapi/internal/domain/user"
 )
 
 type AuthHandler struct {
-	authService *service.AuthService
-	userService *service.UserService
+	authService *auth.Service
+	userService *user.Service
 	cfg         *config.Config
 }
 
 func NewAuthHandler(
 	cfg *config.Config,
-	authService *service.AuthService,
-	userService *service.UserService,
+	authService *auth.Service,
+	userService *user.Service,
 ) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
@@ -32,7 +31,7 @@ func NewAuthHandler(
 }
 
 func (h *AuthHandler) RegisterHandler(c *Context) error {
-	var reqBody model.CreateUserInput
+	var reqBody auth.RegisterInput
 	if err := c.BindValidate(&reqBody); err != nil {
 		log.ErrorCtx(c.Context(), "Failed to bind & validate create user input", err)
 		return err
@@ -48,7 +47,7 @@ func (h *AuthHandler) RegisterHandler(c *Context) error {
 }
 
 func (h *AuthHandler) LoginHandler(c *Context) error {
-	var reqBody model.LoginInput
+	var reqBody auth.LoginInput
 	if err := c.BindValidate(&reqBody); err != nil {
 		log.ErrorCtx(c.Context(), "Failed to bind & validate login input", err)
 		return err
@@ -60,7 +59,7 @@ func (h *AuthHandler) LoginHandler(c *Context) error {
 		return err
 	}
 
-	tp := model.TokenPair{
+	tp := auth.TokenPair{
 		AccessToken:  accessToken,
 		RefreshToken: sessID,
 	}
@@ -142,7 +141,7 @@ func (h *AuthHandler) LogoutHandler(c *Context) error {
 }
 
 func (h *AuthHandler) ForgotPasswordHandler(c *Context) error {
-	var reqBody model.ForgotPasswordInput
+	var reqBody auth.ForgotPasswordInput
 	if err := c.BindValidate(&reqBody); err != nil {
 		log.ErrorCtx(c.Context(), "Failed to bind & validate forgot password input", err)
 		return err
@@ -171,7 +170,7 @@ func (h *AuthHandler) GetResetPasswordTokenHandler(c *Context) error {
 }
 
 func (h *AuthHandler) ResetPasswordHandler(c *Context) error {
-	var reqBody model.ResetPasswordInput
+	var reqBody auth.ResetPasswordInput
 	if err := c.BindValidate(&reqBody); err != nil {
 		log.ErrorCtx(c.Context(), "Failed to bind & validate reset password input", err)
 		return err
@@ -187,7 +186,7 @@ func (h *AuthHandler) ResetPasswordHandler(c *Context) error {
 }
 
 func (h *AuthHandler) ChangePasswordHandler(c *Context) error {
-	var reqBody model.ChangePasswordInput
+	var reqBody auth.ChangePasswordInput
 	if err := c.BindValidate(&reqBody); err != nil {
 		log.ErrorCtx(c.Context(), "Failed to bind & validate change password input", err)
 		return err

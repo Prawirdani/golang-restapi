@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/prawirdani/golang-restapi/internal/auth"
-	"github.com/prawirdani/golang-restapi/internal/service"
+	"github.com/prawirdani/golang-restapi/internal/domain/auth"
+	"github.com/prawirdani/golang-restapi/internal/domain/user"
 	httperr "github.com/prawirdani/golang-restapi/internal/transport/http/error"
 	"github.com/prawirdani/golang-restapi/internal/transport/http/uploader"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
 type UserHandler struct {
-	userService *service.UserService
+	userService *user.Service
 }
 
-func NewUserHandler(userService *service.UserService) *UserHandler {
+func NewUserHandler(userService *user.Service) *UserHandler {
 	return &UserHandler{
 		userService: userService,
 	}

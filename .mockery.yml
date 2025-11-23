@@ -1,0 +1,47 @@
+all: false
+dir: "internal/testing/mocks"
+force-file-write: true
+formatter: goimports
+generate: true
+include-auto-generated: true
+log-level: info
+structname: "{{.InterfaceName}}"
+pkgname: "mocks"
+recursive: true
+require-template-schema-exists: true
+template: testify
+template-schema: "{{.Template}}.schema.json"
+inpackage: false
+packages:
+  github.com/prawirdani/golang-restapi/internal/infrastructure/repository:
+    interfaces:
+      Transactor:
+        config:
+          filename: repository_transactor.go
+
+  github.com/prawirdani/golang-restapi/internal/infrastructure/storage:
+    interfaces:
+      Storage:
+        config:
+          filename: storage.go
+      File:
+        config:
+          filename: storage_file.go
+
+  github.com/prawirdani/golang-restapi/internal/domain/auth:
+    interfaces:
+      Repository:
+        config:
+          structname: "Auth{{.InterfaceName}}"
+          filename: auth_repository.go
+      MessagePublisher:
+        config:
+          structname: "Auth{{.InterfaceName}}"
+          filename: auth_message_publisher.go
+
+  github.com/prawirdani/golang-restapi/internal/domain/user:
+    interfaces:
+      Repository:
+        config:
+          structname: "User{{.InterfaceName}}"
+          filename: user_repository.go

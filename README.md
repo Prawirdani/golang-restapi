@@ -16,7 +16,7 @@ Personal Go RESTful API template with common 3 Layered architecture with followi
 - ENV Loader: [godotenv](https://github.com/joho/godotenv)
 - Logger: std `log/slog` & [zerolog](https://github.com/rs/zerolog) (Swappable)
 - Auth: [jwt](https://github.com/golang-jwt/jwt)
-- Testing: [testify](https://github.com/stretchr/testify)
+- Testing: [testify](https://github.com/stretchr/testify) & [mockery](https://github.com/vektra/mockery)
 - Metrics & Instrumentation:
     - Prometheus: [prometheus](https://github.com/prometheus/client_golang)
     - Grafana: [grafana](https://grafana.com)
@@ -24,4 +24,5 @@ Personal Go RESTful API template with common 3 Layered architecture with followi
     - Database Migration Tool: [goose](https://github.com/pressly/goose)
     - Development live reloading: [air](https://github.com/cosmtrek/air)
     - Linters: [golangci-lint](https://github.com/golangci/golangci-lint)
+
 
