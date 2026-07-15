@@ -23,12 +23,12 @@ func NewEmailEventConsumer(mailer *mailer.Mailer) *EmailEventConsumer {
 }
 
 // HandlePasswordRecovery match [messaging.Handler] signature
-func (w *EmailEventConsumer) HandlePasswordRecovery(
+func (c *EmailEventConsumer) HandlePasswordRecovery(
 	ctx context.Context,
 	envelope messaging.Envelope[auth.PasswordRecoveryMessage],
 ) error {
 	var buf bytes.Buffer
-	if err := w.mailer.Templates.ResetPassword.Execute(&buf, map[string]any{
+	if err := c.mailer.Templates.ResetPassword.Execute(&buf, map[string]any{
 		"Name":    envelope.Payload.Name,
 		"Minutes": envelope.Payload.Expiry.Minutes(),
 		"URL":     envelope.Payload.ResetURL,
@@ -36,7 +36,7 @@ func (w *EmailEventConsumer) HandlePasswordRecovery(
 		return err
 	}
 
-	return w.mailer.Send(
+	return c.mailer.Send(
 		mailer.HeaderParams{
 			To:      []string{envelope.Payload.To},
 			Subject: "Password Recovery",
@@ -45,7 +45,7 @@ func (w *EmailEventConsumer) HandlePasswordRecovery(
 	)
 }
 
-func (h *EmailEventConsumer) Handler(rdb *redis.Client) redisstream.Consumer {
+func (c *EmailEventConsumer) Handler(rdb *redis.Client) redisstream.Consumer {
 	return redisstream.NewStreamConsumer(
 		rdb,
 		redisstream.ConsumerConfig{
@@ -59,6 +59,6 @@ func (h *EmailEventConsumer) Handler(rdb *redis.Client) redisstream.Consumer {
 			MinIdle:     time.Second * 15,
 			Block:       time.Second * 5,
 		},
-		h.HandlePasswordRecovery,
+		c.HandlePasswordRecovery,
 	)
 }

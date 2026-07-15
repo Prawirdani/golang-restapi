@@ -30,9 +30,9 @@ func TestNew(t *testing.T) {
 				assert.Equal(t, "John Doe", user.Name)
 				assert.Equal(t, "john@example.com", user.Email)
 				assert.Equal(t, "hashedpassword", user.Password)
-				assert.True(t, user.Phone.Valid())
+				assert.True(t, user.Phone.NotNull())
 				assert.Equal(t, "123456789", user.Phone.Get())
-				assert.False(t, user.ProfileImage.Valid())
+				assert.False(t, user.ProfileImage.NotNull())
 			},
 		},
 		{
@@ -47,9 +47,9 @@ func TestNew(t *testing.T) {
 				assert.Equal(t, "Jane Doe", user.Name)
 				assert.Equal(t, "jane@example.com", user.Email)
 				assert.Equal(t, "hashedpassword", user.Password)
-				assert.False(t, user.Phone.Valid())
+				assert.False(t, user.Phone.NotNull())
 				assert.Equal(t, "", user.Phone.Get())
-				assert.False(t, user.ProfileImage.Valid())
+				assert.False(t, user.ProfileImage.NotNull())
 			},
 		},
 		{
@@ -87,7 +87,7 @@ func TestNew(t *testing.T) {
 			passwordInput: "hashedpassword",
 			expectError:   nil,
 			validateUser: func(t *testing.T, user *User) {
-				assert.False(t, user.ProfileImage.Valid())
+				assert.False(t, user.ProfileImage.NotNull())
 				assert.Equal(t, "", user.ProfileImage.Get())
 			},
 		},

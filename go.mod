@@ -1,6 +1,6 @@
 module github.com/prawirdani/golang-restapi
 
-go 1.24.5
+go 1.26.5
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.39.3
@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.17
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.88.5
 	github.com/georgysavva/scany/v2 v2.1.3
-	github.com/go-chi/chi/v5 v5.2.3
+	github.com/go-chi/chi/v5 v5.3.1
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/httprate v0.9.0
 	github.com/go-playground/validator/v10 v10.26.0

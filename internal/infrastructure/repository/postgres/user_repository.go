@@ -129,12 +129,8 @@ func (r *userRepository) getUserBy(
 	var u user.User
 	if err := pgxscan.Get(ctx, conn, &u, query, value); err != nil {
 		if noRowsErr(err) {
-			key := "user_id"
-			if field == "email" {
-				key = "user_email"
-			}
 			return nil, domain.ErrNotFound.WithDetails(map[string]any{
-				key: value,
+				"user_" + field: value,
 			})
 		}
 		return nil, fmt.Errorf("query: %w", err)

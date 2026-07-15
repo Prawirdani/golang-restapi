@@ -90,7 +90,7 @@ func (e *Error) SetDetails(details any) *Error {
 
 type QueryParamErrorItem struct {
 	Param  string `json:"param"`
-	Value  any    `json:"value"`
+	Value  string `json:"value"`
 	Reason string `json:"reason"`
 }
 
@@ -103,7 +103,7 @@ func QueryParamErr(items []QueryParamErrorItem) *Error {
 	}
 }
 
-func ErrInvalidParam(name string, value any) *Error {
+func ErrInvalidParam(name string, value string) *Error {
 	return &Error{
 		Message: fmt.Sprintf("invalid value '%v' for parameter '%s'", value, name),
 		Code:    "INVALID_PARAMETER",

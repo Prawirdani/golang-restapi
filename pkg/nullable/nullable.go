@@ -24,7 +24,7 @@ func New[T comparable](value T, allowZero bool) Nullable[T] {
 	return Nullable[T]{val: value, valid: true}
 }
 
-// NotNull reports whether the Nullable holds a valid (non-zero) value.
+// NotNull reports whether the Nullable holds a valid value.
 func (n Nullable[T]) NotNull() bool {
 	return n.valid
 }
@@ -115,9 +115,4 @@ func (n *Nullable[T]) Set(value T, allowZero bool) {
 
 	n.val = value
 	n.valid = true
-}
-
-// Valid return nullable valid value
-func (n *Nullable[T]) Valid() bool {
-	return n.valid
 }

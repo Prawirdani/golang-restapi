@@ -119,7 +119,7 @@ func (s *Service) RefreshAccessToken(
 			return err
 		}
 
-		if sess.IsExpired() || sess.RevokedAt.Valid() {
+		if sess.IsExpired() || sess.RevokedAt.NotNull() {
 			return ErrSessionInvalid
 		}
 
@@ -153,7 +153,7 @@ func (s *Service) Logout(ctx context.Context, sessID uuid.UUID) error {
 			return err
 		}
 
-		if session.IsExpired() || session.RevokedAt.Valid() {
+		if session.IsExpired() || session.RevokedAt.NotNull() {
 			return nil
 		}
 

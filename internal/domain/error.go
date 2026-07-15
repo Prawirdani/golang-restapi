@@ -86,8 +86,6 @@ var (
 	ValidationErr   = constructErr(KindValidation, "DOMAIN_VALIDATION")
 )
 
-// No constructor for NotFound
-
 var ErrNotFound = constructErr(KindNotFound, "RESOURCE_NOT_FOUND")("the requested resource was not found")
 
 func constructErr(kind ErrorKind, defaultCode string) func(message string, code ...string) *Error {

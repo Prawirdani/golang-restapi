@@ -452,6 +452,139 @@ func TestService_GetPasswordRecoveryToken(t *testing.T) {
 	})
 }
 
+func TestService_RefreshAccessToken_SessionRevoked(t *testing.T) {
+	ctx := context.Background()
+	f := setupTestFixture(t)
+
+	session, refreshToken, err := auth.NewSession(uuid.New(), "test-agent", f.cfg.SessionTTL)
+	require.NoError(t, err)
+	session.RevokedAt.Set(time.Now(), false) // Revoke the session
+
+	f.transactor.EXPECT().
+		Transact(ctx, mock.AnythingOfType("func(context.Context) error")).
+		RunAndReturn(func(ctx context.Context, fn func(ctx context.Context) error) error {
+			f.authRepo.EXPECT().
+				GetSessionByRefreshTokenHash(ctx, mock.AnythingOfType("[]uint8")).
+				Return(session, nil)
+			return fn(ctx)
+		})
+
+	tokenPair, err := f.service.RefreshAccessToken(ctx, refreshToken)
+
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, auth.ErrSessionInvalid)
+	assert.Nil(t, tokenPair)
+}
+
+func TestService_ResetPassword_TokenNotFound(t *testing.T) {
+	ctx := context.Background()
+	f := setupTestFixture(t)
+
+	input := auth.ResetPasswordInput{
+		Token:       "nonexistent-token",
+		NewPassword: "newpassword123",
+	}
+
+	f.transactor.EXPECT().
+		Transact(ctx, mock.AnythingOfType("func(context.Context) error")).
+		RunAndReturn(func(ctx context.Context, fn func(ctx context.Context) error) error {
+			f.authRepo.EXPECT().
+				GetPasswordRecoveryToken(ctx, mock.AnythingOfType("[]uint8")).
+				Return(nil, domain.ErrNotFound)
+			return fn(ctx)
+		})
+
+	err := f.service.ResetPassword(ctx, input)
+
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, auth.ErrInvalidPasswordRecoveryToken)
+}
+
+func TestService_ResetPassword_TokenAlreadyUsed(t *testing.T) {
+	ctx := context.Background()
+	f := setupTestFixture(t)
+
+	userID := uuid.New()
+	tokenObj, tokenRaw, err := auth.NewPasswordRecoveryToken(userID, f.cfg.PasswordRecoveryTokenTTL)
+	require.NoError(t, err)
+	tokenObj.Use() // Mark as used
+
+	input := auth.ResetPasswordInput{
+		Token:       tokenRaw,
+		NewPassword: "newpassword123",
+	}
+
+	f.transactor.EXPECT().
+		Transact(ctx, mock.AnythingOfType("func(context.Context) error")).
+		RunAndReturn(func(ctx context.Context, fn func(ctx context.Context) error) error {
+			f.authRepo.EXPECT().
+				GetPasswordRecoveryToken(ctx, mock.AnythingOfType("[]uint8")).
+				Return(tokenObj, nil)
+			return fn(ctx)
+		})
+
+	err = f.service.ResetPassword(ctx, input)
+
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, auth.ErrInvalidPasswordRecoveryToken)
+}
+
+func TestService_ChangePassword_UserNotFound(t *testing.T) {
+	ctx := context.Background()
+	f := setupTestFixture(t)
+
+	userID := uuid.New()
+	input := auth.ChangePasswordInput{
+		Password:    "oldpassword123",
+		NewPassword: "newpassword123",
+	}
+
+	f.userRepo.EXPECT().GetByID(ctx, userID).Return(nil, domain.ErrNotFound)
+
+	err := f.service.ChangePassword(ctx, userID, input)
+
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, domain.ErrNotFound)
+}
+
+func TestGenerateOpaqueToken_InvalidSize(t *testing.T) {
+	token, err := auth.GenerateOpaqueToken(0, "")
+	assert.Error(t, err)
+	assert.Empty(t, token)
+	assert.Contains(t, err.Error(), "invalid token size")
+}
+
+func TestGenerateOpaqueToken_WithPrefix(t *testing.T) {
+	token, err := auth.GenerateOpaqueToken(32, "rt")
+	assert.NoError(t, err)
+	assert.Contains(t, token, "rt_")
+}
+
+func TestVerifyAccessToken_InvalidSignature(t *testing.T) {
+	userID := uuid.New()
+	sessID := uuid.New()
+	token, err := auth.SignAccessToken("correct-secret", userID, sessID, time.Hour)
+	require.NoError(t, err)
+
+	_, err = auth.VerifyAccessToken("wrong-secret", token)
+	assert.Error(t, err)
+}
+
+func TestRegisterInput_Sanitize(t *testing.T) {
+	inp := auth.RegisterInput{
+		Name:     "  John Doe  ",
+		Email:    "  john@example.com  ",
+		Phone:    "  1234567890  ",
+		Password: "password123",
+	}
+
+	err := inp.Sanitize()
+	assert.NoError(t, err)
+	assert.Equal(t, "John Doe", inp.Name)
+	assert.Equal(t, "john@example.com", inp.Email)
+	assert.Equal(t, "1234567890", inp.Phone)
+}
+
 type testFixture struct {
 	transactor *sharedMocks.Transactor
 	userRepo   *mocks.UserRepository

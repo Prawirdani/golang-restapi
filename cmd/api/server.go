@@ -136,6 +136,8 @@ func (s *Server) Start(ctx context.Context) error {
 	return nil
 }
 
+var fn = httpx.Handler
+
 // setupHandlers initializes and registers all API handlers.
 func (s *Server) setupHandlers() {
 	svcs := s.container.Services
@@ -147,10 +149,25 @@ func (s *Server) setupHandlers() {
 
 	// Register API routes
 	s.router.Route("/api", func(r chi.Router) {
-		RegisterAuthRoutes(r, authHandler, authMiddleware)
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/login", fn(authHandler.Login))
+			r.Post("/register", fn(authHandler.Register))
+			r.Post("/refresh", fn(authHandler.RefreshAccessToken))
 
-		r.With(authMiddleware).Route("/", func(r chi.Router) {
-			RegisterUserRoutes(r, userHandler)
+			r.Post("/password/recover", fn(authHandler.RecoverPassword))
+			r.Get("/password/recover/{token}", fn(authHandler.GetPasswordRecoveryToken))
+			r.Post("/password/reset", fn(authHandler.ResetPassword))
+
+			r.With(authMiddleware).Group(func(r chi.Router) {
+				r.Delete("/logout", fn(authHandler.Logout))
+				r.Get("/me", fn(authHandler.GetCurrentUser))
+				r.Post("/password/change", fn(authHandler.ChangePassword))
+			})
+		})
+
+		r.With(authMiddleware).Route("/users", func(r chi.Router) {
+			r.Delete("/profile-picture", fn(userHandler.DeleteProfilePicture))
+			r.Post("/profile-picture", fn(userHandler.ChangeProfilePicture))
 		})
 	})
 }

@@ -65,3 +65,20 @@ func (h *UserHandler) ChangeProfilePicture(c *httpx.Context) error {
 		Message: "profile picture updated!",
 	})
 }
+
+func (h *UserHandler) DeleteProfilePicture(c *httpx.Context) error {
+	ctx := c.Context()
+
+	claims, err := auth.GetAccessTokenCtx(ctx)
+	if err != nil {
+		log.ErrorCtx(ctx, "Failed to get access token context", err)
+		return err
+	}
+	if err := h.userService.DeleteProfilePicture(ctx, claims.UserID); err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, &httpx.Body{
+		Message: "Profile picture deleted",
+	})
+}
