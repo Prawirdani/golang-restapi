@@ -14,7 +14,7 @@ func init() {
 	v = validator.New()
 
 	v.RegisterTagNameFunc(func(field reflect.StructField) string {
-		name := strings.SplitN(field.Tag.Get("json"), ",", 2)[0]
+		name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 		if name == "-" {
 			return ""
 		}
@@ -24,8 +24,7 @@ func init() {
 
 func Struct(s any) error {
 	if err := v.Struct(s); err != nil {
-		var vErrs validator.ValidationErrors
-		if errors.As(err, &vErrs) {
+		if vErrs, ok := errors.AsType[validator.ValidationErrors](err); ok {
 			return convertError(vErrs)
 		}
 		return err
