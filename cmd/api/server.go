@@ -156,18 +156,19 @@ func (s *Server) setupHandlers() {
 
 			r.Post("/password/recover", fn(authHandler.RecoverPassword))
 			r.Get("/password/recover/{token}", fn(authHandler.GetPasswordRecoveryToken))
-			r.Post("/password/reset", fn(authHandler.ResetPassword))
+			r.Put("/password/reset", fn(authHandler.ResetPassword))
 
 			r.With(authMiddleware).Group(func(r chi.Router) {
 				r.Delete("/logout", fn(authHandler.Logout))
 				r.Get("/me", fn(authHandler.GetCurrentUser))
-				r.Post("/password/change", fn(authHandler.ChangePassword))
+				r.Put("/password/change", fn(authHandler.ChangePassword))
 			})
 		})
 
 		r.With(authMiddleware).Route("/users", func(r chi.Router) {
+			r.Put("/", fn(userHandler.UpdateUser))
 			r.Delete("/profile-picture", fn(userHandler.DeleteProfilePicture))
-			r.Post("/profile-picture", fn(userHandler.ChangeProfilePicture))
+			r.Put("/profile-picture", fn(userHandler.ChangeProfilePicture))
 		})
 	})
 }

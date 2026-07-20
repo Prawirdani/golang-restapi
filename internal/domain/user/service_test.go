@@ -27,18 +27,18 @@ func TestNewUserService(t *testing.T) {
 }
 
 func TestService_GetUserByID(t *testing.T) {
-	t.Run("Without profile image", func(t *testing.T) {
+	t.Run("Without profile picture", func(t *testing.T) {
 		ctx := context.Background()
 		f := setupTestFixture(t)
 
 		userID := uuid.New()
 		expectedUser := &user.User{
-			ID:           userID,
-			Name:         "John Doe",
-			Email:        "john@example.com",
-			Password:     "hashedpassword",
-			Phone:        nullable.New("123456789", false),
-			ProfileImage: nullable.New("", false),
+			ID:             userID,
+			Name:           "John Doe",
+			Email:          "john@example.com",
+			Password:       "hashedpassword",
+			Phone:          nullable.New("123456789", false),
+			ProfilePicture: nullable.New("", false),
 		}
 
 		f.repo.EXPECT().GetByID(ctx, userID).Return(expectedUser, nil)
@@ -46,21 +46,21 @@ func TestService_GetUserByID(t *testing.T) {
 		u, err := f.service.GetUserByID(ctx, userID)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedUser, u)
-		assert.False(t, u.ProfileImage.NotNull())
+		assert.False(t, u.ProfilePicture.NotNull())
 	})
 
-	t.Run("With profile image", func(t *testing.T) {
+	t.Run("With profile picture", func(t *testing.T) {
 		ctx := context.Background()
 		f := setupTestFixture(t)
 
 		userID := uuid.New()
 		expectedUser := &user.User{
-			ID:           userID,
-			Name:         "John Doe",
-			Email:        "john@example.com",
-			Password:     "hashedpassword",
-			Phone:        nullable.New("123456789", false),
-			ProfileImage: nullable.New("profile.jpg", false),
+			ID:             userID,
+			Name:           "John Doe",
+			Email:          "john@example.com",
+			Password:       "hashedpassword",
+			Phone:          nullable.New("123456789", false),
+			ProfilePicture: nullable.New("profile.jpg", false),
 		}
 
 		f.repo.EXPECT().GetByID(ctx, userID).Return(expectedUser, nil)
@@ -72,18 +72,18 @@ func TestService_GetUserByID(t *testing.T) {
 }
 
 func TestService_GetUserByEmail(t *testing.T) {
-	t.Run("Without profile image", func(t *testing.T) {
+	t.Run("Without profile picture", func(t *testing.T) {
 		ctx := context.Background()
 		f := setupTestFixture(t)
 
 		email := "john@example.com"
 		expectedUser := &user.User{
-			ID:           uuid.New(),
-			Name:         "John Doe",
-			Email:        email,
-			Password:     "hashedpassword",
-			Phone:        nullable.New("123456789", false),
-			ProfileImage: nullable.New("", false),
+			ID:             uuid.New(),
+			Name:           "John Doe",
+			Email:          email,
+			Password:       "hashedpassword",
+			Phone:          nullable.New("123456789", false),
+			ProfilePicture: nullable.New("", false),
 		}
 
 		f.repo.EXPECT().GetByEmail(ctx, email).Return(expectedUser, nil)
@@ -91,21 +91,21 @@ func TestService_GetUserByEmail(t *testing.T) {
 		result, err := f.service.GetUserByEmail(ctx, email)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedUser, result)
-		assert.False(t, result.ProfileImage.NotNull())
+		assert.False(t, result.ProfilePicture.NotNull())
 	})
 
-	t.Run("With profile image", func(t *testing.T) {
+	t.Run("With profile picture", func(t *testing.T) {
 		ctx := context.Background()
 		f := setupTestFixture(t)
 
 		email := "john@example.com"
 		expectedUser := &user.User{
-			ID:           uuid.New(),
-			Name:         "John Doe",
-			Email:        email,
-			Password:     "hashedpassword",
-			Phone:        nullable.New("123456789", false),
-			ProfileImage: nullable.New("profile.jpg", false),
+			ID:             uuid.New(),
+			Name:           "John Doe",
+			Email:          email,
+			Password:       "hashedpassword",
+			Phone:          nullable.New("123456789", false),
+			ProfilePicture: nullable.New("profile.jpg", false),
 		}
 
 		f.repo.EXPECT().GetByEmail(ctx, email).Return(expectedUser, nil)
@@ -117,17 +117,17 @@ func TestService_GetUserByEmail(t *testing.T) {
 }
 
 func TestService_ChangeProfilePicture(t *testing.T) {
-	t.Run("Success without existing profile image", func(t *testing.T) {
+	t.Run("Success without existing profile picture", func(t *testing.T) {
 		ctx := context.Background()
 		f := setupTestFixture(t)
 
 		existingUser := &user.User{
-			ID:           uuid.New(),
-			Name:         "John Doe",
-			Email:        "john@example.com",
-			Password:     "hashedpassword",
-			Phone:        nullable.New("123456789", false),
-			ProfileImage: nullable.New("", false),
+			ID:             uuid.New(),
+			Name:           "John Doe",
+			Email:          "john@example.com",
+			Password:       "hashedpassword",
+			Phone:          nullable.New("123456789", false),
+			ProfilePicture: nullable.New("", false),
 		}
 
 		f.file.EXPECT().SetName(mock.AnythingOfType("string")).Return(nil)
@@ -145,7 +145,7 @@ func TestService_ChangeProfilePicture(t *testing.T) {
 			RunAndReturn(func(ctx context.Context, fn func(ctx context.Context) error) error {
 				f.repo.EXPECT().GetByID(ctx, existingUser.ID).Return(existingUser, nil)
 				f.repo.EXPECT().Update(ctx, mock.MatchedBy(func(u *user.User) bool {
-					return u.ID == existingUser.ID && u.ProfileImage.Get() == "new-image.jpg"
+					return u.ID == existingUser.ID && u.ProfilePicture.Get() == "new-image.jpg"
 				})).Return(nil)
 				return fn(ctx)
 			})
@@ -154,17 +154,17 @@ func TestService_ChangeProfilePicture(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Success with existing profile image", func(t *testing.T) {
+	t.Run("Success with existing profile picture", func(t *testing.T) {
 		ctx := context.Background()
 		f := setupTestFixture(t)
 
 		existingUser := &user.User{
-			ID:           uuid.New(),
-			Name:         "John Doe",
-			Email:        "john@example.com",
-			Password:     "hashedpassword",
-			Phone:        nullable.New("123456789", false),
-			ProfileImage: nullable.New("old-image.jpg", false),
+			ID:             uuid.New(),
+			Name:           "John Doe",
+			Email:          "john@example.com",
+			Password:       "hashedpassword",
+			Phone:          nullable.New("123456789", false),
+			ProfilePicture: nullable.New("old-image.jpg", false),
 		}
 
 		f.file.EXPECT().SetName(mock.AnythingOfType("string")).Return(nil)
@@ -182,7 +182,7 @@ func TestService_ChangeProfilePicture(t *testing.T) {
 			RunAndReturn(func(ctx context.Context, fn func(ctx context.Context) error) error {
 				f.repo.EXPECT().GetByID(ctx, existingUser.ID).Return(existingUser, nil)
 				f.repo.EXPECT().Update(ctx, mock.MatchedBy(func(u *user.User) bool {
-					return u.ID == existingUser.ID && u.ProfileImage.Get() == "new-image.jpg"
+					return u.ID == existingUser.ID && u.ProfilePicture.Get() == "new-image.jpg"
 				})).Return(nil)
 				return fn(ctx)
 			})
@@ -256,16 +256,16 @@ func TestService_ChangeProfilePicture(t *testing.T) {
 }
 
 func TestService_DeleteProfilePicture(t *testing.T) {
-	t.Run("Success with existing profile image", func(t *testing.T) {
+	t.Run("Success with existing profile picture", func(t *testing.T) {
 		ctx := context.Background()
 		f := setupTestFixture(t)
 
 		existingUser := &user.User{
-			ID:           uuid.New(),
-			Name:         "John Doe",
-			Email:        "john@example.com",
-			Password:     "hashedpassword",
-			ProfileImage: nullable.New("profile.jpg", false),
+			ID:             uuid.New(),
+			Name:           "John Doe",
+			Email:          "john@example.com",
+			Password:       "hashedpassword",
+			ProfilePicture: nullable.New("profile.jpg", false),
 		}
 
 		f.transactor.EXPECT().
@@ -273,7 +273,7 @@ func TestService_DeleteProfilePicture(t *testing.T) {
 			RunAndReturn(func(ctx context.Context, fn func(ctx context.Context) error) error {
 				f.repo.EXPECT().GetByID(ctx, existingUser.ID).Return(existingUser, nil)
 				f.repo.EXPECT().Update(ctx, mock.MatchedBy(func(u *user.User) bool {
-					return u.ID == existingUser.ID && !u.ProfileImage.NotNull()
+					return u.ID == existingUser.ID && !u.ProfilePicture.NotNull()
 				})).Return(nil)
 				return fn(ctx)
 			})
@@ -287,16 +287,16 @@ func TestService_DeleteProfilePicture(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Success without profile image", func(t *testing.T) {
+	t.Run("Success without profile picture", func(t *testing.T) {
 		ctx := context.Background()
 		f := setupTestFixture(t)
 
 		existingUser := &user.User{
-			ID:           uuid.New(),
-			Name:         "John Doe",
-			Email:        "john@example.com",
-			Password:     "hashedpassword",
-			ProfileImage: nullable.New("", false),
+			ID:             uuid.New(),
+			Name:           "John Doe",
+			Email:          "john@example.com",
+			Password:       "hashedpassword",
+			ProfilePicture: nullable.New("", false),
 		}
 
 		f.transactor.EXPECT().
@@ -332,11 +332,11 @@ func TestService_DeleteProfilePicture(t *testing.T) {
 		f := setupTestFixture(t)
 
 		existingUser := &user.User{
-			ID:           uuid.New(),
-			Name:         "John Doe",
-			Email:        "john@example.com",
-			Password:     "hashedpassword",
-			ProfileImage: nullable.New("profile.jpg", false),
+			ID:             uuid.New(),
+			Name:           "John Doe",
+			Email:          "john@example.com",
+			Password:       "hashedpassword",
+			ProfilePicture: nullable.New("profile.jpg", false),
 		}
 
 		f.transactor.EXPECT().

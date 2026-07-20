@@ -8,6 +8,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/prawirdani/golang-restapi/config"
@@ -41,7 +42,7 @@ func NewService(
 	}
 }
 
-func (s *Service) Register(ctx context.Context, inp RegisterInput) error {
+func (s *Service) Register(ctx context.Context, inp user.CreateUserInput) error {
 	if userExists, _ := s.userRepo.GetByEmail(ctx, inp.Email); userExists != nil {
 		return user.ErrEmailConflict
 	}
@@ -55,6 +56,7 @@ func (s *Service) Register(ctx context.Context, inp RegisterInput) error {
 		inp.Name,
 		inp.Email,
 		inp.Phone,
+		user.Gender(strings.ToUpper(inp.Gender)),
 		string(hashedPassword),
 	)
 	if err != nil {

@@ -19,6 +19,29 @@ func NewUserHandler(userService *user.Service) *UserHandler {
 	}
 }
 
+func (h *UserHandler) UpdateUser(c *httpx.Context) error {
+	ctx := c.Context()
+
+	claims, err := auth.GetAccessTokenCtx(ctx)
+	if err != nil {
+		log.ErrorCtx(ctx, "Failed to get access token context", err)
+		return err
+	}
+
+	var reqBody user.UpdateUserInput
+	if err := c.BindValidate(&reqBody); err != nil {
+		return err
+	}
+
+	if err := h.userService.UpdateUser(ctx, claims.UserID, reqBody); err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, &httpx.Body{
+		Message: "user updated!",
+	})
+}
+
 func (h *UserHandler) ChangeProfilePicture(c *httpx.Context) error {
 	ctx := c.Context()
 
@@ -32,10 +55,10 @@ func (h *UserHandler) ChangeProfilePicture(c *httpx.Context) error {
 		if httpx.IsMissingFileError(err) {
 			return httpx.ErrMultipartForm.SetDetails(map[string]any{
 				"key":     httpx.ImageFormKey,
-				"message": "profile image is required",
+				"message": "profile picture is required",
 			})
 		}
-		log.ErrorCtx(ctx, "Failed to parse profile image form file", err)
+		log.ErrorCtx(ctx, "Failed to parse profile picture form file", err)
 		return err
 	}
 
@@ -79,6 +102,6 @@ func (h *UserHandler) DeleteProfilePicture(c *httpx.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, &httpx.Body{
-		Message: "Profile picture deleted",
+		Message: "profile picture deleted",
 	})
 }

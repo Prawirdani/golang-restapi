@@ -1,6 +1,7 @@
 package nullable
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
@@ -33,19 +34,26 @@ func (n Nullable[T]) NotNull() bool {
 func (n *Nullable[T]) Scan(value any) error {
 	var zero T
 	if value == nil {
-		n.val, n.valid = zero, false
+		n.val = zero
+		n.valid = false
 		return nil
 	}
 
+	// Let T handle scanning if it knows how.
+	if scanner, ok := any(&n.val).(sql.Scanner); ok {
+		if err := scanner.Scan(value); err != nil {
+			return err
+		}
+		n.valid = true
+		return nil
+	}
+
+	// Otherwise try unmarshaling using json.
 	v, ok := value.(T)
 	if !ok {
-		// Try marshaling
 		if v, ok := value.(string); ok {
 			if err := json.Unmarshal([]byte(v), &n.val); err != nil {
 				return err
-			}
-			if n.val != zero {
-				n.valid = true
 			}
 			return nil
 		}
@@ -56,6 +64,34 @@ func (n *Nullable[T]) Scan(value any) error {
 	n.valid = true
 	return nil
 }
+
+// Scan implements the [sql.Scanner] interface, called when scanning a row from sql based database.
+// func (n *Nullable[T]) Scan(value any) error {
+// 	var zero T
+// 	if value == nil {
+// 		n.val, n.valid = zero, false
+// 		return nil
+// 	}
+//
+// 	v, ok := value.(T)
+// 	if !ok {
+// 		// Try marshaling
+// 		if v, ok := value.(string); ok {
+// 			if err := json.Unmarshal([]byte(v), &n.val); err != nil {
+// 				return err
+// 			}
+// 			if n.val != zero {
+// 				n.valid = true
+// 			}
+// 			return nil
+// 		}
+// 		return fmt.Errorf("cannot convert %T to %T", value, v)
+// 	}
+//
+// 	n.val = v
+// 	n.valid = true
+// 	return nil
+// }
 
 // MarshalJSON implements the [json.Marshaler] interface, called when marshaling to JSON.
 func (n Nullable[T]) MarshalJSON() ([]byte, error) {

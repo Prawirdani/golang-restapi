@@ -35,7 +35,7 @@ func NewAuthHandler(
 func (h *AuthHandler) Register(c *httpx.Context) error {
 	ctx := c.Context()
 
-	var reqBody auth.RegisterInput
+	var reqBody user.CreateUserInput
 	if err := c.BindValidate(&reqBody); err != nil {
 		return err
 	}

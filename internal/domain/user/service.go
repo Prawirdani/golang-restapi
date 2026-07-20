@@ -4,6 +4,7 @@ package user
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,6 +49,26 @@ func (s *Service) GetUserByEmail(ctx context.Context, email string) (*User, erro
 	return usr, nil
 }
 
+// UpdateUser updates basic user's data (name and phone)
+func (s *Service) UpdateUser(ctx context.Context, userID uuid.UUID, input UpdateUserInput) error {
+	return s.transactor.Transact(ctx, func(ctx context.Context) error {
+		usr, err := s.userRepo.GetByID(ctx, userID)
+		if err != nil {
+			return err
+		}
+
+		usr.Name = input.Name
+		usr.Phone.Set(input.Phone, false)
+		usr.Gender.Set(Gender(strings.ToUpper(input.Gender)), false)
+
+		if err := usr.Validate(); err != nil {
+			return err
+		}
+
+		return s.userRepo.Update(ctx, usr)
+	})
+}
+
 func (s *Service) ChangeProfilePicture(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -71,11 +92,11 @@ func (s *Service) ChangeProfilePicture(
 			return err
 		}
 
-		if u.ProfileImage.NotNull() {
-			prevImagePath = s.buildImagePath(u.ProfileImage.Get())
+		if u.ProfilePicture.NotNull() {
+			prevImagePath = s.buildImagePath(u.ProfilePicture.Get())
 		}
 
-		u.ProfileImage.Set(newImageName, false)
+		u.ProfilePicture.Set(newImageName, false)
 		if err := s.userRepo.Update(ctx, u); err != nil {
 			return err
 		}
@@ -100,12 +121,12 @@ func (s *Service) DeleteProfilePicture(ctx context.Context, userID uuid.UUID) er
 			return err
 		}
 
-		if !u.ProfileImage.NotNull() {
+		if !u.ProfilePicture.NotNull() {
 			return nil
 		}
 
-		prevImagePath = s.buildImagePath(u.ProfileImage.Get())
-		u.ProfileImage.Set("", false)
+		prevImagePath = s.buildImagePath(u.ProfilePicture.Get())
+		u.ProfilePicture.Set("", false)
 
 		if err := s.userRepo.Update(ctx, u); err != nil {
 			return err

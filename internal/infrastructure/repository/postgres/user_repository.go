@@ -30,12 +30,13 @@ func (r *userRepository) Store(ctx context.Context, u *user.User) error {
 	}
 
 	args := pgx.NamedArgs{
-		"id":            u.ID,
-		"name":          u.Name,
-		"email":         u.Email,
-		"password":      u.Password,
-		"phone":         u.Phone,
-		"profile_image": u.ProfileImage,
+		"id":              u.ID,
+		"name":            u.Name,
+		"email":           u.Email,
+		"password":        u.Password,
+		"phone":           u.Phone,
+		"gender":          u.Gender,
+		"profile_picture": u.ProfilePicture,
 	}
 
 	query := generateInsertQuery("users", args) + "\nRETURNING created_at, updated_at"
@@ -69,13 +70,15 @@ func (r *userRepository) Update(ctx context.Context, u *user.User) error {
 	}
 
 	args := pgx.NamedArgs{
-		"name":          u.Name,
-		"email":         u.Email,
-		"password":      u.Password,
-		"phone":         u.Phone,
-		"profile_image": u.ProfileImage,
-		"updated_at":    "NOW()",
-		"id":            u.ID, // for WHERE clause
+		"name":              u.Name,
+		"email":             u.Email,
+		"email_verified_at": u.EmailVerifiedAt,
+		"password":          u.Password,
+		"phone":             u.Phone,
+		"gender":            u.Gender,
+		"profile_picture":   u.ProfilePicture,
+		"updated_at":        "NOW()",
+		"id":                u.ID, // for WHERE clause
 	}
 
 	query := generateUpdateQuery("users", args, "id") + "\nRETURNING updated_at"
@@ -110,14 +113,27 @@ func (r *userRepository) Delete(ctx context.Context, u *user.User) error {
 	return nil
 }
 
+const userSelectQuery = `
+SELECT 
+	u.id,
+	u.name,
+	u.email,
+	u.email_verified_at,
+	u.phone,
+	u.password,
+	u.gender,
+	u.profile_picture,
+	u.created_at,
+	u.updated_at 
+FROM users AS u WHERE u.`
+
 func (r *userRepository) getUserBy(
 	ctx context.Context,
 	field string,
 	value any,
 ) (*user.User, error) {
 	query := strs.Concatenate(
-		`
-		SELECT u.id, u.name, u.email, u.phone, u.password, u.profile_image, u.created_at, u.updated_at FROM users AS u WHERE u.`,
+		userSelectQuery,
 		field,
 		"=$1",
 	)

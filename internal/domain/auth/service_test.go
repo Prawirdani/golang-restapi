@@ -28,7 +28,7 @@ func TestService_Register(t *testing.T) {
 		ctx := context.Background()
 		f := setupTestFixture(t)
 
-		input := auth.RegisterInput{
+		input := user.CreateUserInput{
 			Name:     "John Doe",
 			Email:    "john@example.com",
 			Phone:    "1234567890",
@@ -47,7 +47,7 @@ func TestService_Register(t *testing.T) {
 		ctx := context.Background()
 		f := setupTestFixture(t)
 
-		input := auth.RegisterInput{
+		input := user.CreateUserInput{
 			Name:     "John Doe",
 			Email:    "john@example.com",
 			Password: "password123",
@@ -568,21 +568,6 @@ func TestVerifyAccessToken_InvalidSignature(t *testing.T) {
 
 	_, err = auth.VerifyAccessToken("wrong-secret", token)
 	assert.Error(t, err)
-}
-
-func TestRegisterInput_Sanitize(t *testing.T) {
-	inp := auth.RegisterInput{
-		Name:     "  John Doe  ",
-		Email:    "  john@example.com  ",
-		Phone:    "  1234567890  ",
-		Password: "password123",
-	}
-
-	err := inp.Sanitize()
-	assert.NoError(t, err)
-	assert.Equal(t, "John Doe", inp.Name)
-	assert.Equal(t, "john@example.com", inp.Email)
-	assert.Equal(t, "1234567890", inp.Phone)
 }
 
 type testFixture struct {

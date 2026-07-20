@@ -14,14 +14,25 @@ import (
 )
 
 var (
-	ImageMIMEs = []string{"image/jpeg", "image/png", "image/gif", "image/webp"}
+	ImageMIMEs = []string{"image/jpeg", "image/png", "image/webp"}
 	ImageExts  = []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
 )
 
-var ErrUploader = &Error{
-	Message: "invalid file uploaded",
-	Code:    "FILE_UPLOAD",
-	Details: nil,
+var ErrUploadMaxSize = &Error{
+	Message: "file size exceeds maximum allowed",
+	Code:    "UPLOAD_MAX_SIZE",
+	status:  http.StatusBadRequest,
+}
+
+var ErrUploadMimeTypes = &Error{
+	Message: "invalid file mime types",
+	Code:    "UPLOAD_MIME_TYPES",
+	status:  http.StatusBadRequest,
+}
+
+var ErrUploadInvalid = &Error{
+	Message: "invalid file",
+	Code:    "UPLOAD_INVALID",
 	status:  http.StatusBadRequest,
 }
 
@@ -156,7 +167,7 @@ type ValidationRules struct {
 
 // Check if MIME type is in allowed list
 func (r ValidationRules) isMIMEAllowed(mime string) bool {
-	mimeBase := strings.Split(mime, ";")[0]
+	mimeBase, _, _ := strings.Cut(mime, ";")
 	for _, allowed := range r.AllowedMIMEs {
 		if strings.EqualFold(mimeBase, allowed) {
 			return true
@@ -175,10 +186,10 @@ func ValidateFile(ctx context.Context, f *ParsedFile, rules ValidationRules) err
 
 	// Size check (cheap)
 	if rules.MaxSize > 0 && f.Size() > rules.MaxSize {
-		return ErrUploader.SetMessage("file size exceeds maximum allowed").SetDetails(
+		return ErrUploadMaxSize.SetDetails(
 			map[string]any{
-				"max_bytes": rules.MaxSize,
-				"received":  f.size,
+				"max_bytes":      rules.MaxSize,
+				"received_bytes": f.size,
 			},
 		)
 	}
@@ -197,8 +208,12 @@ func ValidateFile(ctx context.Context, f *ParsedFile, rules ValidationRules) err
 			// For Office documents, we trust the extension and claimed type
 			// but still validate that the actual type is either ZIP or the expected Office MIME
 			if !rules.isMIMEAllowed(claimedType) && !rules.isMIMEAllowed(actualType) {
-				return ErrUploader.SetMessage("file type is not allowed").SetDetails(
-					map[string]any{"allowed_mimes": rules.AllowedMIMEs},
+				return ErrUploadMimeTypes.SetDetails(
+					map[string]any{
+						"claimed_mime":  claimedType,
+						"actual_mime":   actualType,
+						"allowed_mimes": rules.AllowedMIMEs,
+					},
 				)
 			}
 			// Office document passed special validation
@@ -215,13 +230,17 @@ func ValidateFile(ctx context.Context, f *ParsedFile, rules ValidationRules) err
 				"actual",
 				actualType,
 			)
-			return ErrUploader.SetMessage("invalid file").SetDetails("what a sus file")
+			return ErrUploadInvalid.SetDetails("what a sus file")
 		}
 
 		// Check if actual type is allowed
 		if !rules.isMIMEAllowed(actualType) {
-			return ErrUploader.SetMessage("file type is not allowed").SetDetails(
-				map[string]any{"actual": actualType, "allowed_mimes": rules.AllowedMIMEs},
+			return ErrUploadMimeTypes.SetDetails(
+				map[string]any{
+					"claimed_mime":  claimedType,
+					"actual_mime":   actualType,
+					"allowed_mimes": rules.AllowedMIMEs,
+				},
 			)
 		}
 
@@ -256,7 +275,7 @@ func verifyExtensionMatchesMIME(ext, detectedMIME string) error {
 
 // getExpectedExtensions returns file extensions for a given MIME type using Go's mime package
 func getExpectedExtensions(mimeType string) []string {
-	mimeBase := strings.Split(mimeType, ";")[0]
+	mimeBase, _, _ := strings.Cut(mimeType, ";")
 
 	// Use Go's built-in MIME type to extension mapping
 	extensions, err := mime.ExtensionsByType(mimeBase)
@@ -312,33 +331,33 @@ func detectMIME(f *ParsedFile) (string, error) {
 // Helper function to compare MIME types
 func mimeTypesMatch(claimed, actual string) bool {
 	// Normalize by removing parameters
-	claimedBase := strings.Split(claimed, ";")[0]
-	actualBase := strings.Split(actual, ";")[0]
+	claimedBase, _, _ := strings.Cut(claimed, ";")
+	actualBase, _, _ := strings.Cut(actual, ";")
 
 	return strings.EqualFold(strings.TrimSpace(claimedBase), strings.TrimSpace(actualBase))
+}
+
+var officeExtensions = map[string][]string{
+	".xlsx": {
+		"application/zip",
+		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		"application/octet-stream",
+	},
+	".docx": {
+		"application/zip",
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		"application/octet-stream",
+	},
+	".pptx": {
+		"application/zip",
+		"application/vnd.openxmlformats-officedocument.presentationml.presentation",
+		"application/octet-stream",
+	},
 }
 
 // isOfficeDocument checks if the file is a modern Office document
 // that might be detected as application/zip due to its container format
 func isOfficeDocument(ext, actualType string) bool {
-	officeExtensions := map[string][]string{
-		".xlsx": {
-			"application/zip",
-			"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-			"application/octet-stream",
-		},
-		".docx": {
-			"application/zip",
-			"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-			"application/octet-stream",
-		},
-		".pptx": {
-			"application/zip",
-			"application/vnd.openxmlformats-officedocument.presentationml.presentation",
-			"application/octet-stream",
-		},
-	}
-
 	allowedMimes, exists := officeExtensions[strings.ToLower(ext)]
 	if !exists {
 		return false

@@ -7,24 +7,7 @@ package auth
 
 import (
 	"time"
-
-	"github.com/prawirdani/golang-restapi/pkg/strings"
 )
-
-type RegisterInput struct {
-	Name     string `json:"name"     validate:"required"`
-	Email    string `json:"email"    validate:"required,email"`
-	Phone    string `json:"phone"`
-	Password string `json:"password" validate:"required,min=8"`
-}
-
-// Sanitize implements [validator.Sanitizer]
-func (r *RegisterInput) Sanitize() error {
-	r.Email = strings.TrimSpacesConcat(r.Email)
-	r.Name = strings.TrimSpacesConcat(r.Name)
-	r.Phone = strings.TrimSpacesConcat(r.Phone)
-	return nil
-}
 
 type LoginInput struct {
 	Email     string `json:"email"    validate:"required,email"`
