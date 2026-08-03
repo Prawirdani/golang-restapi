@@ -14,6 +14,7 @@ const (
 	KindUnauthorized
 	KindConflict
 	KindForbidden
+	KindThrottled
 )
 
 type DomainError interface {
@@ -84,6 +85,7 @@ var (
 	ConflictErr     = constructErr(KindConflict, "CONFLICT")
 	ForbiddenErr    = constructErr(KindForbidden, "FORBIDDEN")
 	ValidationErr   = constructErr(KindValidation, "DOMAIN_VALIDATION")
+	ThrottledErr    = constructErr(KindThrottled, "THROTTLED")
 )
 
 var ErrNotFound = constructErr(KindNotFound, "RESOURCE_NOT_FOUND")("the requested resource was not found")

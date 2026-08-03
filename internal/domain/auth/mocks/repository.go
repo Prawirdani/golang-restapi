@@ -75,7 +75,7 @@ type Repository_GetPasswordRecoveryToken_Call struct {
 // GetPasswordRecoveryToken is a helper method to define mock.On call
 //   - ctx context.Context
 //   - tokenHash []byte
-func (_e *Repository_Expecter) GetPasswordRecoveryToken(ctx interface{}, tokenHash interface{}) *Repository_GetPasswordRecoveryToken_Call {
+func (_e *Repository_Expecter) GetPasswordRecoveryToken(ctx any, tokenHash any) *Repository_GetPasswordRecoveryToken_Call {
 	return &Repository_GetPasswordRecoveryToken_Call{Call: _e.mock.On("GetPasswordRecoveryToken", ctx, tokenHash)}
 }
 
@@ -143,7 +143,7 @@ type Repository_GetSessionByID_Call struct {
 // GetSessionByID is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sessionID uuid.UUID
-func (_e *Repository_Expecter) GetSessionByID(ctx interface{}, sessionID interface{}) *Repository_GetSessionByID_Call {
+func (_e *Repository_Expecter) GetSessionByID(ctx any, sessionID any) *Repository_GetSessionByID_Call {
 	return &Repository_GetSessionByID_Call{Call: _e.mock.On("GetSessionByID", ctx, sessionID)}
 }
 
@@ -211,7 +211,7 @@ type Repository_GetSessionByRefreshTokenHash_Call struct {
 // GetSessionByRefreshTokenHash is a helper method to define mock.On call
 //   - ctx context.Context
 //   - tokenHash []byte
-func (_e *Repository_Expecter) GetSessionByRefreshTokenHash(ctx interface{}, tokenHash interface{}) *Repository_GetSessionByRefreshTokenHash_Call {
+func (_e *Repository_Expecter) GetSessionByRefreshTokenHash(ctx any, tokenHash any) *Repository_GetSessionByRefreshTokenHash_Call {
 	return &Repository_GetSessionByRefreshTokenHash_Call{Call: _e.mock.On("GetSessionByRefreshTokenHash", ctx, tokenHash)}
 }
 
@@ -268,7 +268,7 @@ type Repository_StorePasswordRecoveryToken_Call struct {
 // StorePasswordRecoveryToken is a helper method to define mock.On call
 //   - ctx context.Context
 //   - token *auth.PasswordRecoveryToken
-func (_e *Repository_Expecter) StorePasswordRecoveryToken(ctx interface{}, token interface{}) *Repository_StorePasswordRecoveryToken_Call {
+func (_e *Repository_Expecter) StorePasswordRecoveryToken(ctx any, token any) *Repository_StorePasswordRecoveryToken_Call {
 	return &Repository_StorePasswordRecoveryToken_Call{Call: _e.mock.On("StorePasswordRecoveryToken", ctx, token)}
 }
 
@@ -325,7 +325,7 @@ type Repository_StoreSession_Call struct {
 // StoreSession is a helper method to define mock.On call
 //   - ctx context.Context
 //   - session *auth.Session
-func (_e *Repository_Expecter) StoreSession(ctx interface{}, session interface{}) *Repository_StoreSession_Call {
+func (_e *Repository_Expecter) StoreSession(ctx any, session any) *Repository_StoreSession_Call {
 	return &Repository_StoreSession_Call{Call: _e.mock.On("StoreSession", ctx, session)}
 }
 
@@ -382,7 +382,7 @@ type Repository_UpdatePasswordRecoveryToken_Call struct {
 // UpdatePasswordRecoveryToken is a helper method to define mock.On call
 //   - ctx context.Context
 //   - token *auth.PasswordRecoveryToken
-func (_e *Repository_Expecter) UpdatePasswordRecoveryToken(ctx interface{}, token interface{}) *Repository_UpdatePasswordRecoveryToken_Call {
+func (_e *Repository_Expecter) UpdatePasswordRecoveryToken(ctx any, token any) *Repository_UpdatePasswordRecoveryToken_Call {
 	return &Repository_UpdatePasswordRecoveryToken_Call{Call: _e.mock.On("UpdatePasswordRecoveryToken", ctx, token)}
 }
 
@@ -439,7 +439,7 @@ type Repository_UpdateSession_Call struct {
 // UpdateSession is a helper method to define mock.On call
 //   - ctx context.Context
 //   - session *auth.Session
-func (_e *Repository_Expecter) UpdateSession(ctx interface{}, session interface{}) *Repository_UpdateSession_Call {
+func (_e *Repository_Expecter) UpdateSession(ctx any, session any) *Repository_UpdateSession_Call {
 	return &Repository_UpdateSession_Call{Call: _e.mock.On("UpdateSession", ctx, session)}
 }
 

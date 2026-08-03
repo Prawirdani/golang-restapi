@@ -3,11 +3,13 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/pkg/log"
+	"github.com/prawirdani/golang-restapi/pkg/nullable"
 
 	"github.com/prawirdani/golang-restapi/internal/domain/auth"
 	"github.com/prawirdani/golang-restapi/internal/domain/user"
@@ -45,7 +47,7 @@ func (h *AuthHandler) Register(c *httpx.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusCreated, &httpx.Body{
+	return c.Status(http.StatusCreated).JSON(&httpx.Body{
 		Message: "registration successful",
 	})
 }
@@ -69,7 +71,7 @@ func (h *AuthHandler) Login(c *httpx.Context) error {
 		return err
 	}
 
-	return c.JSON(200, &httpx.Body{
+	return c.JSON(&httpx.Body{
 		Data: tokens,
 	})
 }
@@ -88,7 +90,7 @@ func (h *AuthHandler) GetCurrentUser(c *httpx.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, &httpx.Body{
+	return c.JSON(&httpx.Body{
 		Data: usr,
 	})
 }
@@ -125,7 +127,7 @@ func (h *AuthHandler) RefreshAccessToken(c *httpx.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, &httpx.Body{
+	return c.JSON(&httpx.Body{
 		Data: tokens,
 	})
 }
@@ -140,7 +142,7 @@ func (h *AuthHandler) Logout(c *httpx.Context) error {
 
 	h.removeTokenCookies(c)
 
-	return c.JSON(http.StatusOK, &httpx.Body{
+	return c.JSON(&httpx.Body{
 		Message: "logged out",
 	})
 }
@@ -153,12 +155,15 @@ func (h *AuthHandler) RecoverPassword(c *httpx.Context) error {
 		return err
 	}
 
-	if err := h.authService.RecoverPassword(ctx, reqBody); err != nil {
+	res, err := h.authService.RecoverPassword(ctx, reqBody)
+	c.Set("Retry-After", strconv.FormatInt(res.RetryAfter.UTC().Unix(), 10))
+
+	if err != nil {
 		log.ErrorCtx(ctx, "Failed to recover password", err)
 		return err
 	}
 
-	return c.JSON(http.StatusOK, &httpx.Body{
+	return c.JSON(&httpx.Body{
 		Message: "password recovery email has been sent",
 	})
 }
@@ -173,8 +178,16 @@ func (h *AuthHandler) GetPasswordRecoveryToken(c *httpx.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, &httpx.Body{
-		Data: tokenObj,
+	type response struct {
+		ExpiresAt time.Time                    `json:"expires_at"`
+		UsedAt    nullable.Nullable[time.Time] `json:"used_at"`
+	}
+
+	return c.JSON(&httpx.Body{
+		Data: response{
+			ExpiresAt: tokenObj.ExpiresAt,
+			UsedAt:    tokenObj.UsedAt,
+		},
 	})
 }
 
@@ -191,7 +204,7 @@ func (h *AuthHandler) ResetPassword(c *httpx.Context) error {
 		return err
 	}
 
-	return c.JSON(200, &httpx.Body{
+	return c.JSON(&httpx.Body{
 		Message: "Password has been reset successfully!",
 	})
 }
@@ -214,7 +227,7 @@ func (h *AuthHandler) ChangePassword(c *httpx.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, &httpx.Body{
+	return c.JSON(&httpx.Body{
 		Message: "Password has been changed successfully!",
 	})
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	stdlog "log"
 	"os"
@@ -42,12 +43,29 @@ func main() {
 		cancel()
 	}()
 
+	// Run the consumer and surface its exit. Start blocks until ctx is cancelled
+	// (returning context.Canceled after draining in-flight handlers) or it hits a
+	// fatal error.
+	done := make(chan error, 1)
 	go func() {
-		if err := emailEventConsumer.Start(ctx); err != nil {
-			stdlog.Fatal(err)
-		}
+		done <- emailEventConsumer.Start(ctx)
 	}()
 
-	// Wait for context cancellation
-	<-ctx.Done()
+	select {
+	case <-ctx.Done():
+		// Shutdown requested: wait for Start to return so in-flight emails drain
+		// and deferred cleanup (rdb.Close) runs.
+		if err := <-done; err != nil && !errors.Is(err, context.Canceled) {
+			log.Error("Consumer stopped with error during shutdown", err)
+		}
+		log.Info("Worker exited gracefully")
+	case err := <-done:
+		// Consumer returned on its own before a shutdown signal.
+		if err != nil && !errors.Is(err, context.Canceled) {
+			log.Error("Consumer stopped unexpectedly", err)
+			cancel()
+			os.Exit(1)
+		}
+		log.Info("Worker exited gracefully")
+	}
 }

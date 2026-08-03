@@ -16,29 +16,26 @@ type Body struct {
 	Message string `json:"message"`
 }
 
-// MarshalJSON implements json.Marshaller to prevent using pointer on Body fields while preserving the field on the body
-// with nullable ability
+// MarshalJSON implements json.Marshaller to keep the "message" field present (as null
+// when empty) without forcing a pointer on the struct field.
 func (b *Body) MarshalJSON() ([]byte, error) {
-	m := map[string]any{
-		"data": b.Data,
+	// Alias avoids infinite recursion into this MarshalJSON; *string lets us
+	// emit null for an empty message while keeping the field present.
+	type alias struct {
+		Data    any     `json:"data"`
+		Message *string `json:"message"`
 	}
 
+	a := alias{Data: b.Data}
 	if b.Message != "" {
-		m["message"] = b.Message
-	} else {
-		m["message"] = nil
+		a.Message = &b.Message
 	}
 
-	return json.Marshal(m)
+	return json.Marshal(a)
 }
 
-// eTag generate strong etag from given data
-func eTag(data any) string {
-	b, err := json.Marshal(data)
-	if err != nil {
-		return ""
-	}
-
+// eTagBytes generates a strong etag from already-marshaled JSON bytes.
+func eTagBytes(b []byte) string {
 	h := sha256.Sum256(b)
 	return fmt.Sprintf(`"%s"`, hex.EncodeToString(h[:]))
 }

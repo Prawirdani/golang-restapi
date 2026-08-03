@@ -5,6 +5,7 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/domain/auth"
 	"github.com/prawirdani/golang-restapi/internal/domain/user"
 	redisstream "github.com/prawirdani/golang-restapi/internal/infrastructure/messaging/redis"
+	rd "github.com/prawirdani/golang-restapi/internal/infrastructure/redis"
 	"github.com/prawirdani/golang-restapi/internal/infrastructure/repository/postgres"
 	"github.com/prawirdani/golang-restapi/internal/infrastructure/storage/r2"
 	"github.com/redis/go-redis/v9"
@@ -38,6 +39,8 @@ func NewContainer(
 		return nil, err
 	}
 
+	redisThrottler := rd.NewRedisThrottler(rdb)
+
 	// Repos init
 	userRepo := postgres.NewUserRepository(pg)
 	authRepo := postgres.NewAuthRepository(pg)
@@ -52,6 +55,7 @@ func NewContainer(
 		userRepo,
 		authRepo,
 		emailEventProducer,
+		redisThrottler,
 	)
 
 	c := &Container{

@@ -8,6 +8,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -15,6 +16,7 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/domain"
 	"github.com/prawirdani/golang-restapi/internal/domain/user"
 	"github.com/prawirdani/golang-restapi/internal/infrastructure/repository"
+	"github.com/prawirdani/golang-restapi/internal/throttle"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 )
 
@@ -24,6 +26,7 @@ type Service struct {
 	authRepo   Repository
 	userRepo   UserRepository
 	mailer     Mailer
+	throttler  throttle.Throttler
 }
 
 func NewService(
@@ -32,6 +35,7 @@ func NewService(
 	userRepo UserRepository,
 	authRepo Repository,
 	emailProducer Mailer,
+	throttler throttle.Throttler,
 ) *Service {
 	return &Service{
 		cfg:        cfg,
@@ -39,6 +43,7 @@ func NewService(
 		userRepo:   userRepo,
 		authRepo:   authRepo,
 		mailer:     emailProducer,
+		throttler:  throttler,
 	}
 }
 
@@ -166,8 +171,18 @@ func (s *Service) Logout(ctx context.Context, sessID uuid.UUID) error {
 }
 
 // RecoverPassword initiates the password recovery process by sending a reset link or token to the user's email.
-func (s *Service) RecoverPassword(ctx context.Context, inp RecoverPasswordInput) error {
-	return s.transactor.Transact(ctx, func(ctx context.Context) error {
+func (s *Service) RecoverPassword(ctx context.Context, inp RecoverPasswordInput) (throttle.Result, error) {
+	th, err := s.throttler.TryAcquire(ctx, fmt.Sprintf("recover-password:%s", inp.Email), PasswordRecoveryThrottledTTL)
+	if err != nil {
+		return th, err
+	}
+
+	if !th.Allowed {
+		return th, ErrPasswordRecoveryThrottled.WithDetails(th)
+	}
+
+	var msg PasswordRecoveryMessage
+	err = s.transactor.Transact(ctx, func(ctx context.Context) error {
 		usr, err := s.userRepo.GetByEmail(ctx, inp.Email)
 		if err != nil {
 			return err
@@ -184,15 +199,23 @@ func (s *Service) RecoverPassword(ctx context.Context, inp RecoverPasswordInput)
 			return err
 		}
 
-		msg := PasswordRecoveryMessage{
+		msg = PasswordRecoveryMessage{
 			To:       usr.Email,
 			Name:     usr.Name,
 			ResetURL: s.cfg.ResetPasswordFormEndpoint + "?token=" + tokenRaw,
 			Expiry:   s.cfg.PasswordRecoveryTokenTTL,
 		}
-
-		return s.mailer.PasswordRecovery(ctx, msg)
+		return nil
 	})
+	if err != nil {
+		return th, err
+	}
+
+	if err := s.mailer.PasswordRecovery(ctx, msg); err != nil {
+		log.ErrorCtx(ctx, "Failed to enqueue password recovery email", err)
+		return th, err
+	}
+	return th, nil
 }
 
 func (s *Service) GetPasswordRecoveryToken(
@@ -205,8 +228,8 @@ func (s *Service) GetPasswordRecoveryToken(
 
 // ResetPassword resets a user's password using a valid password recovery token from email.
 func (s *Service) ResetPassword(ctx context.Context, inp ResetPasswordInput) error {
+	sum := HashStr(inp.Token)
 	return s.transactor.Transact(ctx, func(ctx context.Context) error {
-		sum := HashStr(inp.Token)
 		token, err := s.authRepo.GetPasswordRecoveryToken(ctx, sum)
 		if err != nil {
 			if errors.Is(err, domain.ErrNotFound) {

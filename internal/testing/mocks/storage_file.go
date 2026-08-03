@@ -288,7 +288,7 @@ type File_Read_Call struct {
 
 // Read is a helper method to define mock.On call
 //   - p []byte
-func (_e *File_Expecter) Read(p interface{}) *File_Read_Call {
+func (_e *File_Expecter) Read(p any) *File_Read_Call {
 	return &File_Read_Call{Call: _e.mock.On("Read", p)}
 }
 
@@ -349,7 +349,7 @@ type File_Seek_Call struct {
 // Seek is a helper method to define mock.On call
 //   - offset int64
 //   - whence int
-func (_e *File_Expecter) Seek(offset interface{}, whence interface{}) *File_Seek_Call {
+func (_e *File_Expecter) Seek(offset any, whence any) *File_Seek_Call {
 	return &File_Seek_Call{Call: _e.mock.On("Seek", offset, whence)}
 }
 
@@ -405,7 +405,7 @@ type File_SetName_Call struct {
 
 // SetName is a helper method to define mock.On call
 //   - name string
-func (_e *File_Expecter) SetName(name interface{}) *File_SetName_Call {
+func (_e *File_Expecter) SetName(name any) *File_SetName_Call {
 	return &File_SetName_Call{Call: _e.mock.On("SetName", name)}
 }
 

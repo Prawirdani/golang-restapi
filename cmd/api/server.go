@@ -34,7 +34,6 @@ func NewServer(container *Container) (*Server, error) {
 	)
 
 	if container.Config.IsProduction() {
-		router.Use(middleware.RequestID)
 		router.Use(middleware.RateLimit(50, 1*time.Minute))
 		router.Use(metrics.InstrumentHandler) // Instrument the main router
 	} else {
@@ -42,6 +41,7 @@ func NewServer(container *Container) (*Server, error) {
 	}
 
 	// Apply common middlewares
+	router.Use(middleware.RequestID)
 	router.Use(middleware.MaxBodySizeMiddleware(httpx.MaxBodySize))
 	router.Use(httpx.Middleware(middleware.PanicRecoverer))
 	router.Use(middleware.Gzip)
@@ -61,7 +61,7 @@ func NewServer(container *Container) (*Server, error) {
 
 	// Health check route
 	router.Get("/status", httpx.Handler(func(c *httpx.Context) error {
-		return c.JSON(http.StatusOK, httpx.Body{
+		return c.JSON(&httpx.Body{
 			Message: "services up and running",
 		})
 	}))
@@ -154,7 +154,7 @@ func (s *Server) setupHandlers() {
 			r.Post("/register", fn(authHandler.Register))
 			r.Post("/refresh", fn(authHandler.RefreshAccessToken))
 
-			r.Post("/password/recover", fn(authHandler.RecoverPassword))
+			r.With(middleware.RateLimit(5, 1*time.Minute)).Post("/password/recover", fn(authHandler.RecoverPassword))
 			r.Get("/password/recover/{token}", fn(authHandler.GetPasswordRecoveryToken))
 			r.Put("/password/reset", fn(authHandler.ResetPassword))
 

@@ -15,6 +15,7 @@ import (
 	"github.com/prawirdani/golang-restapi/internal/domain/auth"
 	"github.com/prawirdani/golang-restapi/internal/domain/auth/mocks"
 	"github.com/prawirdani/golang-restapi/internal/domain/user"
+	"github.com/prawirdani/golang-restapi/internal/throttle"
 	sharedMocks "github.com/prawirdani/golang-restapi/internal/testing/mocks"
 	"github.com/prawirdani/golang-restapi/pkg/log"
 )
@@ -254,6 +255,12 @@ func TestService_RecoverPassword(t *testing.T) {
 			Email: input.Email,
 		}
 
+		f.throttler.EXPECT().
+			TryAcquire(ctx, "recover-password:"+input.Email, auth.PasswordRecoveryThrottledTTL).
+			Return(throttle.Result{Allowed: true}, nil)
+
+		// Token persistence happens inside the transaction; the mailer is enqueued
+		// AFTER the transaction commits (outside the closure).
 		f.transactor.EXPECT().
 			Transact(ctx, mock.AnythingOfType("func(context.Context) error")).
 			Run(func(ctx context.Context, fn func(context.Context) error) {
@@ -262,17 +269,126 @@ func TestService_RecoverPassword(t *testing.T) {
 				f.authRepo.EXPECT().
 					StorePasswordRecoveryToken(ctx, mock.AnythingOfType("*auth.PasswordRecoveryToken")).
 					Return(nil)
+			}).
+			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+				return fn(ctx)
+			})
 
-				f.mailer.EXPECT().
-					PasswordRecovery(ctx, mock.AnythingOfType("auth.PasswordRecoveryMessage")).
+		f.mailer.EXPECT().
+			PasswordRecovery(ctx, mock.AnythingOfType("auth.PasswordRecoveryMessage")).
+			Return(nil)
+
+		result, err := f.service.RecoverPassword(ctx, input)
+		assert.NoError(t, err)
+		require.True(t, result.Allowed)
+	})
+
+	t.Run("Mailer enqueue fails after commit", func(t *testing.T) {
+		ctx := context.Background()
+		f := setupTestFixture(t)
+
+		input := auth.RecoverPasswordInput{
+			Email: "john@example.com",
+		}
+
+		mockUser := &user.User{
+			ID:    uuid.New(),
+			Name:  "John Doe",
+			Email: input.Email,
+		}
+
+		f.transactor.EXPECT().
+			Transact(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				f.userRepo.EXPECT().GetByEmail(ctx, input.Email).Return(mockUser, nil)
+				f.authRepo.EXPECT().
+					StorePasswordRecoveryToken(ctx, mock.AnythingOfType("*auth.PasswordRecoveryToken")).
 					Return(nil)
 			}).
 			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
 				return fn(ctx)
 			})
 
-		err := f.service.RecoverPassword(ctx, input)
-		assert.NoError(t, err)
+		f.mailer.EXPECT().
+			PasswordRecovery(ctx, mock.AnythingOfType("auth.PasswordRecoveryMessage")).
+			Return(assert.AnError)
+
+		f.throttler.EXPECT().
+			TryAcquire(ctx, "recover-password:"+input.Email, auth.PasswordRecoveryThrottledTTL).
+			Return(throttle.Result{Allowed: true}, nil)
+
+		_, err := f.service.RecoverPassword(ctx, input)
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+
+	t.Run("Store token fails: mailer never called", func(t *testing.T) {
+		ctx := context.Background()
+		f := setupTestFixture(t)
+
+		input := auth.RecoverPasswordInput{
+			Email: "john@example.com",
+		}
+
+		mockUser := &user.User{
+			ID:    uuid.New(),
+			Name:  "John Doe",
+			Email: input.Email,
+		}
+
+		f.transactor.EXPECT().
+			Transact(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				f.userRepo.EXPECT().GetByEmail(ctx, input.Email).Return(mockUser, nil)
+				f.authRepo.EXPECT().
+					StorePasswordRecoveryToken(ctx, mock.AnythingOfType("*auth.PasswordRecoveryToken")).
+					Return(assert.AnError)
+			}).
+			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+				return fn(ctx)
+			})
+
+		// No mailer expectation: if RecoverPassword enqueued despite the tx failing,
+		// the mock (constructed with t) would fail on an unexpected call.
+		f.throttler.EXPECT().
+			TryAcquire(ctx, "recover-password:"+input.Email, auth.PasswordRecoveryThrottledTTL).
+			Return(throttle.Result{Allowed: true}, nil)
+
+		_, err := f.service.RecoverPassword(ctx, input)
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+
+	t.Run("Throttled", func(t *testing.T) {
+		ctx := context.Background()
+		f := setupTestFixture(t)
+
+		input := auth.RecoverPasswordInput{
+			Email: "john@example.com",
+		}
+
+		f.throttler.EXPECT().
+			TryAcquire(ctx, "recover-password:"+input.Email, auth.PasswordRecoveryThrottledTTL).
+			Return(throttle.Result{Allowed: false, RetryAfter: time.Now().Add(30 * time.Second)}, nil)
+
+		result, err := f.service.RecoverPassword(ctx, input)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, auth.ErrPasswordRecoveryThrottled)
+		assert.False(t, result.Allowed)
+	})
+
+	t.Run("Throttler fails", func(t *testing.T) {
+		ctx := context.Background()
+		f := setupTestFixture(t)
+
+		input := auth.RecoverPasswordInput{
+			Email: "john@example.com",
+		}
+
+		f.throttler.EXPECT().
+			TryAcquire(ctx, "recover-password:"+input.Email, auth.PasswordRecoveryThrottledTTL).
+			Return(throttle.Result{}, assert.AnError)
+
+		_, err := f.service.RecoverPassword(ctx, input)
+		assert.ErrorIs(t, err, assert.AnError)
 	})
 
 	t.Run("User not found", func(t *testing.T) {
@@ -282,6 +398,10 @@ func TestService_RecoverPassword(t *testing.T) {
 		input := auth.RecoverPasswordInput{
 			Email: "nonexistent@example.com",
 		}
+
+		f.throttler.EXPECT().
+			TryAcquire(ctx, "recover-password:"+input.Email, auth.PasswordRecoveryThrottledTTL).
+			Return(throttle.Result{Allowed: true}, nil)
 
 		// Mock expectations
 		f.transactor.EXPECT().
@@ -293,7 +413,7 @@ func TestService_RecoverPassword(t *testing.T) {
 				return fn(ctx)
 			})
 
-		err := f.service.RecoverPassword(ctx, input)
+		_, err := f.service.RecoverPassword(ctx, input)
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -575,6 +695,7 @@ type testFixture struct {
 	userRepo   *mocks.UserRepository
 	authRepo   *mocks.Repository
 	mailer     *mocks.Mailer
+	throttler  *sharedMocks.Throttler
 	service    *auth.Service
 	cfg        config.Auth
 }
@@ -590,14 +711,16 @@ func setupTestFixture(t *testing.T) *testFixture {
 	userRepo := mocks.NewUserRepository(t)
 	authRepo := mocks.NewRepository(t)
 	mailer := mocks.NewMailer(t)
+	throttler := sharedMocks.NewThrottler(t)
 
-	service := auth.NewService(cfg, tr, userRepo, authRepo, mailer)
+	service := auth.NewService(cfg, tr, userRepo, authRepo, mailer, throttler)
 
 	t.Cleanup(func() {
 		tr.AssertExpectations(t)
 		userRepo.AssertExpectations(t)
 		authRepo.AssertExpectations(t)
 		mailer.AssertExpectations(t)
+		throttler.AssertExpectations(t)
 	})
 
 	return &testFixture{
@@ -606,6 +729,7 @@ func setupTestFixture(t *testing.T) *testFixture {
 		userRepo:   userRepo,
 		authRepo:   authRepo,
 		mailer:     mailer,
+		throttler:  throttler,
 		service:    service,
 	}
 }

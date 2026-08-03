@@ -64,7 +64,7 @@ type Storage_Delete_Call struct {
 // Delete is a helper method to define mock.On call
 //   - ctx context.Context
 //   - path string
-func (_e *Storage_Expecter) Delete(ctx interface{}, path interface{}) *Storage_Delete_Call {
+func (_e *Storage_Expecter) Delete(ctx any, path any) *Storage_Delete_Call {
 	return &Storage_Delete_Call{Call: _e.mock.On("Delete", ctx, path)}
 }
 
@@ -174,7 +174,7 @@ type Storage_Exists_Call struct {
 // Exists is a helper method to define mock.On call
 //   - ctx context.Context
 //   - path string
-func (_e *Storage_Expecter) Exists(ctx interface{}, path interface{}) *Storage_Exists_Call {
+func (_e *Storage_Expecter) Exists(ctx any, path any) *Storage_Exists_Call {
 	return &Storage_Exists_Call{Call: _e.mock.On("Exists", ctx, path)}
 }
 
@@ -242,7 +242,7 @@ type Storage_Get_Call struct {
 // Get is a helper method to define mock.On call
 //   - ctx context.Context
 //   - path string
-func (_e *Storage_Expecter) Get(ctx interface{}, path interface{}) *Storage_Get_Call {
+func (_e *Storage_Expecter) Get(ctx any, path any) *Storage_Get_Call {
 	return &Storage_Get_Call{Call: _e.mock.On("Get", ctx, path)}
 }
 
@@ -309,7 +309,7 @@ type Storage_GetURL_Call struct {
 //   - ctx context.Context
 //   - path string
 //   - expiry time.Duration
-func (_e *Storage_Expecter) GetURL(ctx interface{}, path interface{}, expiry interface{}) *Storage_GetURL_Call {
+func (_e *Storage_Expecter) GetURL(ctx any, path any, expiry any) *Storage_GetURL_Call {
 	return &Storage_GetURL_Call{Call: _e.mock.On("GetURL", ctx, path, expiry)}
 }
 
@@ -373,7 +373,7 @@ type Storage_Put_Call struct {
 //   - path string
 //   - reader io.Reader
 //   - contentType string
-func (_e *Storage_Expecter) Put(ctx interface{}, path interface{}, reader interface{}, contentType interface{}) *Storage_Put_Call {
+func (_e *Storage_Expecter) Put(ctx any, path any, reader any, contentType any) *Storage_Put_Call {
 	return &Storage_Put_Call{Call: _e.mock.On("Put", ctx, path, reader, contentType)}
 }
 

@@ -63,7 +63,7 @@ type Mailer_PasswordRecovery_Call struct {
 // PasswordRecovery is a helper method to define mock.On call
 //   - ctx context.Context
 //   - msg auth.PasswordRecoveryMessage
-func (_e *Mailer_Expecter) PasswordRecovery(ctx interface{}, msg interface{}) *Mailer_PasswordRecovery_Call {
+func (_e *Mailer_Expecter) PasswordRecovery(ctx any, msg any) *Mailer_PasswordRecovery_Call {
 	return &Mailer_PasswordRecovery_Call{Call: _e.mock.On("PasswordRecovery", ctx, msg)}
 }
 

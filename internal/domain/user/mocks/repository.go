@@ -75,7 +75,7 @@ type Repository_GetByEmail_Call struct {
 // GetByEmail is a helper method to define mock.On call
 //   - ctx context.Context
 //   - email string
-func (_e *Repository_Expecter) GetByEmail(ctx interface{}, email interface{}) *Repository_GetByEmail_Call {
+func (_e *Repository_Expecter) GetByEmail(ctx any, email any) *Repository_GetByEmail_Call {
 	return &Repository_GetByEmail_Call{Call: _e.mock.On("GetByEmail", ctx, email)}
 }
 
@@ -143,7 +143,7 @@ type Repository_GetByID_Call struct {
 // GetByID is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID uuid.UUID
-func (_e *Repository_Expecter) GetByID(ctx interface{}, userID interface{}) *Repository_GetByID_Call {
+func (_e *Repository_Expecter) GetByID(ctx any, userID any) *Repository_GetByID_Call {
 	return &Repository_GetByID_Call{Call: _e.mock.On("GetByID", ctx, userID)}
 }
 
@@ -200,7 +200,7 @@ type Repository_Store_Call struct {
 // Store is a helper method to define mock.On call
 //   - ctx context.Context
 //   - u *user.User
-func (_e *Repository_Expecter) Store(ctx interface{}, u interface{}) *Repository_Store_Call {
+func (_e *Repository_Expecter) Store(ctx any, u any) *Repository_Store_Call {
 	return &Repository_Store_Call{Call: _e.mock.On("Store", ctx, u)}
 }
 
@@ -257,7 +257,7 @@ type Repository_Update_Call struct {
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
 //   - u *user.User
-func (_e *Repository_Expecter) Update(ctx interface{}, u interface{}) *Repository_Update_Call {
+func (_e *Repository_Expecter) Update(ctx any, u any) *Repository_Update_Call {
 	return &Repository_Update_Call{Call: _e.mock.On("Update", ctx, u)}
 }
 

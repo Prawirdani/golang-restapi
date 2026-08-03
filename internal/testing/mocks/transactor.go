@@ -62,7 +62,7 @@ type Transactor_Transact_Call struct {
 // Transact is a helper method to define mock.On call
 //   - ctx context.Context
 //   - fn func(ctx context.Context) error
-func (_e *Transactor_Expecter) Transact(ctx interface{}, fn interface{}) *Transactor_Transact_Call {
+func (_e *Transactor_Expecter) Transact(ctx any, fn any) *Transactor_Transact_Call {
 	return &Transactor_Transact_Call{Call: _e.mock.On("Transact", ctx, fn)}
 }
 

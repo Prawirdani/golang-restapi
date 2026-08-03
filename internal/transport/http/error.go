@@ -225,6 +225,7 @@ var domainErrStatusMap = map[domain.ErrorKind]int{
 	domain.KindConflict:     http.StatusConflict,
 	domain.KindForbidden:    http.StatusForbidden,
 	domain.KindUnauthorized: http.StatusUnauthorized,
+	domain.KindThrottled:    http.StatusTooManyRequests,
 }
 
 func getDomainErrStatusCode(kind domain.ErrorKind) int {

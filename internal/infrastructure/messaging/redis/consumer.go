@@ -102,8 +102,11 @@ func (c *StreamConsumer[T]) handle(ctx context.Context, m redis.XMessage, sem ch
 	env, err := decodeMessage[T](m)
 	if err != nil {
 		log.ErrorCtx(ctx, "Failed to decode message, moving to DLQ", err)
+		if dlqErr := c.toDLQ(ctx, m, "decode_error", err.Error()); dlqErr != nil {
+			// Do not ACK: leave in PEL so XAUTOCLAIM retries rather than losing it.
+			return
+		}
 		c.ack(ctx, m.ID)
-		c.toDLQ(ctx, m, "decode_error", err.Error())
 		return
 	}
 
@@ -121,8 +124,11 @@ func (c *StreamConsumer[T]) handle(ctx context.Context, m redis.XMessage, sem ch
 
 	if deliveries >= c.cfg.MaxRetries {
 		log.WarnCtx(ctx, "Handler max retries exceeded, moving to DLQ")
+		if dlqErr := c.toDLQ(ctx, m, "max_retries", err.Error()); dlqErr != nil {
+			// Do not ACK: leave in PEL so XAUTOCLAIM retries rather than losing it.
+			return
+		}
 		c.ack(ctx, m.ID)
-		c.toDLQ(ctx, m, "max_retries", err.Error())
 		return
 	}
 
@@ -185,10 +191,15 @@ func (c *StreamConsumer[T]) ack(ctx context.Context, id string) {
 }
 
 // toDLQ writes to the DLQ stream, preserving original payload plus metadata.
-// Called AFTER ack — duplicates in DLQ are acceptable; lost messages are not.
-func (c *StreamConsumer[T]) toDLQ(ctx context.Context, m redis.XMessage, reason, errMsg string) {
+// It MUST be called BEFORE ack: the caller only acks once this returns nil, so a
+// failed DLQ write leaves the message in the PEL for XAUTOCLAIM to retry
+// (duplicates in the DLQ are acceptable; lost messages are not).
+//
+// When DLQ is disabled it returns nil so the caller acks and drops the message,
+// preserving the previous behavior.
+func (c *StreamConsumer[T]) toDLQ(ctx context.Context, m redis.XMessage, reason, errMsg string) error {
 	if !c.cfg.UseDLQ {
-		return
+		return nil
 	}
 
 	values := make(map[string]any, len(m.Values)+3)
@@ -204,7 +215,9 @@ func (c *StreamConsumer[T]) toDLQ(ctx context.Context, m redis.XMessage, reason,
 		Values: values,
 	}).Err(); err != nil {
 		log.ErrorCtx(ctx, "DLQ write failed", err, "id", m.ID)
+		return err
 	}
+	return nil
 }
 
 func (c *StreamConsumer[T]) ensureGroup(ctx context.Context) error {

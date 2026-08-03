@@ -13,6 +13,13 @@ var ErrInvalidPasswordRecoveryToken = domain.UnauthorizedErr(
 	"AUTH_INVALID_RECOV_TOKEN",
 )
 
+var ErrPasswordRecoveryThrottled = domain.ThrottledErr(
+	"too many password reset requests, please try again later",
+	"AUTH_RECOVERY_THROTTLED",
+)
+
+const PasswordRecoveryThrottledTTL = 30 * time.Second
+
 type PasswordRecoveryToken struct {
 	ID        int                          `json:"id"         db:"id"`
 	UserID    uuid.UUID                    `json:"user_id"    db:"user_id"`

@@ -28,6 +28,12 @@ packages:
         config:
           filename: storage_file.go
 
+  github.com/prawirdani/golang-restapi/internal/throttle:
+    interfaces:
+      Throttler:
+        config:
+          filename: throttler.go
+
   github.com/prawirdani/golang-restapi/internal/domain/auth:
     interfaces:
       Repository:

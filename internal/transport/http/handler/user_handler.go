@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"net/http"
-
 	"github.com/prawirdani/golang-restapi/internal/domain/auth"
 	"github.com/prawirdani/golang-restapi/internal/domain/user"
 	httpx "github.com/prawirdani/golang-restapi/internal/transport/http"
@@ -37,7 +35,7 @@ func (h *UserHandler) UpdateUser(c *httpx.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, &httpx.Body{
+	return c.JSON(&httpx.Body{
 		Message: "user updated!",
 	})
 }
@@ -84,7 +82,7 @@ func (h *UserHandler) ChangeProfilePicture(c *httpx.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, &httpx.Body{
+	return c.JSON(&httpx.Body{
 		Message: "profile picture updated!",
 	})
 }
@@ -101,7 +99,7 @@ func (h *UserHandler) DeleteProfilePicture(c *httpx.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, &httpx.Body{
+	return c.JSON(&httpx.Body{
 		Message: "profile picture deleted",
 	})
 }

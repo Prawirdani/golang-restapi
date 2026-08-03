@@ -25,39 +25,48 @@ import (
 
 // Context wraps http.ResponseWriter and *http.Request with helper methods
 type Context struct {
-	w http.ResponseWriter
-	r *http.Request
+	w      http.ResponseWriter
+	r      *http.Request
+	status int
 }
 
 // Func defines the handler signature that uses the custom Context and returns an error
 type Func func(c *Context) error
 
-// JSON sends a JSON response
-func (c *Context) JSON(status int, data any) error {
-	// Only use ETag for successful responses (2xx)
-	if status >= 200 && status < 300 {
-		etag := eTag(data)
-		if etag != "" {
-			// Check If-None-Match header
-			if match := c.Get("If-None-Match"); match == etag {
-				c.w.WriteHeader(http.StatusNotModified)
-				return nil
-			}
-			c.Set("ETag", etag)
-			c.Set("Cache-Control", "private, must-revalidate")
+// JSON sends a JSON response.
+//
+// The payload is marshaled exactly once. For safe, cacheable methods (GET/HEAD)
+// returning a 2xx status, a strong ETag is derived from the marshaled bytes and
+// conditional requests are honored via If-None-Match (304 Not Modified).
+func (c *Context) JSON(data any) error {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	status := c.statusOrOK()
+
+	// ETag only for cacheable reads; mutations (POST/PUT/DELETE) skip the hash.
+	if status >= 200 && status < 300 && (c.Method() == http.MethodGet || c.Method() == http.MethodHead) {
+		etag := eTagBytes(b)
+		if match := c.Get("If-None-Match"); match == etag {
+			c.w.WriteHeader(http.StatusNotModified)
+			return nil
 		}
 		c.Set("ETag", etag)
+		c.Set("Cache-Control", "private, must-revalidate")
 	}
 
 	c.w.Header().Set("Content-Type", "application/json")
 	c.w.WriteHeader(status)
-	return json.NewEncoder(c.w).Encode(data)
+	_, err = c.w.Write(b)
+	return err
 }
 
 // String sends a plain text response
-func (c *Context) String(status int, format string, values ...any) error {
+func (c *Context) String(format string, values ...any) error {
 	c.w.Header().Set("Content-Type", "text/plain")
-	c.w.WriteHeader(status)
+	c.w.WriteHeader(c.statusOrOK())
 	_, err := fmt.Fprintf(c.w, format, values...)
 	return err
 }
@@ -87,7 +96,7 @@ func (c *Context) Bind(dst any) error {
 
 // Status sets the HTTP status code
 func (c *Context) Status(code int) *Context {
-	c.w.WriteHeader(code)
+	c.status = code
 	return c
 }
 
@@ -191,6 +200,14 @@ func (c *Context) Writer() http.ResponseWriter {
 	return c.w
 }
 
+func (c *Context) statusOrOK() int {
+	if c.status != 0 {
+		return c.status
+	}
+
+	return http.StatusOK
+}
+
 type ErrorBody struct {
 	Error *Error `json:"error"`
 }
@@ -201,7 +218,7 @@ func Handler(h Func) http.HandlerFunc {
 		c := &Context{w: w, r: r}
 		if err := h(c); err != nil {
 			e := NormalizeError(err)
-			if err := c.JSON(e.Status(), &ErrorBody{Error: e}); err != nil {
+			if err := c.Status(e.Status()).JSON(&ErrorBody{Error: e}); err != nil {
 				http.Error(w, "internal server error", http.StatusInternalServerError)
 			}
 		}
