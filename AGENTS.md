@@ -70,7 +70,7 @@ func (h *AuthHandler) Login(c *httpx.Context) error {
 
 **Errors** — `domain.Error` with `ErrorKind` (`KindValidation`, `KindNotFound`, `KindConflict`, `KindUnauthorized`, `KindForbidden`). Immutable (`WithDetails`/`SetMessage` return copies), supports `errors.Is`. `httpx.NormalizeError` maps kinds to HTTP status.
 
-**Transactions** — wrap multi-step writes in `s.transactor.Transact`. Repositories detect the tx via `db.GetConn(ctx)` and reuse the connection (adding `FOR UPDATE`).
+**Transactions** — wrap multi-step writes in `s.transactor.Transact`. Repositories detect the tx via `db.GetConn(ctx)` and reuse the connection (adding `FOR UPDATE`). Rollback/commit run on `context.WithoutCancel(ctx)` with a 5s timeout so a cancelled request ctx doesn't destroy the pooled connection.
 
 ```go
 err := s.transactor.Transact(ctx, func(ctx context.Context) error {
@@ -79,11 +79,20 @@ err := s.transactor.Transact(ctx, func(ctx context.Context) error {
 })
 ```
 
+**Auth invariants**
+- Password reset/change revokes **all** sessions for the user (inside the tx).
+- Unknown-email login path runs a dummy bcrypt compare (`DummyVerify`) — never branch on user existence via timing.
+- Refresh attempts against a revoked session → `log.WarnCtx` reuse signal, then `ErrSessionInvalid`.
+- Passwords: bcrypt cost 12, `min=8,max=72` validation (bcrypt truncates >72 bytes).
+- Cookies: `HttpOnly` always on; `Secure` production-only.
+
+**Worker/messaging** — consumer handlers must never panic: `handle` has a deferred recover that routes to the DLQ. Envelopes carry an `ID` consumed by the SetNX dedup key (`dedup:<stream>:<id>`) — never bypass it when adding message types. Ack/DLQ writes use `context.WithoutCancel`. SMTP send bounded at 10s; keep any new blocking op bounded too.
+
 **Testing** — table-driven with `t.Run` subtests. `setupTestFixture(t)` wires mocks + service and registers `t.Cleanup()`. Mocks: entity-scoped in `internal/domain/<entity>/mocks/`, reusable in `internal/testing/mocks/`.
 
 **Logging** — structured/context-aware via `pkg/log`. Set at startup: `log.SetLogger(log.NewZerologAdapter(cfg.IsProduction()))`. Request-scoped fields (request_id, uid/sid) flow through context. Debug in dev, Info in prod.
 
-**Config** — `.env` (see `.env.example`), loaded once via `config.LoadConfig()`.
+**Config** — `.env` (see `.env.example`), loaded once via `config.LoadConfig()`. `Validate()` fails startup on: `AUTH_JWT_SECRET` < 32 chars, `DB_MAXCONNS` ≤ 0, CORS credentials with `*`/invalid origins. Add new required settings to validation.
 
 ## Custom Skills
 
