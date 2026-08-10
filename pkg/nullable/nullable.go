@@ -55,6 +55,7 @@ func (n *Nullable[T]) Scan(value any) error {
 			if err := json.Unmarshal([]byte(v), &n.val); err != nil {
 				return err
 			}
+			n.valid = true
 			return nil
 		}
 		return fmt.Errorf("cannot convert %T to %T", value, v)

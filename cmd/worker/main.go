@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/prawirdani/golang-restapi/config"
 	"github.com/prawirdani/golang-restapi/internal/worker"
@@ -15,6 +16,10 @@ import (
 	"github.com/prawirdani/golang-restapi/pkg/mailer"
 	"github.com/redis/go-redis/v9"
 )
+
+// shutdownTimeout bounds how long main waits for Start to return after cancel
+// (ctx) so a wedged handler can't block deferred cleanup (rdb.Close) forever.
+const shutdownTimeout = 10 * time.Second
 
 func main() {
 	cfg, err := config.LoadConfig()
@@ -54,11 +59,17 @@ func main() {
 	select {
 	case <-ctx.Done():
 		// Shutdown requested: wait for Start to return so in-flight emails drain
-		// and deferred cleanup (rdb.Close) runs.
-		if err := <-done; err != nil && !errors.Is(err, context.Canceled) {
-			log.Error("Consumer stopped with error during shutdown", err)
+		// and deferred cleanup (rdb.Close) runs. Bound the wait — if a handler
+		// is wedged, exit anyway so rdb.Close still runs.
+		select {
+		case err := <-done:
+			if err != nil && !errors.Is(err, context.Canceled) {
+				log.Error("Consumer stopped with error during shutdown", err)
+			}
+			log.Info("Worker exited gracefully")
+		case <-time.After(shutdownTimeout):
+			log.Warn("Worker shutdown timed out, exiting", "timeout", shutdownTimeout)
 		}
-		log.Info("Worker exited gracefully")
 	case err := <-done:
 		// Consumer returned on its own before a shutdown signal.
 		if err != nil && !errors.Is(err, context.Canceled) {

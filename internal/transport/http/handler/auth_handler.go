@@ -137,7 +137,9 @@ func (h *AuthHandler) Logout(c *httpx.Context) error {
 
 	authClaims, _ := auth.GetAccessTokenCtx(ctx)
 	if authClaims != nil {
-		_ = h.authService.Logout(ctx, authClaims.SessionID)
+		if err := h.authService.Logout(ctx, authClaims.SessionID); err != nil {
+			log.ErrorCtx(ctx, "Failed to logout", err)
+		}
 	}
 
 	h.removeTokenCookies(c)
@@ -239,7 +241,7 @@ func (h *AuthHandler) setTokenCookies(c *httpx.Context, tokenPair *auth.TokenPai
 
 	now := time.Now()
 	base := http.Cookie{
-		HttpOnly: h.cfg.IsProduction(),
+		HttpOnly: true,
 		Secure:   h.cfg.IsProduction(),
 		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
@@ -266,7 +268,7 @@ func (h *AuthHandler) removeTokenCookies(c *httpx.Context) {
 		Name:     httpx.AccessTokenCookie,
 		Value:    "",
 		Expires:  time.Unix(0, 0),
-		HttpOnly: h.cfg.IsProduction(),
+		HttpOnly: true,
 		Secure:   h.cfg.IsProduction(),
 		Path:     "/",
 	}

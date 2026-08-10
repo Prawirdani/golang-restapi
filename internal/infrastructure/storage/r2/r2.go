@@ -2,6 +2,7 @@ package r2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 type Config struct {
@@ -116,8 +118,14 @@ func (r *R2) Exists(ctx context.Context, path string) (bool, error) {
 		Key:    aws.String(path),
 	})
 	if err != nil {
-		// TODO: Check if it's a "not found" error
-		return false, nil
+		// Only a genuine 404 means "does not exist". Auth/network/5xx
+		// failures must surface — silently treating them as "not found" would
+		// mask real outages. HeadObject returns the typed NotFound error.
+		var notFound *types.NotFound
+		if errors.As(err, &notFound) {
+			return false, nil
+		}
+		return false, fmt.Errorf("r2 exists: %w", err)
 	}
 	return true, nil
 }

@@ -150,7 +150,8 @@ func (s *Server) setupHandlers() {
 	// Register API routes
 	s.router.Route("/api", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
-			r.Post("/login", fn(authHandler.Login))
+			// ponytail: per-IP limit; per-account lockout counter is future work
+			r.With(middleware.RateLimit(5, 1*time.Minute)).Post("/login", fn(authHandler.Login))
 			r.Post("/register", fn(authHandler.Register))
 			r.Post("/refresh", fn(authHandler.RefreshAccessToken))
 

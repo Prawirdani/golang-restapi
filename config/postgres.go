@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -42,6 +43,14 @@ func (p *Postgres) Parse() error {
 		if d, err := time.ParseDuration(val); err == nil {
 			p.MaxConnLifetime = d
 		}
+	}
+
+	// pgxpool treats MaxConns=0 as "no limit", but the intended default when
+	// DB_MAXCONNS is unset is 0 here, and a 0 value passed through the pool
+	// config silently unbounds the pool. Fail with a clear message instead of a
+	// cryptic boot error.
+	if p.MaxConns <= 0 {
+		return fmt.Errorf("DB_MAXCONNS must be set to a value > 0 (got %d)", p.MaxConns)
 	}
 	return nil
 }

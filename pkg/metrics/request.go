@@ -6,23 +6,17 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
-
-type writerRecorder struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (w *writerRecorder) WriteHeader(code int) {
-	w.statusCode = code
-	w.ResponseWriter.WriteHeader(code)
-}
 
 // InstrumentHandler is Prometheus metrics instrumentation middleware
 func (m *Metrics) InstrumentHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		ww := &writerRecorder{w, http.StatusOK}
+		// M6/L6: chi's wrapper preserves optional interfaces (Flusher, Hijacker,
+		// ReaderFrom) that a naive struct embedding drops, and exposes
+		// Status()/BytesWritten() for the metrics.
+		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 		defer func() {
 			// Use the chi route template (e.g. "/users/{id}") rather than the raw
 			// URL path to keep label cardinality bounded. An unmatched route yields
@@ -32,9 +26,12 @@ func (m *Metrics) InstrumentHandler(next http.Handler) http.Handler {
 				path = "unknown"
 			}
 			duration := time.Since(start).Seconds()
-			status := strconv.Itoa(ww.statusCode)
-			m.ReqDuration.WithLabelValues(path, r.Method, status).Observe(duration)
-			m.ReqCounter.WithLabelValues(path, r.Method, status).Inc()
+			status := ww.Status()
+			if status == 0 { // handler never wrote a header
+				status = http.StatusOK
+			}
+			m.ReqDuration.WithLabelValues(path, r.Method, strconv.Itoa(status)).Observe(duration)
+			m.ReqCounter.WithLabelValues(path, r.Method, strconv.Itoa(status)).Inc()
 		}()
 		next.ServeHTTP(ww, r)
 	})

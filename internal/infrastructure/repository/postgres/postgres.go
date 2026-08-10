@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -105,19 +106,27 @@ func (db *DB) Transact(
 	// - Keeps connection healthy and returns it to pool (avoids connection churn)
 	// - Releases locks immediately rather than waiting for PG to detect disconnection
 	// - Provides explicit logging for debugging
+	//
+	// Rollback/Commit must run even if the request ctx was cancelled — pgx
+	// skips sending the command on a cancelled ctx, which would make
+	// conn.Release() destroy the connection (churn) while locks linger.
+	// WithoutCancel drops cancellation but keeps ctx values (request_id logging);
+	// the 5s timeout bounds the worst case.
 	defer func() {
+		txCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
 		if p := recover(); p != nil {
-			_ = tx.Rollback(ctx)
+			_ = tx.Rollback(txCtx)
 			log.DebugCtx(ctx, "Transaction Rollback (panic)")
 			panic(p) // re-panic after rollback
 		} else if err != nil {
-			if rbErr := tx.Rollback(ctx); rbErr != nil {
+			if rbErr := tx.Rollback(txCtx); rbErr != nil {
 				err = fmt.Errorf("tx failed: %w, rollback failed: %w", err, rbErr)
 			} else {
 				log.DebugCtx(ctx, "Transaction Rollback")
 			}
 		} else {
-			if commitErr := tx.Commit(ctx); commitErr != nil {
+			if commitErr := tx.Commit(txCtx); commitErr != nil {
 				err = fmt.Errorf("tx failed to commit: %w", commitErr)
 			} else {
 				log.DebugCtx(ctx, "Transaction Committed")
@@ -155,6 +164,8 @@ func New(cfg config.Postgres) (*DB, error) {
 	pgConf.MinConns = int32(cfg.MinConns)
 	pgConf.MaxConns = int32(cfg.MaxConns)
 	pgConf.MaxConnLifetime = cfg.MaxConnLifetime
+	pgConf.MaxConnIdleTime = 5 * time.Minute
+	pgConf.HealthCheckPeriod = 1 * time.Minute
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), pgConf)
 	if err != nil {

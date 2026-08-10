@@ -48,10 +48,6 @@ func NewService(
 }
 
 func (s *Service) Register(ctx context.Context, inp user.CreateUserInput) error {
-	if userExists, _ := s.userRepo.GetByEmail(ctx, inp.Email); userExists != nil {
-		return user.ErrEmailConflict
-	}
-
 	hashedPassword, err := HashPassword(inp.Password)
 	if err != nil {
 		return err
@@ -76,8 +72,19 @@ func (s *Service) Login(
 	ctx context.Context,
 	inp LoginInput,
 ) (*TokenPair, error) {
-	usr, _ := s.userRepo.GetByEmail(ctx, inp.Email)
+	usr, err := s.userRepo.GetByEmail(ctx, inp.Email)
+	if err != nil {
+		// Surface real DB errors (e.g. outage) instead of masking them as 401.
+		if !errors.Is(err, domain.ErrNotFound) {
+			return nil, err
+		}
+		// Equalize timing with a dummy bcrypt compare so user enumeration
+		// via response time is not possible.
+		DummyVerify()
+		return nil, ErrWrongCredentials
+	}
 	if usr == nil {
+		DummyVerify()
 		return nil, ErrWrongCredentials
 	}
 
@@ -103,6 +110,11 @@ func (s *Service) Login(
 		return nil, err
 	}
 
+	// ponytail: prune-on-login, no cron
+	if err := s.authRepo.PruneExpiredUserSessions(ctx, usr.ID); err != nil {
+		log.ErrorCtx(ctx, "Failed to prune expired sessions", err)
+	}
+
 	return &TokenPair{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -126,7 +138,16 @@ func (s *Service) RefreshAccessToken(
 			return err
 		}
 
-		if sess.IsExpired() || sess.RevokedAt.NotNull() {
+		if sess.IsExpired() {
+			return ErrSessionInvalid
+		}
+
+		if sess.RevokedAt.NotNull() {
+			// ponytail: logs reuse signal; full token-family/history tracking out of scope (no schema change)
+			log.WarnCtx(ctx, "Refresh attempt against revoked session; possible token reuse",
+				"user_id", sess.UserID.String(),
+				"session_id", sess.ID.String(),
+			)
 			return ErrSessionInvalid
 		}
 
@@ -259,7 +280,11 @@ func (s *Service) ResetPassword(ctx context.Context, inp ResetPasswordInput) err
 			return err
 		}
 
-		return s.userRepo.Update(ctx, user)
+		if err := s.userRepo.Update(ctx, user); err != nil {
+			return err
+		}
+
+		return s.authRepo.RevokeUserSessions(ctx, user.ID)
 	})
 }
 
@@ -287,7 +312,13 @@ func (s *Service) ChangePassword(
 
 	usr.Password = string(newHashedPassword)
 
-	return s.userRepo.Update(ctx, usr)
+	return s.transactor.Transact(ctx, func(ctx context.Context) error {
+		if err := s.userRepo.Update(ctx, usr); err != nil {
+			return err
+		}
+		// ponytail: revokes ALL sessions incl. current; pass current sessID to exempt if desired
+		return s.authRepo.RevokeUserSessions(ctx, userID)
+	})
 }
 
 func (s *Service) generateAccessToken(userID, sessID uuid.UUID) (string, error) {

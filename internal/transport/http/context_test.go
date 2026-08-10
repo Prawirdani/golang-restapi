@@ -86,7 +86,7 @@ func TestJSON_ETagOnlyForReads(t *testing.T) {
 
 func TestJSON_NoETagOnErrorStatus(t *testing.T) {
 	c, rec := newCtx(http.MethodGet, nil)
-	if err := c.JSON(&Body{Data: "x"}); err != nil {
+	if err := c.Status(http.StatusInternalServerError).JSON(&Body{Data: "x"}); err != nil {
 		t.Fatalf("JSON: %v", err)
 	}
 	if etag := rec.Header().Get("ETag"); etag != "" {

@@ -32,5 +32,11 @@ func (t *Auth) Parse() error {
 			t.PasswordRecoveryTokenTTL = d
 		}
 	}
+	// Default to a short TTL (5m) even when the env var is unset. The reset
+	// link travels in a URL (?token=) which can end up in logs/proxies/history,
+	// so a short window limits the exposure. Env var overrides this default.
+	if t.PasswordRecoveryTokenTTL == 0 {
+		t.PasswordRecoveryTokenTTL = 5 * time.Minute
+	}
 	return nil
 }

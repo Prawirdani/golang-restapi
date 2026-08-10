@@ -32,6 +32,12 @@ type Repository interface {
 	// Other fields must stays immutable
 	UpdateSession(ctx context.Context, session *Session) error
 
+	// RevokeUserSessions revokes all active sessions for a user.
+	RevokeUserSessions(ctx context.Context, userID uuid.UUID) error
+
+	// PruneExpiredUserSessions deletes expired sessions for a user.
+	PruneExpiredUserSessions(ctx context.Context, userID uuid.UUID) error
+
 	// StorePasswordRecoveryToken persists new recovery password token.
 	StorePasswordRecoveryToken(ctx context.Context, token *PasswordRecoveryToken) error
 

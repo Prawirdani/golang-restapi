@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -23,6 +24,17 @@ type ConsumerConfig struct {
 	Block       time.Duration
 	MinIdle     time.Duration // idle threshold before XAUTOCLAIM reclaims
 	MaxRetries  int64
+}
+
+// dedupTTL bounds how long a processed envelope ID stays deduplicated. It must
+// outlive the longest redelivery window (retries + a XAck lost during
+// shutdown); 7d covers even a multi-day outage.
+const dedupTTL = 7 * 24 * time.Hour
+
+// dedupKey scopes the idempotency claim to one stream so equal envelope IDs
+// produced for different streams don't collide.
+func dedupKey(stream, id string) string {
+	return "dedup:" + stream + ":" + id
 }
 
 type Consumer interface {
@@ -47,8 +59,15 @@ func (c *StreamConsumer[T]) Start(ctx context.Context) error {
 	// buffered semaphore
 	sem := make(chan struct{}, c.cfg.Concurrency)
 
+	// claimPending scans the full PEL cursor — too expensive to run before every
+	// XReadGroup. ponytail: reclaim at most once every 30s; retries in the PEL
+	// wait one extra tick (plus MinIdle) before being picked up again.
+	claimTicker := time.NewTicker(30 * time.Second)
+	defer claimTicker.Stop()
+
 	ctx = log.WithContext(ctx, "stream", c.cfg.Stream)
-	log.InfoCtx(ctx, "Consumer started",
+	log.InfoCtx(
+		ctx, "Consumer started",
 		"group", c.cfg.Group,
 		"consumer", c.cfg.Consumer,
 	)
@@ -57,10 +76,10 @@ func (c *StreamConsumer[T]) Start(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-claimTicker.C:
+			c.claimPending(ctx, sem)
 		default:
 		}
-
-		c.claimPending(ctx, sem)
 
 		streams, err := c.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
 			Group:    c.cfg.Group,
@@ -99,6 +118,30 @@ func (c *StreamConsumer[T]) handle(ctx context.Context, m redis.XMessage, sem ch
 
 	ctx = log.WithContext(ctx, "id", m.ID)
 
+	var env messaging.Envelope[T]
+
+	// A panic in message handling (template Execute, mailer.Send, nil deref)
+	// must not crash the whole worker: recover, log with stack, and route the
+	// message to the DLQ (or leave it in the PEL) so it is not lost.
+	defer func() {
+		if r := recover(); r != nil {
+			err := fmt.Errorf("panic handling message: %v", r)
+			log.ErrorCtx(ctx, "Recovered panic, moving to DLQ", err, "stack", string(debug.Stack()))
+			// Release the dedup claim so a redelivery re-processes instead of
+			// being skipped as a duplicate.
+			if env.ID != "" {
+				if rerr := c.rdb.Del(ctx, dedupKey(c.cfg.Stream, env.ID)).Err(); rerr != nil {
+					log.WarnCtx(ctx, "Failed to release dedup claim after panic", rerr, "id", env.ID)
+				}
+			}
+			if dlqErr := c.toDLQ(ctx, m, "panic", err.Error()); dlqErr != nil {
+				// Do not ACK: leave in PEL so XAUTOCLAIM retries rather than losing it.
+				return
+			}
+			c.ack(ctx, m.ID)
+		}
+	}()
+
 	env, err := decodeMessage[T](m)
 	if err != nil {
 		log.ErrorCtx(ctx, "Failed to decode message, moving to DLQ", err)
@@ -112,10 +155,32 @@ func (c *StreamConsumer[T]) handle(ctx context.Context, m redis.XMessage, sem ch
 
 	ctx = log.WithContext(ctx, "iid", env.ID)
 
+	// Idempotency: claim the envelope ID before processing so a redelivery
+	// (e.g. a XAck lost during shutdown after a successful send) is skipped
+	// instead of sending duplicate mail. The claim is released on failure so
+	// the retry/DLQ path below re-processes on redelivery.
+	key := dedupKey(c.cfg.Stream, env.ID)
+	// SetNX is deprecated in go-redis v9 — use SET ... NX via SetArgs instead.
+	// redis.Nil means the key already existed (duplicate delivery); any other
+	// error is a real failure (process anyway — at-least-once semantics).
+	if _, err := c.rdb.SetArgs(ctx, key, "1", redis.SetArgs{Mode: "NX", TTL: dedupTTL}).Result(); err == redis.Nil {
+		log.DebugCtx(ctx, "Duplicate delivery, already processed, acking", "id", env.ID)
+		c.ack(ctx, m.ID)
+		return
+	} else if err != nil {
+		log.WarnCtx(ctx, "Dedup check failed, processing anyway", err, "id", env.ID)
+	}
+
 	if err = c.handler(ctx, env); err == nil {
 		log.DebugCtx(ctx, "Message handled")
 		c.ack(ctx, m.ID)
 		return
+	}
+
+	// Handler failed — release the dedup claim so the retry/DLQ decision below
+	// can re-process on redelivery instead of being skipped as a duplicate.
+	if rerr := c.rdb.Del(ctx, key).Err(); rerr != nil {
+		log.WarnCtx(ctx, "Failed to release dedup claim", rerr, "id", env.ID)
 	}
 
 	// Handler failed — check delivery count before deciding.
@@ -133,7 +198,8 @@ func (c *StreamConsumer[T]) handle(ctx context.Context, m redis.XMessage, sem ch
 	}
 
 	// No ACK — stays in PEL, XAUTOCLAIM will reclaim after MinIdle.
-	log.DebugCtx(ctx, "Message will retry via XAUTOCLAIM",
+	log.DebugCtx(
+		ctx, "Message will retry via XAUTOCLAIM",
 		"deliveries", deliveries,
 		"next_retry_after", c.cfg.MinIdle,
 	)
@@ -158,8 +224,14 @@ func (c *StreamConsumer[T]) claimPending(ctx context.Context, sem chan struct{})
 			log.DebugCtx(ctx, "Reclaimed pending messages", "count", len(res))
 		}
 		for _, m := range res {
-			sem <- struct{}{}
-			go c.handle(ctx, m, sem)
+			select {
+			case sem <- struct{}{}:
+				go c.handle(ctx, m, sem)
+			case <-ctx.Done():
+				// Saturated semaphore during shutdown: leave the rest in the
+				// PEL for the next reclaim instead of blocking forever.
+				return
+			}
 		}
 		if next == "0-0" || next == "0" {
 			return
@@ -185,6 +257,10 @@ func (c *StreamConsumer[T]) deliveryCount(ctx context.Context, id string) int64 
 }
 
 func (c *StreamConsumer[T]) ack(ctx context.Context, id string) {
+	// Ack with a non-cancellable ctx: if we got here the work is done, so the
+	// ack must still land during graceful shutdown or the message redelivers
+	// (duplicate side effects). go-redis' own read/write timeouts bound it.
+	ctx = context.WithoutCancel(ctx)
 	if err := c.rdb.XAck(ctx, c.cfg.Stream, c.cfg.Group, id).Err(); err != nil {
 		log.ErrorCtx(ctx, "ACK failed", err, "id", id)
 	}
@@ -198,6 +274,9 @@ func (c *StreamConsumer[T]) ack(ctx context.Context, id string) {
 // When DLQ is disabled it returns nil so the caller acks and drops the message,
 // preserving the previous behavior.
 func (c *StreamConsumer[T]) toDLQ(ctx context.Context, m redis.XMessage, reason, errMsg string) error {
+	// Same reasoning as ack: a completed DLQ write must survive graceful
+	// shutdown. go-redis' own read/write timeouts bound it.
+	ctx = context.WithoutCancel(ctx)
 	if !c.cfg.UseDLQ {
 		return nil
 	}
@@ -246,21 +325,3 @@ func decodeMessage[T any](m redis.XMessage) (messaging.Envelope[T], error) {
 	}
 	return env, nil
 }
-
-// // Idempotent wraps a handler with SetNX dedup on envelope ID.
-// // The handler never sees duplicate deliveries.
-// func Idempotent[T any](rdb *redis.Client, ttl time.Duration, h messaging.Handler[Envelope[T]])
-// messaging.Handler[Envelope[T]] {
-//     return func(ctx context.Context, env Envelope[T]) error {
-//         key := "processed:" + env.ID
-//         set, err := rdb.SetNX(ctx, key, 1, ttl).Result()
-//         if err != nil {
-//             return err
-//         }
-//         if !set {
-//             log.DebugCtx(ctx, "Duplicate message, skipping", "envelope_id", env.ID)
-//             return nil // nil = consumer will ACK it
-//         }
-//         return h(ctx, env)
-//     }
-// }

@@ -6,7 +6,7 @@ type CreateUserInput struct {
 	Name     string `json:"name"     validate:"required"`
 	Email    string `json:"email"    validate:"required,email"`
 	Phone    string `json:"phone"`
-	Password string `json:"password" validate:"required,min=8"`
+	Password string `json:"password" validate:"required,min=8,max=72"`
 	Gender   string `json:"gender"   validate:"omitempty,oneof=m M f F o O"`
 }
 

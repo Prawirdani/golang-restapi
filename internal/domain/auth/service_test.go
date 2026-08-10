@@ -36,7 +36,6 @@ func TestService_Register(t *testing.T) {
 			Password: "password123",
 		}
 
-		f.userRepo.EXPECT().GetByEmail(ctx, input.Email).Return(nil, domain.ErrNotFound)
 		f.userRepo.EXPECT().Store(ctx, mock.AnythingOfType("*user.User")).Return(nil)
 
 		err := f.service.Register(ctx, input)
@@ -54,13 +53,8 @@ func TestService_Register(t *testing.T) {
 			Password: "password123",
 		}
 
-		existingUser := &user.User{
-			ID:    uuid.New(),
-			Name:  "Existing User",
-			Email: input.Email,
-		}
-
-		f.userRepo.EXPECT().GetByEmail(ctx, input.Email).Return(existingUser, nil)
+		// Relies on the unique constraint: Store maps the violation to ErrEmailConflict.
+		f.userRepo.EXPECT().Store(ctx, mock.AnythingOfType("*user.User")).Return(user.ErrEmailConflict)
 
 		err := f.service.Register(ctx, input)
 
@@ -92,6 +86,7 @@ func TestService_Login(t *testing.T) {
 
 		f.userRepo.EXPECT().GetByEmail(ctx, input.Email).Return(mockUser, nil)
 		f.authRepo.EXPECT().StoreSession(ctx, mock.AnythingOfType("*auth.Session")).Return(nil)
+		f.authRepo.EXPECT().PruneExpiredUserSessions(ctx, mockUser.ID).Return(nil)
 
 		tokenPair, err := f.service.Login(ctx, input)
 
@@ -403,13 +398,11 @@ func TestService_RecoverPassword(t *testing.T) {
 			TryAcquire(ctx, "recover-password:"+input.Email, auth.PasswordRecoveryThrottledTTL).
 			Return(throttle.Result{Allowed: true}, nil)
 
-		// Mock expectations
+		// GetByEmail error propagates out of the tx: unknown email -> ErrNotFound -> 404.
 		f.transactor.EXPECT().
 			Transact(ctx, mock.AnythingOfType("func(context.Context) error")).
-			Run(func(ctx context.Context, fn func(context.Context) error) {
-				f.userRepo.EXPECT().GetByEmail(ctx, input.Email).Return(nil, domain.ErrNotFound)
-			}).
 			RunAndReturn(func(ctx context.Context, fn func(ctx context.Context) error) error {
+				f.userRepo.EXPECT().GetByEmail(ctx, input.Email).Return(nil, domain.ErrNotFound)
 				return fn(ctx)
 			})
 
@@ -452,6 +445,8 @@ func TestService_ResetPassword(t *testing.T) {
 					Return(nil)
 
 				f.userRepo.EXPECT().Update(ctx, mock.AnythingOfType("*user.User")).Return(nil)
+
+				f.authRepo.EXPECT().RevokeUserSessions(ctx, userID).Return(nil)
 			}).
 			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
 				return fn(ctx)
@@ -516,7 +511,14 @@ func TestService_ChangePassword(t *testing.T) {
 		}
 
 		f.userRepo.EXPECT().GetByID(ctx, userID).Return(mockUser, nil)
-		f.userRepo.EXPECT().Update(ctx, mock.AnythingOfType("*user.User")).Return(nil)
+
+		f.transactor.EXPECT().
+			Transact(ctx, mock.AnythingOfType("func(context.Context) error")).
+			RunAndReturn(func(ctx context.Context, fn func(ctx context.Context) error) error {
+				f.userRepo.EXPECT().Update(ctx, mock.AnythingOfType("*user.User")).Return(nil)
+				f.authRepo.EXPECT().RevokeUserSessions(ctx, userID).Return(nil)
+				return fn(ctx)
+			})
 
 		err = f.service.ChangePassword(ctx, userID, input)
 		assert.NoError(t, err)

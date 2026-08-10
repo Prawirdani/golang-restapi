@@ -53,11 +53,43 @@ func (r *authRepository) UpdateSession(ctx context.Context, session *auth.Sessio
 		return errors.New("session is nil")
 	}
 
-	query := "UPDATE sessions SET refresh_token=$1, revoked_at=$2 WHERE id=$3"
+	query := "UPDATE sessions SET refresh_token=@refresh_token, revoked_at=@revoked_at, accessed_at=@accessed_at WHERE id=@id"
+	args := pgx.NamedArgs{
+		"refresh_token": session.RefreshTokenHash,
+		"revoked_at":    session.RevokedAt,
+		"accessed_at":   session.AccessedAt,
+		"id":            session.ID,
+	}
 	conn := r.db.GetConn(ctx)
 
-	if _, err := conn.Exec(ctx, query, session.RefreshTokenHash, session.RevokedAt, session.ID); err != nil {
+	if _, err := conn.Exec(ctx, query, args); err != nil {
 		return fmt.Errorf("update session: %w", err)
+	}
+
+	return nil
+}
+
+// RevokeUserSessions implements [auth.Repository]
+func (r *authRepository) RevokeUserSessions(ctx context.Context, userID uuid.UUID) error {
+	query := "UPDATE sessions SET revoked_at = now() WHERE user_id = @user_id AND revoked_at IS NULL"
+	args := pgx.NamedArgs{"user_id": userID}
+	conn := r.db.GetConn(ctx)
+
+	if _, err := conn.Exec(ctx, query, args); err != nil {
+		return fmt.Errorf("revoke user sessions: %w", err)
+	}
+
+	return nil
+}
+
+// PruneExpiredUserSessions implements [auth.Repository]
+func (r *authRepository) PruneExpiredUserSessions(ctx context.Context, userID uuid.UUID) error {
+	query := "DELETE FROM sessions WHERE user_id = @user_id AND expires_at < now()"
+	args := pgx.NamedArgs{"user_id": userID}
+	conn := r.db.GetConn(ctx)
+
+	if _, err := conn.Exec(ctx, query, args); err != nil {
+		return fmt.Errorf("prune expired user sessions: %w", err)
 	}
 
 	return nil

@@ -17,9 +17,22 @@ import (
 
 var ErrWrongCredentials = domain.UnauthorizedErr("check your credentials", "AUTH_CREDENTIALS")
 
+// bcryptCost is the work factor used for password hashing.
+const bcryptCost = 12
+
+// dummyHash is a precomputed bcrypt hash used to equalize login timing when
+// the target user does not exist, preventing user enumeration via timing.
+var dummyHash = func() []byte {
+	hashed, err := bcrypt.GenerateFromPassword([]byte("timing-equalizer"), bcryptCost)
+	if err != nil {
+		panic(err)
+	}
+	return hashed
+}()
+
 // HashPassword generates a bcrypt hash from a plaintext password
 func HashPassword(plain string) ([]byte, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(plain), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(plain), bcryptCost)
 	if err != nil {
 		return nil, err
 	}
@@ -33,6 +46,12 @@ func VerifyPassword(plain, hashed string) error {
 		return ErrWrongCredentials
 	}
 	return nil
+}
+
+// DummyVerify runs a bcrypt comparison against a precomputed dummy hash to
+// equalize response time on the user-not-found login path.
+func DummyVerify() {
+	_ = bcrypt.CompareHashAndPassword(dummyHash, []byte("x"))
 }
 
 // HashStr computes a SHA-256 hash of the input string
