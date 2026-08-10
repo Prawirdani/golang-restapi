@@ -64,7 +64,7 @@ migrations/              # Goose SQL migrations
 
 ```go
 func (h *AuthHandler) Login(c *httpx.Context) error {
-    return c.JSON(http.StatusOK, httpx.Body{Data: result, Message: "success"})
+    return c.JSON(&httpx.Body{Data: result, Message: "success"})
 }
 ```
 
@@ -84,6 +84,19 @@ err := s.transactor.Transact(ctx, func(ctx context.Context) error {
 **Logging** — structured/context-aware via `pkg/log`. Set at startup: `log.SetLogger(log.NewZerologAdapter(cfg.IsProduction()))`. Request-scoped fields (request_id, uid/sid) flow through context. Debug in dev, Info in prod.
 
 **Config** — `.env` (see `.env.example`), loaded once via `config.LoadConfig()`.
+
+## Custom Skills
+
+Project-specific skills in `.agents/skills/` encode this repo's style, architecture, and guidelines. Load them (they auto-trigger) whenever working on the related layer:
+
+- **gorest-architecture** — layering, dependency direction, interfaces, DI wiring, aliases, naming
+- **gorest-errors** — domain error constructors/kinds, immutable copies, repo error translation
+- **gorest-handlers** — httpx handler signature, BindValidate, response envelope, cookies, multipart
+- **gorest-repositories** — pgx builders, pgxscan, tx-aware GetConn/FOR UPDATE, error mapping
+- **gorest-services** — Transact, post-commit side effects, nullable+Validate, async cleanup
+- **gorest-testing** — mockery placement, setupTestFixture, transactor expectations, subtests
+
+These supersede generic samber guidance where they overlap.
 
 ## Adding a Feature
 
